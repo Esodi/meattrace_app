@@ -1,0 +1,241 @@
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:developer' as developer;
+import '../utils/constants.dart';
+
+class DioClient {
+  static String get baseUrl => Constants.baseUrl;
+  static const String accessTokenKey = 'access_token';
+  static const String refreshTokenKey = 'refresh_token';
+
+  late Dio _dio;
+
+  DioClient() {
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    _dio.interceptors.addAll([
+      _AuthInterceptor(),
+      _LoggingInterceptor(),
+      _ErrorInterceptor(),
+    ]);
+  }
+
+  Dio get dio => _dio;
+
+  Future<void> setAuthTokens(String accessToken, String refreshToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(accessTokenKey, accessToken);
+    await prefs.setString(refreshTokenKey, refreshToken);
+  }
+
+  Future<String?> getAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(accessTokenKey);
+  }
+
+  Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(refreshTokenKey);
+  }
+
+  Future<void> clearAuthTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(accessTokenKey);
+    await prefs.remove(refreshTokenKey);
+  }
+}
+
+class _AuthInterceptor extends Interceptor {
+  @override
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(DioClient.accessTokenKey);
+    if (token != null) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    super.onRequest(options, handler);
+  }
+}
+
+class _LoggingInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    developer.log('REQUEST[${options.method}] => PATH: ${options.path}');
+    developer.log('REQUEST DATA: ${options.data}');
+    super.onRequest(options, handler);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    developer.log(
+      'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}',
+    );
+    developer.log('RESPONSE DATA: ${response.data}');
+    super.onResponse(response, handler);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    developer.log(
+      'ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}',
+    );
+    developer.log('ERROR MESSAGE: ${err.message}');
+    super.onError(err, handler);
+  }
+}
+
+class _ErrorInterceptor extends Interceptor {
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // Enhanced logging for debugging
+    developer.log('=== ERROR INTERCEPTOR DEBUG ===');
+    developer.log('Request URL: ${err.requestOptions.uri}');
+    developer.log('Request Method: ${err.requestOptions.method}');
+    developer.log('Request Headers: ${err.requestOptions.headers}');
+    developer.log('Request Data: ${err.requestOptions.data}');
+    developer.log('Response Status Code: ${err.response?.statusCode}');
+    developer.log('Response Headers: ${err.response?.headers}');
+    developer.log('Response Data: ${err.response?.data}');
+    developer.log('Error Type: ${err.type}');
+    developer.log('Error Message: ${err.message}');
+    developer.log('================================');
+
+    // Check connectivity first
+    final connectivityResults = await Connectivity().checkConnectivity();
+    if (connectivityResults.contains(ConnectivityResult.none) ||
+        connectivityResults.isEmpty) {
+      throw NoInternetException(
+        'No internet connection. Please check your network.',
+      );
+    }
+
+    switch (err.response?.statusCode) {
+      case 400:
+        // Enhanced error message with full response data
+        String errorMessage = 'Bad request';
+        if (err.response?.data != null) {
+          if (err.response?.data is Map) {
+            final data = err.response?.data as Map;
+            errorMessage = data['error'] ?? data['message'] ?? data.toString();
+          } else {
+            errorMessage = err.response?.data.toString() ?? 'Bad request';
+          }
+        }
+        developer.log('BadRequestException: $errorMessage');
+        throw BadRequestException(errorMessage);
+      case 401:
+        // Try to refresh token
+        final refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          // Retry the original request
+          try {
+            final dioClient = DioClient();
+            final response = await dioClient.dio.request(
+              err.requestOptions.path,
+              options: Options(
+                method: err.requestOptions.method,
+                headers: err.requestOptions.headers,
+              ),
+              data: err.requestOptions.data,
+              queryParameters: err.requestOptions.queryParameters,
+            );
+            return handler.resolve(response);
+          } catch (e) {
+            throw UnauthorizedException('Session expired. Please login again.');
+          }
+        } else {
+          throw UnauthorizedException('Unauthorized');
+        }
+      case 403:
+        throw ForbiddenException('Forbidden');
+      case 404:
+        throw NotFoundException('Not found');
+      case 500:
+        throw ServerException(err.response?.data?['error'] ?? err.response?.data?.toString() ?? 'Internal server error');
+      default:
+        if (err.type == DioExceptionType.connectionTimeout ||
+            err.type == DioExceptionType.receiveTimeout ||
+            err.type == DioExceptionType.sendTimeout) {
+          throw NetworkException('Connection timeout. Please try again.');
+        } else if (err.type == DioExceptionType.connectionError) {
+          throw NetworkException(
+            'Connection error. Please check your internet connection.',
+          );
+        } else {
+          throw NetworkException('Network error: ${err.message}');
+        }
+    }
+  }
+
+  Future<bool> _tryRefreshToken() async {
+    try {
+      final refreshToken = await DioClient().getRefreshToken();
+      if (refreshToken == null) return false;
+
+      final response = await DioClient().dio.post(Constants.refreshTokenEndpoint, data: {
+        'refresh': refreshToken,
+      });
+
+      final newAccessToken = response.data['access'];
+      if (newAccessToken != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(DioClient.accessTokenKey, newAccessToken);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+// Custom exceptions
+class BadRequestException implements Exception {
+  final String message;
+  BadRequestException(this.message);
+}
+
+class UnauthorizedException implements Exception {
+  final String message;
+  UnauthorizedException(this.message);
+}
+
+class ForbiddenException implements Exception {
+  final String message;
+  ForbiddenException(this.message);
+}
+
+class NotFoundException implements Exception {
+  final String message;
+  NotFoundException(this.message);
+}
+
+class ServerException implements Exception {
+  final String message;
+  ServerException(this.message);
+}
+
+class NetworkException implements Exception {
+  final String message;
+  NetworkException(this.message);
+}
+
+class NoInternetException implements Exception {
+  final String message;
+  NoInternetException(this.message);
+}
