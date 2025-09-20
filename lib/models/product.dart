@@ -69,20 +69,20 @@ class Product {
 
   factory Product.fromMap(Map<String, dynamic> json) {
     return Product(
-      id: json['id'],
-      processingUnit: json['processing_unit'],
-      animal: json['animal'],
+      id: json['id'] != null ? int.parse(json['id'].toString()) : null,
+      processingUnit: int.parse(json['processing_unit'].toString()),
+      animal: int.parse(json['animal'].toString()),
       productType: json['product_type'],
-      quantity: (json['quantity'] as num).toDouble(),
+      quantity: json['quantity'] is num ? (json['quantity'] as num).toDouble() : double.parse(json['quantity'].toString()),
       createdAt: DateTime.parse(json['created_at']),
       name: json['name'],
       batchNumber: json['batch_number'],
-      weight: (json['weight'] as num).toDouble(),
+      weight: json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString()),
       weightUnit: json['weight_unit'],
-      price: (json['price'] as num).toDouble(),
+      price: json['price'] is num ? (json['price'] as num).toDouble() : double.parse(json['price'].toString()),
       description: json['description'],
       manufacturer: json['manufacturer'],
-      category: json['category'] != null ? json['category'] as int : null,
+      category: json['category'] != null ? int.parse(json['category'].toString()) : null,
       qrCode: json['qr_code'],
       timeline: (json['timeline'] as List<dynamic>?)
           ?.map((e) => ProductTimelineEvent.fromMap(e as Map<String, dynamic>))

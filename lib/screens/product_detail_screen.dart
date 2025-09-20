@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/product.dart';
 import '../models/product_timeline.dart';
 import '../widgets/loading_indicator.dart';
+import '../widgets/enhanced_back_button.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -129,8 +130,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Product Details'),
+      appBar: createAppBarWithBackButton(
+        title: 'Product Details',
         actions: [
           IconButton(
             icon: const Icon(Icons.share),

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../models/animal.dart';
 import '../providers/animal_provider.dart';
 import '../utils/theme.dart';
-import '../widgets/loading_indicator.dart';
+import '../widgets/enhanced_back_button.dart';
 
 class SlaughterAnimalScreen extends StatefulWidget {
   const SlaughterAnimalScreen({super.key});
@@ -15,17 +15,18 @@ class SlaughterAnimalScreen extends StatefulWidget {
 
 class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   Animal? _selectedAnimal;
-  final TextEditingController _animalIdController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
+  String _searchType = 'id'; // 'id' or 'name'
 
   @override
   void dispose() {
-    _animalIdController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _searchAnimal() async {
-    if (_animalIdController.text.isEmpty) return;
+    if (_searchController.text.isEmpty) return;
 
     setState(() {
       _isSearching = true;
@@ -33,24 +34,33 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-      await animalProvider.fetchAnimals();
+      final searchTerm = _searchController.text.trim();
+
+      // Use backend search API
+      await animalProvider.fetchAnimals(search: searchTerm);
 
       final animals = animalProvider.animals;
-      final foundAnimal = animals.firstWhere(
-        (animal) => animal.animalId == _animalIdController.text.trim(),
-        orElse: () => throw Exception('Animal not found'),
-      );
 
-      if (foundAnimal.slaughtered) {
-        _showError('This animal has already been slaughtered');
-        return;
+      // Filter results based on search type and ensure not slaughtered
+      Animal? foundAnimal;
+      if (_searchType == 'id') {
+        foundAnimal = animals.firstWhere(
+          (animal) => animal.animalId.toLowerCase() == searchTerm.toLowerCase() && !animal.slaughtered,
+          orElse: () => throw Exception('Animal not found'),
+        );
+      } else {
+        foundAnimal = animals.firstWhere(
+          (animal) => animal.animalName?.toLowerCase() == searchTerm.toLowerCase() && !animal.slaughtered,
+          orElse: () => throw Exception('Animal not found'),
+        );
       }
 
       setState(() {
         _selectedAnimal = foundAnimal;
       });
     } catch (e) {
-      _showError('Animal not found. Please check the ID and try again.');
+      final searchField = _searchType == 'id' ? 'ID' : 'name';
+      _showError('Animal not found. Please check the $searchField and try again.');
     } finally {
       setState(() {
         _isSearching = false;
@@ -119,8 +129,8 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Slaughter Animal'),
+      appBar: createAppBarWithBackButton(
+        title: 'Slaughter Animal',
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -146,12 +156,50 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                           ),
                     ),
                     const SizedBox(height: 16),
+                    // Search type selection
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Search by ID'),
+                            value: 'id',
+                            groupValue: _searchType,
+                            onChanged: (value) {
+                              setState(() {
+                                _searchType = value!;
+                                _searchController.clear();
+                                _selectedAnimal = null;
+                              });
+                            },
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Search by Name'),
+                            value: 'name',
+                            groupValue: _searchType,
+                            onChanged: (value) {
+                              setState(() {
+                                _searchType = value!;
+                                _searchController.clear();
+                                _selectedAnimal = null;
+                              });
+                            },
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
-                      controller: _animalIdController,
-                      decoration: const InputDecoration(
-                        labelText: 'Animal ID',
-                        prefixIcon: Icon(Icons.tag),
-                        hintText: 'Enter the unique animal ID',
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: _searchType == 'id' ? 'Animal ID' : 'Animal Name',
+                        prefixIcon: Icon(_searchType == 'id' ? Icons.tag : Icons.pets),
+                        hintText: _searchType == 'id'
+                            ? 'Enter the unique animal ID'
+                            : 'Enter the animal name',
                       ),
                       textInputAction: TextInputAction.search,
                       onFieldSubmitted: (_) => _searchAnimal(),
@@ -357,7 +405,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                     ),
                     const SizedBox(height: 12),
                     _buildHelpItem(
-                      '1. Enter the unique Animal ID in the search field above.',
+                      '1. Select search type (ID or Name) and enter the search term in the field above.',
                     ),
                     _buildHelpItem(
                       '2. Verify the animal details are correct.',

@@ -15,10 +15,10 @@ class ShopReceipt {
 
   factory ShopReceipt.fromJson(Map<String, dynamic> json) {
     return ShopReceipt(
-      id: json['id'],
-      shop: json['shop'],
-      product: json['product'],
-      receivedQuantity: (json['received_quantity'] as num).toDouble(),
+      id: json['id'] != null ? int.parse(json['id'].toString()) : null,
+      shop: int.parse(json['shop'].toString()),
+      product: int.parse(json['product'].toString()),
+      receivedQuantity: json['received_quantity'] is num ? (json['received_quantity'] as num).toDouble() : double.parse(json['received_quantity'].toString()),
       receivedAt: DateTime.parse(json['received_at']),
     );
   }

@@ -128,4 +128,19 @@ class AnimalService {
       throw Exception('Failed to slaughter animal: ${e.message}');
     }
   }
+
+  Future<Map<String, dynamic>> transferAnimals(List<int?> animalIds, int processingUnitId) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '${Constants.animalsEndpoint}transfer/',
+        data: {
+          'animal_ids': animalIds.where((id) => id != null).toList(),
+          'processing_unit_id': processingUnitId,
+        },
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to transfer animals: ${e.message}');
+    }
+  }
 }

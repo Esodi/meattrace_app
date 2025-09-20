@@ -53,6 +53,9 @@ dependencies:
   path: ^1.9.0
   google_fonts: ^6.1.0
 
+  # Custom fonts for meat-themed design
+  # Playfair Display - elegant serif font for app name
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

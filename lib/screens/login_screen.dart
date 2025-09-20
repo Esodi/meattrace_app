@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
-import '../widgets/loading_indicator.dart';
+import '../widgets/enhanced_back_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -76,7 +76,15 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 48),
+                // Back button
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: EnhancedBackButton(
+                    color: AppTheme.textPrimary,
+                    onPressed: () => context.go('/'),
+                  ),
+                ),
+                const SizedBox(height: 32),
                 // Logo
                 Center(
                   child: Container(

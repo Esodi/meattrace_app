@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'product_display_screen.dart';
 import '../services/scan_history_service.dart';
+import '../widgets/enhanced_back_button.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -89,13 +90,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
+      appBar: createAppBarWithBackButton(
+        title: 'Scan QR Code',
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Scan QR Code',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: Icon(

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
+import '../widgets/enhanced_back_button.dart';
 
 class ShopHomeScreen extends StatelessWidget {
   const ShopHomeScreen({super.key});
@@ -13,8 +14,8 @@ class ShopHomeScreen extends StatelessWidget {
     final user = authProvider.user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shop Dashboard'),
+      appBar: createAppBarWithBackButton(
+        title: 'Shop Dashboard',
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

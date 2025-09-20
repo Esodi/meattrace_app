@@ -21,7 +21,12 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     final path = join(await getDatabasesPath(), 'meattrace.db');
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+    return await openDatabase(
+      path,
+      version: 3, // Increment version to trigger migration
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -59,10 +64,12 @@ class DatabaseHelper {
         farmer INTEGER NOT NULL,
         species TEXT NOT NULL,
         animal_id TEXT,
+        animal_name TEXT,
         age INTEGER NOT NULL,
         weight REAL NOT NULL,
         breed TEXT,
         farm_name TEXT,
+        health_status TEXT,
         created_at TEXT NOT NULL,
         slaughtered INTEGER NOT NULL,
         slaughtered_at TEXT,
@@ -79,6 +86,27 @@ class DatabaseHelper {
         received_at TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 3) {
+      // Add missing columns to animals table
+      final columnsToAdd = [
+        'animal_name TEXT',
+        'breed TEXT',
+        'farm_name TEXT',
+        'health_status TEXT',
+        'synced INTEGER NOT NULL DEFAULT 1',
+      ];
+
+      for (final columnDef in columnsToAdd) {
+        try {
+          await db.execute('ALTER TABLE animals ADD COLUMN $columnDef');
+        } catch (e) {
+          // Column might already exist, ignore error
+        }
+      }
+    }
   }
 
   // ProductCategory operations
@@ -143,10 +171,12 @@ class DatabaseHelper {
         'farmer': animal.farmer,
         'species': animal.species,
         'animal_id': animal.animalId,
+        'animal_name': animal.animalName,
         'age': animal.age,
         'weight': animal.weight,
         'breed': animal.breed,
         'farm_name': animal.farmName,
+        'health_status': animal.healthStatus,
         'created_at': animal.createdAt.toIso8601String(),
         'slaughtered': animal.slaughtered ? 1 : 0,
         'slaughtered_at': animal.slaughteredAt?.toIso8601String(),

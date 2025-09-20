@@ -5,8 +5,6 @@ import '../models/animal.dart';
 import '../services/animal_service.dart';
 import '../services/database_helper.dart';
 import '../services/dio_client.dart';
-import '../providers/connectivity_provider.dart';
-import 'package:provider/provider.dart';
 
 class AnimalProvider with ChangeNotifier {
   final AnimalService _animalService = AnimalService();
@@ -88,15 +86,16 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 
-  Future<void> createAnimal(Animal animal, {bool isOnline = true}) async {
+  Future<Animal?> createAnimal(Animal animal, {bool isOnline = true}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      Animal? createdAnimal;
       if (isOnline) {
-        final newAnimal = await _animalService.createAnimal(animal);
-        _animals.add(newAnimal);
+        createdAnimal = await _animalService.createAnimal(animal);
+        _animals.add(createdAnimal);
         await _saveToDatabase();
       } else {
         // Save offline with synced = false
@@ -110,6 +109,7 @@ class AnimalProvider with ChangeNotifier {
           slaughtered: animal.slaughtered,
           slaughteredAt: animal.slaughteredAt,
           animalId: animal.animalId,
+          animalName: animal.animalName,
           breed: animal.breed,
           farmName: animal.farmName,
           healthStatus: animal.healthStatus,
@@ -117,8 +117,10 @@ class AnimalProvider with ChangeNotifier {
         );
         _animals.add(offlineAnimal);
         await _dbHelper.insertAnimals([offlineAnimal], synced: false);
+        createdAnimal = offlineAnimal;
       }
       notifyListeners();
+      return createdAnimal;
     } catch (e) {
       _error = e.toString();
       // If API fails, try saving offline
@@ -133,6 +135,7 @@ class AnimalProvider with ChangeNotifier {
           slaughtered: animal.slaughtered,
           slaughteredAt: animal.slaughteredAt,
           animalId: animal.animalId,
+          animalName: animal.animalName,
           breed: animal.breed,
           farmName: animal.farmName,
           healthStatus: animal.healthStatus,
@@ -141,8 +144,11 @@ class AnimalProvider with ChangeNotifier {
         _animals.add(offlineAnimal);
         await _dbHelper.insertAnimals([offlineAnimal], synced: false);
         _error = 'Saved offline. Will sync when online.';
+        notifyListeners();
+        return offlineAnimal;
       }
       notifyListeners();
+      return null;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -191,6 +197,19 @@ class AnimalProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> transferAnimals(List<int?> animalIds, int processingUnitId) async {
+    try {
+      final response = await _animalService.transferAnimals(animalIds, processingUnitId);
+      // Refresh animals list after transfer
+      await fetchAnimals();
+      return response;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> syncUnsyncedAnimals() async {

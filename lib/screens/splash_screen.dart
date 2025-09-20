@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 
@@ -91,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryGreen,
+      backgroundColor: AppTheme.primaryRed,
       body: Center(
         child: AnimatedBuilder(
           animation: _animationController,
@@ -119,25 +120,25 @@ class _SplashScreenState extends State<SplashScreen>
                         ],
                       ),
                       child: Icon(
-                        Icons.qr_code_scanner,
+                        Icons.restaurant_menu,
                         size: 60,
-                        color: AppTheme.primaryGreen,
+                        color: AppTheme.primaryRed,
                       ),
                     ),
                     const SizedBox(height: 32),
                     // App Name
                     Text(
-                      'MeatTrace',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 36,
-                          ),
+                      'Nyama Tamu',
+                      style: GoogleFonts.playfairDisplay(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 36,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     // Tagline
                     Text(
-                      'Trace Your Meat Journey',
+                      'Fresh Meat, Trusted Trace',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Colors.white.withOpacity(0.8),
                             fontSize: 16,

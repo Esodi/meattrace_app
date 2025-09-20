@@ -16,28 +16,71 @@ class AuthService {
 
   Future<User> login(String username, String password) async {
     try {
+      // Log the attempt for debugging
+      print('🔐 Attempting login for user: $username');
+      print('🌐 Using base URL: ${Constants.baseUrl}');
+      
+      // Use FormData for login endpoint (TokenObtainPairView expects form data)
+      final formData = FormData.fromMap({
+        'username': username,
+        'password': password,
+      });
+
+      print('📤 Sending login request to: ${Constants.baseUrl}${Constants.loginEndpoint}');
+      
       final response = await _dioClient.dio.post(
         Constants.loginEndpoint,
-        data: {
-          'username': username,
-          'password': password,
-        },
+        data: formData,
       );
 
+      print('✅ Login request successful, status: ${response.statusCode}');
+      
       final tokens = response.data;
       final accessToken = tokens['access'];
       final refreshToken = tokens['refresh'];
 
+      if (accessToken == null || refreshToken == null) {
+        throw Exception('Invalid response: Missing tokens');
+      }
+
       // Store tokens
       await _dioClient.setAuthTokens(accessToken, refreshToken);
+      print('💾 Tokens stored successfully');
 
-      // Decode access token to get user info
-      final payload = _decodeToken(accessToken);
-      final user = User.fromJson(payload);
+      // Get user profile information
+      print('👤 Fetching user profile...');
+      final user = await _getUserProfile(accessToken);
+      print('✅ User profile fetched successfully: ${user.username}');
 
       return user;
     } on DioException catch (e) {
-      throw Exception('Login failed: ${e.message}');
+      print('❌ Login failed with DioException: ${e.type} - ${e.message}');
+      if (e.response != null) {
+        print('📄 Response status: ${e.response?.statusCode}');
+        print('📄 Response data: ${e.response?.data}');
+      }
+      
+      // Provide more specific error messages
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception('Connection timeout. Please check your internet connection and try again.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception('Cannot connect to server. Please check if the backend is running and accessible.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Invalid username or password.');
+      } else if (e.response?.statusCode == 400) {
+        final errorData = e.response?.data;
+        if (errorData is Map && errorData.containsKey('non_field_errors')) {
+          throw Exception(errorData['non_field_errors'][0]);
+        }
+        throw Exception('Invalid login credentials.');
+      } else {
+        throw Exception('Login failed: ${e.message ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      print('❌ Login failed with unexpected error: $e');
+      throw Exception('Login failed: $e');
     }
   }
 
@@ -87,10 +130,58 @@ class AuthService {
   Future<User?> getCurrentUser() async {
     final token = await _dioClient.getAccessToken();
     if (token != null && !_isTokenExpired(token)) {
-      final payload = _decodeToken(token);
-      return User.fromJson(payload);
+      return await _getUserProfile(token);
     }
     return null;
+  }
+
+  Future<User> _getUserProfile(String accessToken) async {
+    try {
+      print('👤 Fetching user profile from: ${Constants.baseUrl}${Constants.userProfileEndpoint}');
+      
+      // Create a temporary Dio instance with the token for this request
+      final tempDio = Dio(
+        BaseOptions(
+          baseUrl: Constants.baseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      // Get user profile from the dedicated endpoint
+      final response = await tempDio.get(Constants.userProfileEndpoint);
+      print('✅ Profile response status: ${response.statusCode}');
+      print('📄 Profile data: ${response.data}');
+      
+      final profileData = response.data;
+
+      if (profileData == null) {
+        throw Exception('Empty profile response');
+      }
+
+      return User.fromJson(profileData);
+    } on DioException catch (e) {
+      print('❌ Profile fetch failed with DioException: ${e.type} - ${e.message}');
+      if (e.response != null) {
+        print('📄 Profile error response: ${e.response?.statusCode} - ${e.response?.data}');
+      }
+      
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw Exception('Timeout while fetching user profile. Please try again.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Authentication failed. Please login again.');
+      } else {
+        throw Exception('Failed to get user profile: ${e.message ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      print('❌ Profile fetch failed with unexpected error: $e');
+      throw Exception('Failed to get user profile: $e');
+    }
   }
 
   Map<String, dynamic> _decodeToken(String token) {

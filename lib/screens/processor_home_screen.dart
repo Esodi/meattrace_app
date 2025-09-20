@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
+import '../widgets/enhanced_back_button.dart';
 
 class ProcessorHomeScreen extends StatelessWidget {
   const ProcessorHomeScreen({super.key});
@@ -13,8 +14,8 @@ class ProcessorHomeScreen extends StatelessWidget {
     final user = authProvider.user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Processing Unit Dashboard'),
+      appBar: createAppBarWithBackButton(
+        title: 'Processing Unit Dashboard',
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

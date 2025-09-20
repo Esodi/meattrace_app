@@ -3,6 +3,7 @@ import 'package:timeline_tile/timeline_tile.dart';
 import '../models/scan_history.dart';
 import '../services/scan_history_service.dart';
 import 'product_display_screen.dart';
+import '../widgets/enhanced_back_button.dart';
 
 class ScanHistoryScreen extends StatefulWidget {
   const ScanHistoryScreen({super.key});
@@ -95,6 +96,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
               expandedHeight: 120.0,
               floating: true,
               pinned: true,
+              leading: const EnhancedBackButton(color: Colors.white),
               flexibleSpace: FlexibleSpaceBar(
                 title: const Text('Scan History'),
                 background: Container(

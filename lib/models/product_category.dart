@@ -13,7 +13,7 @@ class ProductCategory {
 
   factory ProductCategory.fromMap(Map<String, dynamic> json) {
     return ProductCategory(
-      id: json['id'],
+      id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       name: json['name'],
       description: json['description'],
       createdAt: json['created_at'] != null

@@ -4,7 +4,7 @@ class Constants {
   // API Configuration - Multiple options for different environments
   static const String localhostUrl = 'http://127.0.0.1:8000/api/v1';        // For emulator
   static const String emulatorUrl = 'http://10.0.2.2:8000/api/v1';         // Android emulator host
-  static const String wifiUrl = 'http://10.36.40.17:8000/api/v1';          // Your WiFi IP
+  static const String wifiUrl = 'http://192.168.150.17:8000/api/v1';       // Your WiFi IP
   static const String prodBaseUrl = 'https://your-production-api.com/api/v1';
 
   // Dynamic base URL - will be set at runtime
@@ -12,8 +12,8 @@ class Constants {
 
   // Get base URL based on environment
   static String get baseUrl {
-    // Pinned to WiFi IP for this build
-    return wifiUrl;
+    // Use dynamic URL if available, otherwise fall back to localhost
+    return _dynamicBaseUrl ?? localhostUrl;
   }
 
   // Set the base URL dynamically (called during app initialization)
@@ -33,6 +33,7 @@ class Constants {
   static const String loginEndpoint = '/token/';
   static const String registerEndpoint = '/register/';
   static const String refreshTokenEndpoint = '/token/refresh/';
+  static const String userProfileEndpoint = '/profile/';
   static const String animalsEndpoint = '/animals/';
   static const String productsEndpoint = '/products/';
   static const String receiptsEndpoint = '/receipts/';
