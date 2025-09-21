@@ -11,11 +11,13 @@ class AnimalProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Animal> _animals = [];
   bool _isLoading = false;
+  bool _isCreatingAnimal = false;
   String? _error;
   SharedPreferences? _prefs;
 
   List<Animal> get animals => _animals;
   bool get isLoading => _isLoading;
+  bool get isCreatingAnimal => _isCreatingAnimal;
   String? get error => _error;
 
   AnimalProvider() {
@@ -87,7 +89,7 @@ class AnimalProvider with ChangeNotifier {
   }
 
   Future<Animal?> createAnimal(Animal animal, {bool isOnline = true}) async {
-    _isLoading = true;
+    _isCreatingAnimal = true;
     _error = null;
     notifyListeners();
 
@@ -150,7 +152,7 @@ class AnimalProvider with ChangeNotifier {
       notifyListeners();
       return null;
     } finally {
-      _isLoading = false;
+      _isCreatingAnimal = false;
       notifyListeners();
     }
   }
@@ -212,6 +214,27 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 
+  Future<List<Animal>> fetchTransferredAnimals() async {
+    try {
+      return await _animalService.getTransferredAnimals();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> receiveAnimals(List<int?> animalIds) async {
+    try {
+      final response = await _animalService.receiveAnimals(animalIds);
+      return response;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<void> syncUnsyncedAnimals() async {
     final unsynced = await _dbHelper.getUnsyncedAnimals();
     for (final animal in unsynced) {
@@ -230,5 +253,15 @@ class AnimalProvider with ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  Future<List<Map<String, dynamic>>> getProcessingUnits() async {
+    try {
+      return await _animalService.getProcessingUnits();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 }

@@ -105,6 +105,13 @@ class ProcessorHomeScreen extends StatelessWidget {
                 ),
                 _buildActionCard(
                   context,
+                  'Products Dashboard',
+                  Icons.dashboard,
+                  AppTheme.accentOrange,
+                  () => context.go('/products-dashboard'),
+                ),
+                _buildActionCard(
+                  context,
                   'Scan QR Code',
                   Icons.qr_code_scanner,
                   AppTheme.primaryGreen,

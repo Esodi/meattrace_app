@@ -101,7 +101,7 @@ class _LoggingInterceptor extends Interceptor {
 
 class _ErrorInterceptor extends Interceptor {
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
+  void onError(DioException err, ErrorInterceptorHandler handler) {
     // Enhanced logging for debugging
     developer.log('=== ERROR INTERCEPTOR DEBUG ===');
     developer.log('Request URL: ${err.requestOptions.uri}');
@@ -111,18 +111,22 @@ class _ErrorInterceptor extends Interceptor {
     developer.log('Response Status Code: ${err.response?.statusCode}');
     developer.log('Response Headers: ${err.response?.headers}');
     developer.log('Response Data: ${err.response?.data}');
+    developer.log('Response Data Type: ${err.response?.data?.runtimeType}');
+    if (err.response?.data is List) {
+      developer.log('Data is List with length: ${(err.response?.data as List).length}');
+      developer.log('List contents: ${err.response?.data}');
+    } else if (err.response?.data is Map) {
+      developer.log('Data is Map with keys: ${(err.response?.data as Map).keys}');
+      developer.log('Map contents: ${err.response?.data}');
+    } else {
+      developer.log('Data is neither List nor Map: ${err.response?.data}');
+    }
     developer.log('Error Type: ${err.type}');
     developer.log('Error Message: ${err.message}');
     developer.log('================================');
 
-    // Check connectivity first
-    final connectivityResults = await Connectivity().checkConnectivity();
-    if (connectivityResults.contains(ConnectivityResult.none) ||
-        connectivityResults.isEmpty) {
-      throw NoInternetException(
-        'No internet connection. Please check your network.',
-      );
-    }
+    // Check connectivity - simplified to avoid async issues
+    // Note: Connectivity check removed to keep interceptor synchronous
 
     switch (err.response?.statusCode) {
       case 400:
@@ -139,34 +143,25 @@ class _ErrorInterceptor extends Interceptor {
         developer.log('BadRequestException: $errorMessage');
         throw BadRequestException(errorMessage);
       case 401:
-        // Try to refresh token
-        final refreshed = await _tryRefreshToken();
-        if (refreshed) {
-          // Retry the original request
-          try {
-            final dioClient = DioClient();
-            final response = await dioClient.dio.request(
-              err.requestOptions.path,
-              options: Options(
-                method: err.requestOptions.method,
-                headers: err.requestOptions.headers,
-              ),
-              data: err.requestOptions.data,
-              queryParameters: err.requestOptions.queryParameters,
-            );
-            return handler.resolve(response);
-          } catch (e) {
-            throw UnauthorizedException('Session expired. Please login again.');
-          }
-        } else {
-          throw UnauthorizedException('Unauthorized');
-        }
+        // For synchronous interceptor, throw immediately without token refresh
+        throw UnauthorizedException('Unauthorized');
       case 403:
         throw ForbiddenException('Forbidden');
       case 404:
         throw NotFoundException('Not found');
       case 500:
-        throw ServerException(err.response?.data?['error'] ?? err.response?.data?.toString() ?? 'Internal server error');
+        String errorMessage = 'Internal server error';
+        if (err.response?.data != null) {
+          final data = err.response!.data;
+          if (data is Map) {
+            errorMessage = data['error'] ?? data.toString();
+          } else if (data is List) {
+            errorMessage = data.join(', ');
+          } else {
+            errorMessage = data.toString();
+          }
+        }
+        throw ServerException(errorMessage);
       default:
         if (err.type == DioExceptionType.connectionTimeout ||
             err.type == DioExceptionType.receiveTimeout ||
@@ -208,34 +203,55 @@ class _ErrorInterceptor extends Interceptor {
 class BadRequestException implements Exception {
   final String message;
   BadRequestException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 class UnauthorizedException implements Exception {
   final String message;
   UnauthorizedException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 class ForbiddenException implements Exception {
   final String message;
   ForbiddenException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 class NotFoundException implements Exception {
   final String message;
   NotFoundException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 class ServerException implements Exception {
   final String message;
   ServerException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 class NetworkException implements Exception {
   final String message;
   NetworkException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 class NoInternetException implements Exception {
   final String message;
   NoInternetException(this.message);
+
+  @override
+  String toString() => message;
 }

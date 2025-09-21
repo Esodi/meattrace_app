@@ -53,8 +53,8 @@ class AnimalService {
       } else {
         throw Exception('Unexpected response format');
       }
-    } on DioException catch (e) {
-      throw Exception('Failed to fetch animals: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to fetch animals: $e');
     }
   }
 
@@ -78,11 +78,11 @@ class AnimalService {
     try {
       final response = await _dioClient.dio.get('${Constants.animalsEndpoint}$id/');
       return Animal.fromMap(response.data);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 404) {
         throw Exception('Animal not found');
       }
-      throw Exception('Failed to fetch animal: ${e.message}');
+      throw Exception('Failed to fetch animal: $e');
     }
   }
 
@@ -93,8 +93,8 @@ class AnimalService {
         data: animal.toMapForCreate(),
       );
       return Animal.fromMap(response.data);
-    } on DioException catch (e) {
-      throw Exception('Failed to create animal: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to create animal: $e');
     }
   }
 
@@ -105,16 +105,16 @@ class AnimalService {
         data: animal.toMap(),
       );
       return Animal.fromMap(response.data);
-    } on DioException catch (e) {
-      throw Exception('Failed to update animal: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to update animal: $e');
     }
   }
 
   Future<void> deleteAnimal(int id) async {
     try {
       await _dioClient.dio.delete('${Constants.animalsEndpoint}$id/');
-    } on DioException catch (e) {
-      throw Exception('Failed to delete animal: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to delete animal: $e');
     }
   }
 
@@ -124,8 +124,8 @@ class AnimalService {
         '${Constants.animalsEndpoint}$id/slaughter/',
       );
       return Animal.fromMap(response.data);
-    } on DioException catch (e) {
-      throw Exception('Failed to slaughter animal: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to slaughter animal: $e');
     }
   }
 
@@ -139,8 +139,60 @@ class AnimalService {
         },
       );
       return response.data;
-    } on DioException catch (e) {
-      throw Exception('Failed to transfer animals: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to transfer animals: $e');
+    }
+  }
+
+  Future<List<Animal>> getTransferredAnimals() async {
+    try {
+      final response = await _dioClient.dio.get(
+        '${Constants.animalsEndpoint}transferred_animals/',
+      );
+
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Animal.fromMap(json)).toList();
+      } else if (data is Map && data.containsKey('results')) {
+        return (data['results'] as List).map((json) => Animal.fromMap(json)).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch transferred animals: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> receiveAnimals(List<int?> animalIds) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '${Constants.animalsEndpoint}receive_animals/',
+        data: {
+          'animal_ids': animalIds.where((id) => id != null).toList(),
+        },
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception('Failed to receive animals: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getProcessingUnits() async {
+    try {
+      final response = await _dioClient.dio.get(
+        Constants.processingUnitsEndpoint,
+      );
+
+      final data = response.data;
+      if (data is Map && data.containsKey('results')) {
+        return List<Map<String, dynamic>>.from(data['results']);
+      } else if (data is List) {
+        return List<Map<String, dynamic>>.from(data);
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch processing units: $e');
     }
   }
 }

@@ -15,7 +15,7 @@ class ProductCategoryService {
 
   Future<List<ProductCategory>> fetchAllCategories() async {
     try {
-      final response = await _dioClient.dio.get('/categories/');
+      final response = await _dioClient.dio.get('/product-categories/');
       final data = response.data;
       if (data is List) {
         return data.map((json) => ProductCategory.fromJson(json)).toList();
@@ -33,12 +33,38 @@ class ProductCategoryService {
   Future<ProductCategory> addCategory(ProductCategory category) async {
     try {
       final response = await _dioClient.dio.post(
-        '/categories/',
-        data: category.toJson()..remove('id'),
+        '/product-categories/',
+        data: category.toMapForCreate(),
       );
       return ProductCategory.fromJson(response.data);
     } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception('Category name already exists');
+      }
       throw Exception('Failed to add category: ${e.message}');
+    }
+  }
+
+  Future<ProductCategory> updateCategory(ProductCategory category) async {
+    try {
+      final response = await _dioClient.dio.put(
+        '/product-categories/${category.id}/',
+        data: category.toJson(),
+      );
+      return ProductCategory.fromJson(response.data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception('Category name already exists');
+      }
+      throw Exception('Failed to update category: ${e.message}');
+    }
+  }
+
+  Future<void> deleteCategory(int id) async {
+    try {
+      await _dioClient.dio.delete('/product-categories/$id/');
+    } on DioException catch (e) {
+      throw Exception('Failed to delete category: ${e.message}');
     }
   }
 }

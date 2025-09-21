@@ -9,6 +9,7 @@ import 'providers/auth_provider.dart';
 import 'providers/meat_trace_provider.dart';
 import 'providers/animal_provider.dart';
 import 'providers/product_provider.dart';
+import 'providers/product_category_provider.dart';
 import 'providers/shop_receipt_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/scan_provider.dart';
@@ -23,9 +24,15 @@ import 'screens/slaughter_animal_screen.dart';
 import 'screens/register_animal_screen.dart';
 // import 'screens/home_screen.dart';
 import 'screens/receive_product_screen.dart';
+import 'screens/receive_animals_screen.dart';
+import 'screens/create_product_screen.dart';
+import 'screens/product_category_screen.dart';
+import 'screens/products_dashboard_screen.dart';
 import 'screens/product_detail_screen.dart';
 import 'screens/qr_scanner_screen.dart';
 import 'screens/scan_history_screen.dart';
+import 'screens/select_animals_transfer_screen.dart';
+import 'screens/select_processing_unit_screen.dart';
 // import 'screens/api_test_screen.dart';
 import 'screens/network_debug_screen.dart';
 
@@ -91,6 +98,30 @@ class MyApp extends StatelessWidget {
           path: '/register-animal',
           builder: (context, state) => const RegisterAnimalScreen(),
         ),
+        GoRoute(
+          path: '/receive-animals',
+          builder: (context, state) => const ReceiveAnimalsScreen(),
+        ),
+        GoRoute(
+          path: '/create-product',
+          builder: (context, state) => const CreateProductScreen(),
+        ),
+        GoRoute(
+          path: '/product-categories',
+          builder: (context, state) => const ProductCategoryScreen(),
+        ),
+        GoRoute(
+          path: '/products-dashboard',
+          builder: (context, state) => const ProductsDashboardScreen(),
+        ),
+        GoRoute(
+          path: '/select-animals-transfer',
+          builder: (context, state) => const SelectAnimalsTransferScreen(),
+        ),
+        GoRoute(
+          path: '/select-processing-unit',
+          builder: (context, state) => const SelectProcessingUnitScreen(),
+        ),
       ],
     );
 
@@ -100,6 +131,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MeatTraceProvider()),
         ChangeNotifierProvider(create: (_) => AnimalProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => ProductCategoryProvider()),
         ChangeNotifierProvider(create: (_) => ShopReceiptProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => ScanProvider()),

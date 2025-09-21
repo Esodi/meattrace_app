@@ -55,6 +55,23 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
+      // Additional checks for required dropdowns
+      if (_selectedType == null || _selectedType!.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select an animal type')),
+          );
+        }
+        return;
+      }
+      if (_selectedFarm == null || _selectedFarm!.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a farm')),
+          );
+        }
+        return;
+      }
       final connectivityProvider = context.read<ConnectivityProvider>();
       final isOnline = connectivityProvider.isOnline;
       final authProvider = context.read<AuthProvider>();
@@ -469,8 +486,8 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                       return SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: provider.isLoading ? null : _submitForm,
-                          icon: provider.isLoading
+                          onPressed: provider.isCreatingAnimal ? null : _submitForm,
+                          icon: provider.isCreatingAnimal
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
@@ -481,7 +498,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                                 )
                               : const Icon(Icons.check),
                           label: Text(
-                            provider.isLoading ? 'Registering...' : 'Register Animal',
+                            provider.isCreatingAnimal ? 'Registering...' : 'Register Animal',
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4CAF50),

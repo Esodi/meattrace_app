@@ -16,14 +16,16 @@ class FarmerHomeScreen extends StatefulWidget {
 
 class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
   late AnimalProvider _animalProvider;
-  List<Animal> _selectedAnimals = [];
-  bool _isTransferring = false;
 
   @override
   void initState() {
     super.initState();
     _animalProvider = Provider.of<AnimalProvider>(context, listen: false);
     _animalProvider.fetchAnimals();
+  }
+
+  Future<void> _refreshData() async {
+    await _animalProvider.fetchAnimals();
   }
 
   @override
@@ -36,6 +38,10 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
         title: 'Farmer Dashboard',
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _refreshData(),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await authProvider.logout();
@@ -46,11 +52,13 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Welcome section
             Card(
               elevation: 4,
@@ -126,7 +134,7 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
                   'Transfer Carcasses',
                   Icons.location_on,
                   AppTheme.secondaryBurgundy,
-                  () => _showTransferAnimalsDialog(context),
+                  () => context.go('/select-animals-transfer'),
                 ),
               ],
             ),
@@ -189,7 +197,7 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
                         Expanded(
                           child: _buildStatCard(
                             context,
-                            'Transfer Carcasses',
+                            'Transferred',
                             '0', // TODO: Implement transfer count
                             Icons.send,
                             AppTheme.secondaryBurgundy,
@@ -203,6 +211,7 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
             ),
           ],
         ),
+        ),
       ),
 
       // Floating action button for quick animal registration
@@ -214,174 +223,6 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
     );
   }
 
-  void _showTransferAnimalsDialog(BuildContext context) {
-    final slaughteredAnimals = _animalProvider.animals.where((animal) => animal.slaughtered).toList();
-
-    if (slaughteredAnimals.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No slaughtered animals available for transfer'),
-          backgroundColor: AppTheme.accentMaroon,
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Transfer Animals'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Select slaughtered animals to transfer to processing unit:',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(height: 16),
-                    Flexible(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: slaughteredAnimals.length,
-                        itemBuilder: (context, index) {
-                          final animal = slaughteredAnimals[index];
-                          final isSelected = _selectedAnimals.contains(animal);
-
-                          return CheckboxListTile(
-                            title: Text(
-                              animal.animalName ?? animal.animalId,
-                              style: const TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                            subtitle: Text(
-                              '${animal.species} • ${animal.weight}kg • Slaughtered: ${animal.slaughteredAt?.toLocal().toString().split(' ')[0] ?? 'N/A'}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            value: isSelected,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  _selectedAnimals.add(animal);
-                                } else {
-                                  _selectedAnimals.remove(animal);
-                                }
-                              });
-                            },
-                            activeColor: AppTheme.secondaryBurgundy,
-                          );
-                        },
-                      ),
-                    ),
-                    if (_selectedAnimals.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: Text(
-                          '${_selectedAnimals.length} animal(s) selected',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.secondaryBurgundy,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedAnimals.clear();
-                    });
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: _selectedAnimals.isEmpty || _isTransferring
-                      ? null
-                      : () => _initiateTransfer(context, setState),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.secondaryBurgundy,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: _isTransferring
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('Transfer'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) {
-      // Clear selection when dialog is closed
-      setState(() {
-        _selectedAnimals.clear();
-      });
-    });
-  }
-
-  Future<void> _initiateTransfer(BuildContext context, StateSetter setState) async {
-    if (_selectedAnimals.isEmpty) return;
-
-    setState(() {
-      _isTransferring = true;
-    });
-
-    try {
-      // For now, use a demo processing unit ID (in a real app, this would be selected by the user)
-      const demoProcessingUnitId = 13; // demo_processor user ID
-
-      final animalIds = _selectedAnimals.map((animal) => animal.id).toList();
-
-      // Make API call to transfer animals
-      final response = await _animalProvider.transferAnimals(animalIds, demoProcessingUnitId);
-
-      // Show success message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Transfer completed'),
-            backgroundColor: AppTheme.primaryRed,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-
-      // Close dialog
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
-
-      // Refresh animals list
-      _animalProvider.fetchAnimals();
-
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Transfer failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isTransferring = false;
-      });
-    }
-  }
 
   Widget _buildActionCard(
     BuildContext context,

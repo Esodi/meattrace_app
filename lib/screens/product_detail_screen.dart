@@ -56,7 +56,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
     return Product(
       id: productId,
-      processingUnit: 1,
+      processingUnit: 'mock_user',
       animal: 1,
       productType: 'Beef Steak',
       quantity: 5.0,

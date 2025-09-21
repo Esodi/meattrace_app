@@ -75,12 +75,16 @@ class ProductProvider with ChangeNotifier {
 
   Future<Product?> createProduct(Product product) async {
     try {
+      print('🔄 [ProductProvider] Creating product via service...');
       final newProduct = await _productService.createProduct(product);
+      print('✅ [ProductProvider] Product created successfully, adding to local list');
       _products.add(newProduct);
       await _saveToDatabase();
+      _error = null; // Clear any previous errors
       notifyListeners();
       return newProduct;
     } catch (e) {
+      print('❌ [ProductProvider] Product creation failed: $e');
       _error = e.toString();
       notifyListeners();
       return null;
@@ -94,6 +98,20 @@ class ProductProvider with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
       return null;
+    }
+  }
+
+  Future<bool> deleteProduct(int id) async {
+    try {
+      await _productService.deleteProduct(id);
+      _products.removeWhere((product) => product.id == id);
+      await _saveToDatabase();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 

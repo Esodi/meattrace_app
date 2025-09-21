@@ -41,9 +41,12 @@ class ProductCategory {
 
   // For creating new category (exclude id and server-generated fields)
   Map<String, dynamic> toMapForCreate() {
-    return {
+    final map = <String, dynamic>{
       'name': name,
-      'description': description,
     };
+    if (description != null && description!.isNotEmpty) {
+      map['description'] = description;
+    }
+    return map;
   }
 }

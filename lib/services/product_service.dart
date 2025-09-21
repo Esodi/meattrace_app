@@ -59,13 +59,58 @@ class ProductService {
 
   Future<Product> createProduct(Product product) async {
     try {
+      print('🔄 [ProductService] Creating product...');
+      print('📤 [ProductService] Sending data: ${product.toMapForCreate()}');
+
       final response = await _dioClient.dio.post(
         Constants.productsEndpoint,
         data: product.toMapForCreate(),
       );
+
+      print('✅ [ProductService] Product created successfully: ${response.statusCode}');
+      print('📄 [ProductService] Response data: ${response.data}');
       return Product.fromMap(response.data);
     } on DioException catch (e) {
-      throw Exception('Failed to create product: ${e.message}');
+      print('❌ [ProductService] Product creation failed');
+      print('📊 [ProductService] Status Code: ${e.response?.statusCode}');
+      print('📄 [ProductService] Response Data: ${e.response?.data}');
+      print('🔍 [ProductService] Error Message: ${e.message}');
+
+      // Create detailed error message
+      String errorMessage = 'Failed to create product';
+
+      if (e.response?.statusCode == 400) {
+        errorMessage += ' (Validation Error)';
+        if (e.response?.data is Map) {
+          final errorData = e.response!.data as Map;
+          if (errorData.containsKey('detail')) {
+            errorMessage += ': ${errorData['detail']}';
+          } else {
+            // Handle field-specific errors
+            final fieldErrors = <String>[];
+            errorData.forEach((field, errors) {
+              if (errors is List) {
+                fieldErrors.add('$field: ${errors.join(', ')}');
+              } else {
+                fieldErrors.add('$field: $errors');
+              }
+            });
+            if (fieldErrors.isNotEmpty) {
+              errorMessage += ': ${fieldErrors.join('; ')}';
+            }
+          }
+        }
+      } else if (e.response?.statusCode == 401) {
+        errorMessage += ' (Authentication Failed)';
+      } else if (e.response?.statusCode == 403) {
+        errorMessage += ' (Permission Denied)';
+      } else if (e.response?.statusCode == 404) {
+        errorMessage += ' (Endpoint Not Found)';
+      } else if (e.response?.statusCode == 500) {
+        errorMessage += ' (Server Error)';
+      }
+
+      throw Exception(errorMessage);
     }
   }
 

@@ -83,6 +83,33 @@ class ProductCategoryProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateCategory(ProductCategory category) async {
+    try {
+      final updatedCategory = await _categoryService.updateCategory(category);
+      final index = _categories.indexWhere((c) => c.id == category.id);
+      if (index != -1) {
+        _categories[index] = updatedCategory;
+        await _saveToDatabase();
+        notifyListeners();
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteCategory(int id) async {
+    try {
+      await _categoryService.deleteCategory(id);
+      _categories.removeWhere((c) => c.id == id);
+      await _saveToDatabase();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();

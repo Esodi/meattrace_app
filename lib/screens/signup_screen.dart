@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:developer' as developer;
 import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 
@@ -71,6 +72,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    developer.log('SignupScreen: Building widget');
     return Scaffold(
       backgroundColor: AppTheme.backgroundGray,
       appBar: AppBar(
@@ -237,6 +239,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 // Sign up button
                 Consumer<AuthProvider>(
                   builder: (context, authProvider, child) {
+                    developer.log('SignupScreen: Consumer rebuilding, isLoading: ${authProvider.isLoading}, error: ${authProvider.error}');
                     return ElevatedButton(
                       onPressed: authProvider.isLoading ? null : _signup,
                       style: ElevatedButton.styleFrom(

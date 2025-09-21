@@ -32,7 +32,7 @@ class ProductTimelineEvent {
 
 class Product {
   final int? id;
-  final int processingUnit;
+  final String processingUnit;
   final int animal;
   final String productType;
   final double quantity;
@@ -70,10 +70,10 @@ class Product {
   factory Product.fromMap(Map<String, dynamic> json) {
     return Product(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
-      processingUnit: int.parse(json['processing_unit'].toString()),
-      animal: int.parse(json['animal'].toString()),
+      processingUnit: json['processing_unit'].toString(),
+      animal: json['animal'] is Map ? json['animal']['id'] : int.parse(json['animal'].toString()),
       productType: json['product_type'],
-      quantity: json['quantity'] is num ? (json['quantity'] as num).toDouble() : double.parse(json['quantity'].toString()),
+      quantity: _safeParseDouble(json['quantity']),
       createdAt: DateTime.parse(json['created_at']),
       name: json['name'],
       batchNumber: json['batch_number'],
@@ -82,7 +82,7 @@ class Product {
       price: json['price'] is num ? (json['price'] as num).toDouble() : double.parse(json['price'].toString()),
       description: json['description'],
       manufacturer: json['manufacturer'],
-      category: json['category'] != null ? int.parse(json['category'].toString()) : null,
+      category: json['category'] is Map ? json['category']['id'] : (json['category'] != null && json['category'].toString().isNotEmpty ? int.parse(json['category'].toString()) : null),
       qrCode: json['qr_code'],
       timeline: (json['timeline'] as List<dynamic>?)
           ?.map((e) => ProductTimelineEvent.fromMap(e as Map<String, dynamic>))
@@ -112,9 +112,21 @@ class Product {
   }
 
   // For creating new product (exclude id and server-generated fields)
+  static double _safeParseDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    try {
+      return double.parse(value.toString());
+    } catch (e) {
+      // If parsing fails, return a default value
+      return 1.0;
+    }
+  }
+
   Map<String, dynamic> toMapForCreate() {
     return {
-      'animal': animal,
+      'animal_id': animal,
       'product_type': productType,
       'quantity': quantity,
       'name': name,
@@ -125,7 +137,6 @@ class Product {
       'description': description,
       'manufacturer': manufacturer,
       'category': category,
-      'timeline': timeline.map((e) => e.toMap()).toList(),
     };
   }
 }

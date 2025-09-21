@@ -1,6 +1,7 @@
 class Animal {
   final int? id;
   final int farmer;
+  final String? farmerUsername; // Farmer's username for display
   final String species;
   final int age;
   final double weight;
@@ -13,10 +14,17 @@ class Animal {
   final String farmName;
   final String? healthStatus;
   final bool synced;
+  // Transfer fields
+  final int? transferredTo;
+  final DateTime? transferredAt;
+  // Receive fields
+  final int? receivedBy;
+  final DateTime? receivedAt;
 
   Animal({
     this.id,
     required this.farmer,
+    this.farmerUsername,
     required this.species,
     required this.age,
     required this.weight,
@@ -29,12 +37,17 @@ class Animal {
     required this.farmName,
     this.healthStatus,
     this.synced = true,
+    this.transferredTo,
+    this.transferredAt,
+    this.receivedBy,
+    this.receivedAt,
   });
 
   factory Animal.fromMap(Map<String, dynamic> json) {
     return Animal(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       farmer: int.parse(json['farmer'].toString()),
+      farmerUsername: json['farmer_username'],
       species: json['species'],
       age: json['age'] is int ? json['age'] : int.parse(json['age'].toString()),
       weight: json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString()),
@@ -49,6 +62,14 @@ class Animal {
       farmName: json['farm_name'],
       healthStatus: json['health_status'],
       synced: json['synced'] ?? true,
+      transferredTo: json['transferred_to'] != null ? int.parse(json['transferred_to'].toString()) : null,
+      transferredAt: json['transferred_at'] != null
+          ? DateTime.parse(json['transferred_at'])
+          : null,
+      receivedBy: json['received_by'] != null ? int.parse(json['received_by'].toString()) : null,
+      receivedAt: json['received_at'] != null
+          ? DateTime.parse(json['received_at'])
+          : null,
     );
   }
 
@@ -56,6 +77,7 @@ class Animal {
     return {
       'id': id,
       'farmer': farmer,
+      'farmer_username': farmerUsername,
       'species': species,
       'age': age,
       'weight': weight,
@@ -68,6 +90,10 @@ class Animal {
       'farm_name': farmName,
       'health_status': healthStatus,
       'synced': synced,
+      'transferred_to': transferredTo,
+      'transferred_at': transferredAt?.toIso8601String(),
+      'received_by': receivedBy,
+      'received_at': receivedAt?.toIso8601String(),
     };
   }
 

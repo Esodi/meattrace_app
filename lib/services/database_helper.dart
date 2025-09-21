@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'meattrace.db');
     return await openDatabase(
       path,
-      version: 3, // Increment version to trigger migration
+      version: 4, // Increment version to trigger migration
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -53,7 +53,7 @@ class DatabaseHelper {
         price REAL NOT NULL,
         description TEXT NOT NULL,
         manufacturer TEXT NOT NULL,
-        category TEXT NOT NULL,
+        category TEXT,
         timeline TEXT
       )
     ''');
@@ -107,6 +107,43 @@ class DatabaseHelper {
         }
       }
     }
+    if (oldVersion < 4) {
+      // Make category column nullable by recreating the table
+      try {
+        // Create new table without NOT NULL on category
+        await db.execute('''
+          CREATE TABLE products_new (
+            id INTEGER PRIMARY KEY,
+            processing_unit INTEGER NOT NULL,
+            animal INTEGER NOT NULL,
+            product_type TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            created_at TEXT NOT NULL,
+            name TEXT NOT NULL,
+            batch_number TEXT NOT NULL,
+            weight REAL NOT NULL,
+            weight_unit TEXT NOT NULL,
+            price REAL NOT NULL,
+            description TEXT NOT NULL,
+            manufacturer TEXT NOT NULL,
+            category TEXT,
+            timeline TEXT
+          )
+        ''');
+
+        // Copy data
+        await db.execute('''
+          INSERT INTO products_new (id, processing_unit, animal, product_type, quantity, created_at, name, batch_number, weight, weight_unit, price, description, manufacturer, category, timeline)
+          SELECT id, processing_unit, animal, product_type, quantity, created_at, name, batch_number, weight, weight_unit, price, description, manufacturer, category, timeline FROM products
+        ''');
+
+        // Drop old table and rename
+        await db.execute('DROP TABLE products');
+        await db.execute('ALTER TABLE products_new RENAME TO products');
+      } catch (e) {
+        // If migration fails, ignore for now
+      }
+    }
   }
 
   // ProductCategory operations
@@ -148,7 +185,7 @@ class DatabaseHelper {
         'price': product.price,
         'description': product.description,
         'manufacturer': product.manufacturer,
-        'category': product.category,
+        'category': product.category?.toString(),
         'timeline': product.timeline.map((e) => e.toMap()).toList().toString(), // Simple string
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
