@@ -4,10 +4,10 @@ import 'dart:developer' as developer;
 
 class NetworkHelper {
   static const List<String> testUrls = [
-    'http://192.168.161.17:8000/api/v1/health/',  // WiFi IP
-    'http://10.0.2.2:8000/api/v1/health/',     // Android emulator
-    'http://127.0.0.1:8000/api/v1/health/',    // Localhost
-    'http://192.168.1.1:8000/api/v1/health/',  // Common router IP
+    'http://http://192.168.254.17:8000/api/v2/health/',  // WiFi IP
+    'http://10.0.2.2:8000/api/v2/health/',     // Android emulator
+    'http://127.0.0.1:8000/api/v2/health/',    // Localhost
+    'http://192.168.1.1:8000/api/v2/health/',  // Common router IP
   ];
 
   /// Test connectivity to multiple backend URLs and return the first working one

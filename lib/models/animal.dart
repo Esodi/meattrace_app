@@ -4,7 +4,7 @@ class Animal {
   final String? farmerUsername; // Farmer's username for display
   final String species;
   final int age;
-  final double weight;
+  final double? weight;
   final DateTime createdAt;
   final bool slaughtered;
   final DateTime? slaughteredAt;
@@ -50,7 +50,7 @@ class Animal {
       farmerUsername: json['farmer_username'],
       species: json['species'],
       age: json['age'] is int ? json['age'] : int.parse(json['age'].toString()),
-      weight: json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString()),
+      weight: json['weight'] != null ? (json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString())) : null,
       createdAt: DateTime.parse(json['created_at']),
       slaughtered: json['slaughtered'],
       slaughteredAt: json['slaughtered_at'] != null

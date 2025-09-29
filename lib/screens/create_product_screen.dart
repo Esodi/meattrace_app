@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/product_provider.dart';
 import '../providers/product_category_provider.dart';
 import '../providers/animal_provider.dart';
@@ -9,6 +10,8 @@ import '../models/animal.dart';
 import '../models/product_category.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/enhanced_back_button.dart';
+import '../services/bluetooth_printing_service.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class CreateProductScreen extends StatefulWidget {
   const CreateProductScreen({super.key});
@@ -22,13 +25,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final TextEditingController _batchNumberController = TextEditingController();
   final TextEditingController _processingUnitController =
       TextEditingController();
-  final TextEditingController _quantityController = TextEditingController(text: '1');
 
   Animal? _selectedAnimal;
   List<ProductCategory> _selectedCategories = [];
   Map<int, TextEditingController> _weightControllers = {};
   Map<int, String> _weightUnits = {};
+  Map<int, TextEditingController> _quantityControllers = {};
   bool _isSubmitting = false;
+  bool _isPrinting = false;
   List<Product> _createdProducts = [];
 
   @override
@@ -78,8 +82,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     SizedBox(height: isTablet ? 24 : 16),
                     _buildBatchNumberField(),
                     SizedBox(height: isTablet ? 24 : 16),
-                    _buildQuantityField(),
-                    SizedBox(height: isTablet ? 32 : 24),
                     _buildSubmitButton(),
                   ],
                 ),
@@ -122,7 +124,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     return DropdownMenuItem(
                       value: animal,
                       child: Text(
-                        '${animal.species} - ${animal.animalId ?? animal.id}',
+                        animal.animalName != null
+                            ? '${animal.species} - ${animal.animalName} (${animal.animalId ?? animal.id})'
+                            : '${animal.species} - ${animal.animalId ?? animal.id}',
                       ),
                     );
                   }).toList(),
@@ -149,7 +153,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 ),
                 const SizedBox(width: 8),
                 Tooltip(
-                  message: 'Choose one or more product categories. For each selected category, you will specify the weight of the product created.',
+                  message: 'Choose one or more product categories. For each selected category, you will specify the quantity and weight of the product created.',
                   child: const Icon(Icons.help_outline, size: 18),
                 ),
               ],
@@ -169,11 +173,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                         _selectedCategories.add(category);
                         _weightControllers[category.id!] = TextEditingController();
                         _weightUnits[category.id!] = 'kg';
+                        _quantityControllers[category.id!] = TextEditingController(text: '1');
                       } else {
                         _selectedCategories.remove(category);
                         _weightControllers[category.id!]?.dispose();
                         _weightControllers.remove(category.id!);
                         _weightUnits.remove(category.id!);
+                        _quantityControllers[category.id!]?.dispose();
+                        _quantityControllers.remove(category.id!);
                       }
                     });
                   },
@@ -201,19 +208,20 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         Row(
           children: [
             const Text(
-              'Product Weights',
+              'Product Details',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
             const SizedBox(width: 8),
             Tooltip(
-              message: 'Specify the weight for each selected product category. Weights must be positive numbers.',
+              message: 'Specify the quantity and weight for each selected product category. Values must be positive numbers.',
               child: const Icon(Icons.help_outline, size: 18),
             ),
           ],
         ),
         const SizedBox(height: 8),
         ..._selectedCategories.map((category) {
-          final controller = _weightControllers[category.id!]!;
+          final weightController = _weightControllers[category.id!]!;
+          final quantityController = _quantityControllers[category.id!]!;
           final unit = _weightUnits[category.id!]!;
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
@@ -227,11 +235,31 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 8),
+                  TextFormField(
+                    controller: quantityController,
+                    decoration: const InputDecoration(
+                      labelText: 'Quantity',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Quantity is required';
+                      }
+                      final qty = double.tryParse(value);
+                      if (qty == null || qty <= 0) {
+                        return 'Enter a valid quantity';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
-                          controller: controller,
+                          controller: weightController,
                           decoration: const InputDecoration(
                             labelText: 'Weight',
                             border: OutlineInputBorder(),
@@ -294,27 +322,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     );
   }
 
-  Widget _buildQuantityField() {
-    return TextFormField(
-      controller: _quantityController,
-      decoration: const InputDecoration(
-        labelText: 'Quantity',
-        border: OutlineInputBorder(),
-        hintText: 'Number of products to create',
-      ),
-      keyboardType: TextInputType.number,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Quantity is required';
-        }
-        final quantity = double.tryParse(value);
-        if (quantity == null || quantity <= 0) {
-          return 'Enter a valid quantity';
-        }
-        return null;
-      },
-    );
-  }
 
   Widget _buildSubmitButton() {
     return SizedBox(
@@ -353,9 +360,21 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Text(
-                      product.name,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _isPrinting ? null : () => _printSingleProduct(product),
+                          icon: const Icon(Icons.print),
+                          tooltip: 'Print QR Code',
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Semantics(
@@ -380,13 +399,34 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               ),
             )),
             const SizedBox(height: 20),
-            Semantics(
-              button: true,
-              label: 'Return to previous screen',
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Done'),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    label: 'Print all QR codes',
+                    child: ElevatedButton.icon(
+                      onPressed: _isPrinting ? null : _printAllProducts,
+                      icon: const Icon(Icons.print),
+                      label: _isPrinting
+                          ? const LoadingIndicator()
+                          : const Text('Print All'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    label: 'Return to processing unit dashboard',
+                    child: ElevatedButton(
+                      onPressed: () => context.go('/processor-home'),
+                      child: const Text('Done'),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -431,7 +471,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         processingUnit: _processingUnitController.text,
         animal: _selectedAnimal!.id!,
         productType: 'meat', // Must match backend choices
-        quantity: double.parse(_quantityController.text),
+        quantity: double.parse(_quantityControllers[category.id!]!.text),
         createdAt: DateTime.now(),
         name: '${category.name} from ${_selectedAnimal!.species}',
         batchNumber: batchNumber,
@@ -514,14 +554,127 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
+  Future<void> _printSingleProduct(Product product) async {
+    await _showPrinterSelectionDialog(product: product);
+  }
+
+  Future<void> _printAllProducts() async {
+    await _showPrinterSelectionDialog(products: _createdProducts);
+  }
+
+  Future<void> _showPrinterSelectionDialog({Product? product, List<Product>? products}) async {
+    final printingService = BluetoothPrintingService();
+
+    // Request permissions
+    final hasPermissions = await printingService.requestPermissions();
+    if (!hasPermissions) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bluetooth permissions are required for printing')),
+      );
+      return;
+    }
+
+    setState(() => _isPrinting = true);
+
+    try {
+      // Scan for printers
+      final printers = await printingService.scanPrinters();
+
+      if (!mounted) return;
+
+      if (printers.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No Bluetooth printers found')),
+        );
+        return;
+      }
+
+      // Show printer selection dialog
+      final selectedPrinter = await showDialog<BluetoothDevice>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Select Printer'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: printers.length,
+              itemBuilder: (context, index) {
+                final printer = printers[index];
+                return ListTile(
+                  title: Text(printer.platformName ?? 'Unknown Printer'),
+                  onTap: () => Navigator.of(context).pop(printer),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+
+      if (selectedPrinter == null) return;
+
+      // Connect to printer with retry logic
+      final connected = await printingService.connectToPrinter(selectedPrinter, maxRetries: 3);
+      if (!connected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to connect to printer after multiple attempts')),
+        );
+        return;
+      }
+
+      // Print
+      if (product != null) {
+        await printingService.printQRCode(
+          'product:${product.id}:${product.batchNumber}',
+          product.name,
+          product.batchNumber,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Printed QR code for ${product.name}')),
+        );
+      } else if (products != null) {
+        for (final prod in products) {
+          await printingService.printQRCode(
+            'product:${prod.id}:${prod.batchNumber}',
+            prod.name,
+            prod.batchNumber,
+          );
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Printed ${products.length} QR codes')),
+        );
+      }
+
+      // Disconnect
+      await printingService.disconnect();
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Printing failed: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isPrinting = false);
+      }
+    }
+  }
+
   @override
   void dispose() {
     for (final controller in _weightControllers.values) {
       controller.dispose();
     }
+    for (final controller in _quantityControllers.values) {
+      controller.dispose();
+    }
     _batchNumberController.dispose();
     _processingUnitController.dispose();
-    _quantityController.dispose();
     super.dispose();
   }
 }

@@ -12,6 +12,7 @@ class ProductTimelineEvent {
   });
 
   factory ProductTimelineEvent.fromMap(Map<String, dynamic> json) {
+    print('ProductTimelineEvent.fromMap: stage value: ${json['stage']}, type: ${json['stage']?.runtimeType}');
     return ProductTimelineEvent(
       timestamp: DateTime.parse(json['timestamp']),
       location: json['location'],
@@ -39,7 +40,7 @@ class Product {
   final DateTime createdAt;
   final String name;
   final String batchNumber;
-  final double weight;
+  final double? weight;
   final String weightUnit;
   final double price;
   final String description;
@@ -47,6 +48,14 @@ class Product {
   final int? category;
   final String? qrCode;
   final List<ProductTimelineEvent> timeline;
+
+  // Transfer fields
+  final int? transferredTo;
+  final DateTime? transferredAt;
+  final String? transferredToUsername;
+  final int? receivedBy;
+  final DateTime? receivedAt;
+  final String? receivedByUsername;
 
   Product({
     this.id,
@@ -65,6 +74,12 @@ class Product {
     this.category,
     this.qrCode,
     required this.timeline,
+    this.transferredTo,
+    this.transferredAt,
+    this.transferredToUsername,
+    this.receivedBy,
+    this.receivedAt,
+    this.receivedByUsername,
   });
 
   factory Product.fromMap(Map<String, dynamic> json) {
@@ -77,7 +92,7 @@ class Product {
       createdAt: DateTime.parse(json['created_at']),
       name: json['name'],
       batchNumber: json['batch_number'],
-      weight: json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString()),
+      weight: json['weight'] != null ? (json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString())) : null,
       weightUnit: json['weight_unit'],
       price: json['price'] is num ? (json['price'] as num).toDouble() : double.parse(json['price'].toString()),
       description: json['description'],
@@ -87,6 +102,12 @@ class Product {
       timeline: (json['timeline'] as List<dynamic>?)
           ?.map((e) => ProductTimelineEvent.fromMap(e as Map<String, dynamic>))
           .toList() ?? [],
+      transferredTo: json['transferred_to'] != null ? int.parse(json['transferred_to'].toString()) : null,
+      transferredAt: json['transferred_at'] != null ? DateTime.parse(json['transferred_at']) : null,
+      transferredToUsername: json['transferred_to_username'],
+      receivedBy: json['received_by'] != null ? int.parse(json['received_by'].toString()) : null,
+      receivedAt: json['received_at'] != null ? DateTime.parse(json['received_at']) : null,
+      receivedByUsername: json['received_by_username'],
     );
   }
 

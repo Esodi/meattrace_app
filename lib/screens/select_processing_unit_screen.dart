@@ -146,7 +146,7 @@ class _SelectProcessingUnitScreenState extends State<SelectProcessingUnitScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Selected animals: ${_selectedAnimals.map((a) => a.animalName ?? a.animalId).join(', ')}',
+                'Selected animals: ${_selectedAnimals.length} item(s)',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.textSecondary,
                     ),
@@ -245,7 +245,7 @@ class _SelectProcessingUnitScreenState extends State<SelectProcessingUnitScreen>
 
     try {
       final processingUnitId = _selectedProcessingUnit!['id'];
-      final animalIds = _selectedAnimals.map((animal) => animal.id).toList();
+      final animalIds = _selectedAnimals.where((animal) => animal.id != null).map((animal) => animal.id!).toList();
 
       final response = await _animalProvider.transferAnimals(animalIds, processingUnitId);
 

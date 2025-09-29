@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../models/meat_trace.dart';
 import '../models/product.dart';
+import '../models/production_stats.dart';
 import 'dio_client.dart';
 
 class ApiService {
@@ -82,6 +83,15 @@ class ApiService {
         throw Exception('Product not found');
       }
       throw Exception('Failed to fetch product: ${e.message}');
+    }
+  }
+
+  Future<ProductionStats> fetchProductionStats() async {
+    try {
+      final response = await _dioClient.dio.get('/production-stats/');
+      return ProductionStats.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch production stats: ${e.message}');
     }
   }
 }

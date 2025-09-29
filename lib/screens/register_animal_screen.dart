@@ -168,7 +168,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
               expandedHeight: 120.0,
               floating: false,
               pinned: true,
-              leading: const EnhancedBackButton(color: Colors.white),
+              leading: const EnhancedBackButton(color: Colors.white, fallbackRoute: '/farmer-home'),
               flexibleSpace: FlexibleSpaceBar(
                 title: const Text('Register Animal'),
                 background: Container(
@@ -186,40 +186,6 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                       color: Colors.white,
                     ),
                   ),
-                ),
-              ),
-            ),
-
-            // Progress Indicator
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Registration Progress',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF212121),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: 0.8, // Mock progress
-                      backgroundColor: Colors.grey.shade300,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '80% Complete',
-                      style: TextStyle(
-                        color: Color(0xFF4CAF50),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ),

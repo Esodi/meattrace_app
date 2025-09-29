@@ -2,11 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../providers/order_provider.dart';
 import '../utils/theme.dart';
-import '../widgets/enhanced_back_button.dart';
 
-class ShopHomeScreen extends StatelessWidget {
+class ShopHomeScreen extends StatefulWidget {
   const ShopHomeScreen({super.key});
+
+  @override
+  State<ShopHomeScreen> createState() => _ShopHomeScreenState();
+}
+
+class _ShopHomeScreenState extends State<ShopHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      if (authProvider.user?.id != null) {
+        context.read<OrderProvider>().fetchOrders(shopId: authProvider.user!.id);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,8 +30,8 @@ class ShopHomeScreen extends StatelessWidget {
     final user = authProvider.user;
 
     return Scaffold(
-      appBar: createAppBarWithBackButton(
-        title: 'Shop Dashboard',
+      appBar: AppBar(
+        title: const Text('Shop Dash'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -35,28 +51,19 @@ class ShopHomeScreen extends StatelessWidget {
           children: [
             // Welcome section
             Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Welcome, ${user?.username ?? 'Shop Owner'}!',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryGreen,
-                          ),
+                      'Welcome, ${user?.username ?? 'Seller'}!',
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Manage your inventory and provide traceable meat products to customers.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
+                      'Be a good seller, Okay?',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
@@ -65,16 +72,13 @@ class ShopHomeScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Quick Actions
-            Text(
+            const Text(
               'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
 
-            // Action buttons grid
+            // Action buttons grid - 2x2 layout
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -82,317 +86,180 @@ class ShopHomeScreen extends StatelessWidget {
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
               children: [
-                _buildActionCard(
+                _buildActionButton(
                   context,
-                  'Receive Products',
+                  'Receive\nProducts',
                   Icons.inventory_2,
-                  AppTheme.primaryGreen,
-                  () => context.go('/receive-product'),
+                  () => context.go('/receive-products'),
                 ),
-                _buildActionCard(
+                _buildActionButton(
                   context,
-                  'Manage Inventory',
+                  'Manage\nInventory',
                   Icons.store,
-                  AppTheme.accentOrange,
                   () => context.go('/inventory'),
                 ),
-                _buildActionCard(
+                _buildActionButton(
                   context,
-                  'Place Orders',
+                  'Orders',
                   Icons.shopping_cart,
-                  AppTheme.secondaryBlue,
                   () => context.go('/place-order'),
                 ),
-                _buildActionCard(
+                _buildActionButton(
                   context,
-                  'Scan QR Code',
+                  'Scan\nQR',
                   Icons.qr_code_scanner,
-                  AppTheme.primaryGreen,
-                  () => context.go('/qr-scanner'),
+                  () => context.go('/qr-scanner?source=shop'),
                 ),
               ],
             ),
 
-            const SizedBox(height: 32),
 
-            // Traceability Section
-            Text(
-              'Product Traceability',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
+            // Recent Activity section
+            const Text(
+              'Recent Orders',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
 
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    _buildTraceabilityStep(
-                      context,
-                      'Step 1: Receive Products',
-                      'Accept deliveries from processing units with QR codes',
-                      Icons.receipt_long,
-                      AppTheme.primaryGreen,
+            Consumer<OrderProvider>(
+              builder: (context, orderProvider, child) {
+                if (orderProvider.isLoading) {
+                  return const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
                     ),
-                    const SizedBox(height: 16),
-                    _buildTraceabilityStep(
-                      context,
-                      'Step 2: Verify Origin',
-                      'Scan QR codes to verify product origins and history',
-                      Icons.verified,
-                      AppTheme.secondaryBlue,
+                  );
+                }
+
+                final recentOrders = orderProvider.orders.take(3).toList();
+
+                if (recentOrders.isEmpty) {
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          const Center(child: Text('No recent orders')),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => context.go('/place-order'),
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: const Text('Place First Order'),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildTraceabilityStep(
-                      context,
-                      'Step 3: Customer Sales',
-                      'Share traceability information with customers',
-                      Icons.people,
-                      AppTheme.accentOrange,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                  );
+                }
 
-            const SizedBox(height: 24),
-
-            // Recent Sales
-            Text(
-              'Recent Activity',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-            ),
-            const SizedBox(height: 16),
-
-            // Placeholder for recent activity
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Center(
-                  child: Text(
-                    'No recent activity yet.\nStart by receiving your first product delivery!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTheme.textSecondary),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Stats section
-            Text(
-              'Your Stats',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Products in Stock',
-                    '0',
-                    Icons.inventory,
-                    AppTheme.primaryGreen,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Orders Placed',
-                    '0',
-                    Icons.shopping_bag,
-                    AppTheme.secondaryBlue,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'QR Scans Today',
-                    '0',
-                    Icons.qr_code,
-                    AppTheme.accentOrange,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Customer Queries',
-                    '0',
-                    Icons.support_agent,
-                    AppTheme.primaryGreen,
-                  ),
-                ),
-              ],
+                return Column(
+                  children: recentOrders.map((order) {
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: _getOrderStatusColor(order.status),
+                          child: Icon(
+                            _getOrderStatusIcon(order.status),
+                            color: Colors.white,
+                          ),
+                        ),
+                        title: Text('Order #${order.id}'),
+                        subtitle: Text(
+                          '\$${order.totalAmount.toStringAsFixed(2)} • ${order.createdAt.toLocal().toString().split(' ')[0]}',
+                        ),
+                        trailing: Text(
+                          order.status.toUpperCase(),
+                          style: TextStyle(
+                            color: _getOrderStatusColor(order.status),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
             ),
           ],
         ),
       ),
 
-      // Floating action button for quick inventory check
+      // FAB
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/inventory'),
-        backgroundColor: AppTheme.accentOrange,
-        child: const Icon(Icons.inventory),
+        onPressed: () => context.go('/receive-products'),
+        child: const Icon(Icons.inventory_2),
       ),
     );
   }
 
-  Widget _buildActionCard(
+  Widget _buildActionButton(
     BuildContext context,
     String title,
     IconData icon,
-    Color color,
     VoidCallback onTap,
   ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 40,
-                color: color,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-              ),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 80,
+        decoration: BoxDecoration(
+          border: Border.all(color: AppTheme.dividerGray),
+          borderRadius: BorderRadius.circular(8),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTraceabilityStep(
-    BuildContext context,
-    String title,
-    String description,
-    IconData icon,
-    Color color,
-  ) {
-    return Row(
-      children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
-            ),
+            Icon(icon, size: 32),
             const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-            ),
-            const SizedBox(height: 4),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
+              style: const TextStyle(fontSize: 12),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Color _getOrderStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'confirmed':
+        return Colors.blue;
+      case 'preparing':
+        return Colors.purple;
+      case 'ready':
+        return Colors.green;
+      case 'delivered':
+        return Colors.teal;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getOrderStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Icons.schedule;
+      case 'confirmed':
+        return Icons.check_circle;
+      case 'preparing':
+        return Icons.restaurant;
+      case 'ready':
+        return Icons.done_all;
+      case 'delivered':
+        return Icons.local_shipping;
+      case 'cancelled':
+        return Icons.cancel;
+      default:
+        return Icons.help;
+    }
   }
 }

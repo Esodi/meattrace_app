@@ -18,11 +18,34 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _searchType = 'id'; // 'id' or 'name'
+  List<Animal> _registeredAnimals = [];
+  bool _isLoadingAnimals = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRegisteredAnimals();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRegisteredAnimals() async {
+    setState(() => _isLoadingAnimals = true);
+    try {
+      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      await animalProvider.fetchAnimals(slaughtered: false);
+      setState(() {
+        _registeredAnimals = animalProvider.animals.where((animal) => !animal.slaughtered).toList();
+        _isLoadingAnimals = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingAnimals = false);
+      _showError('Failed to load registered animals: $e');
+    }
   }
 
   Future<void> _searchAnimal() async {
@@ -233,7 +256,96 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               ),
             ),
 
-            if (_selectedAnimal != null) ...[
+            const SizedBox(height: 24),
+
+            // Registered animals list section
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Registered Animals',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_isLoadingAnimals)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_registeredAnimals.isEmpty)
+                      Center(
+                        child: Text(
+                          'No registered animals found',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: 300,
+                        child: ListView.builder(
+                          itemCount: _registeredAnimals.length,
+                          itemBuilder: (context, index) {
+                            final animal = _registeredAnimals[index];
+                            final isSelected = _selectedAnimal?.id == animal.id;
+
+                            return Card(
+                              color: isSelected ? AppTheme.primaryGreen.withOpacity(0.1) : null,
+                              child: ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryGreen.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(
+                                    Icons.pets,
+                                    size: 20,
+                                    color: AppTheme.primaryGreen,
+                                  ),
+                                ),
+                                title: Text(
+                                  animal.animalName ?? animal.animalId,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: isSelected ? AppTheme.primaryGreen : AppTheme.textPrimary,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${animal.species} • ${animal.age} months • ${animal.weight != null ? '${animal.weight} kg' : 'N/A'}',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(Icons.check_circle, color: AppTheme.primaryGreen)
+                                    : null,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedAnimal = animal;
+                                  });
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+             if (_selectedAnimal != null) ...[
               const SizedBox(height: 24),
               // Animal details section
               Card(
@@ -405,7 +517,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                     ),
                     const SizedBox(height: 12),
                     _buildHelpItem(
-                      '1. Select search type (ID or Name) and enter the search term in the field above.',
+                      '1. Search for an animal by ID or Name using the search field above, OR select an animal from the registered animals list.',
                     ),
                     _buildHelpItem(
                       '2. Verify the animal details are correct.',

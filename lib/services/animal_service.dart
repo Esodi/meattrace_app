@@ -163,6 +163,25 @@ class AnimalService {
     }
   }
 
+  Future<List<Animal>> getTransferredAnimalsForFarmer() async {
+    try {
+      final response = await _dioClient.dio.get(
+        '${Constants.animalsEndpoint}my_transferred_animals/',
+      );
+
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Animal.fromMap(json)).toList();
+      } else if (data is Map && data.containsKey('results')) {
+        return (data['results'] as List).map((json) => Animal.fromMap(json)).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch transferred animals for farmer: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> receiveAnimals(List<int?> animalIds) async {
     try {
       final response = await _dioClient.dio.post(

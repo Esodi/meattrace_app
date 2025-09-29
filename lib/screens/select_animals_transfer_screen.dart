@@ -16,7 +16,7 @@ class SelectAnimalsTransferScreen extends StatefulWidget {
 class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScreen> {
   late AnimalProvider _animalProvider;
   List<Animal> _slaughteredAnimals = [];
-  List<Animal> _selectedAnimals = [];
+  List<int> _selectedAnimalIds = [];
   bool _isLoading = true;
 
   @override
@@ -65,7 +65,7 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
           : _slaughteredAnimals.isEmpty
               ? _buildEmptyState()
               : _buildAnimalsList(),
-      floatingActionButton: _selectedAnimals.isNotEmpty
+      floatingActionButton: _selectedAnimalIds.isNotEmpty
           ? FloatingActionButton(
               onPressed: _proceedToSelectProcessingUnit,
               backgroundColor: AppTheme.accentOrange,
@@ -123,7 +123,7 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
             itemCount: _slaughteredAnimals.length,
             itemBuilder: (context, index) {
               final animal = _slaughteredAnimals[index];
-              final isSelected = _selectedAnimals.contains(animal);
+              final isSelected = animal.id != null && _selectedAnimalIds.contains(animal.id);
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -131,12 +131,14 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
                   title: Text(
                     animal.animalName ?? animal.animalId,
                     style: const TextStyle(fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${animal.species} • ${animal.weight}kg • Slaughtered: ${animal.slaughteredAt?.toLocal().toString().split(' ')[0] ?? 'N/A'}',
+                        '${animal.species} • ${animal.weight != null ? '${animal.weight}kg' : 'N/A'} • Slaughtered: ${animal.slaughteredAt?.toLocal().toString().split(' ')[0] ?? 'N/A'}',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],
@@ -145,9 +147,13 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
                   onChanged: (bool? value) {
                     setState(() {
                       if (value == true) {
-                        _selectedAnimals.add(animal);
+                        if (animal.id != null && !_selectedAnimalIds.contains(animal.id)) {
+                          _selectedAnimalIds.add(animal.id!);
+                        }
                       } else {
-                        _selectedAnimals.remove(animal);
+                        if (animal.id != null) {
+                          _selectedAnimalIds.remove(animal.id);
+                        }
                       }
                     });
                   },
@@ -157,15 +163,16 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
             },
           ),
         ),
-        if (_selectedAnimals.isNotEmpty)
-          Container(
+        Offstage(
+          offstage: _selectedAnimalIds.isEmpty,
+          child: Container(
             padding: const EdgeInsets.all(16),
             color: AppTheme.backgroundGray,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${_selectedAnimals.length} animal(s) selected',
+                  '${_selectedAnimalIds.length} animal(s) selected',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppTheme.accentOrange,
@@ -182,14 +189,18 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
               ],
             ),
           ),
+        ),
       ],
     );
   }
 
   void _proceedToSelectProcessingUnit() {
-    if (_selectedAnimals.isEmpty) return;
+    if (_selectedAnimalIds.isEmpty) return;
+
+    // Get selected animals based on ids
+    final selectedAnimals = _slaughteredAnimals.where((a) => a.id != null && _selectedAnimalIds.contains(a.id)).toList();
 
     // Pass selected animals to the next screen
-    context.push('/select-processing-unit', extra: _selectedAnimals);
+    context.push('/select-processing-unit', extra: selectedAnimals);
   }
 }

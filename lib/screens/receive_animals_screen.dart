@@ -56,8 +56,9 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      appBar: createAppBarWithBackButton(
+      appBar: createEnhancedAppBarWithBackButton(
         title: 'Receive Animals',
+        fallbackRoute: '/processor-home',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

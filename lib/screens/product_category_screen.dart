@@ -30,6 +30,7 @@ class _ProductCategoryScreenState extends State<ProductCategoryScreen> {
     return Scaffold(
       appBar: createEnhancedAppBarWithBackButton(
         title: 'Product Categories',
+        fallbackRoute: '/processor-home',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

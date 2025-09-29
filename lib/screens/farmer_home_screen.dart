@@ -14,18 +14,49 @@ class FarmerHomeScreen extends StatefulWidget {
   State<FarmerHomeScreen> createState() => _FarmerHomeScreenState();
 }
 
-class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
+class _FarmerHomeScreenState extends State<FarmerHomeScreen> with WidgetsBindingObserver {
   late AnimalProvider _animalProvider;
+  int _transferredCount = 0;
+  bool _isLoadingTransferred = false;
 
   @override
   void initState() {
     super.initState();
     _animalProvider = Provider.of<AnimalProvider>(context, listen: false);
     _animalProvider.fetchAnimals();
+    _loadTransferredCount();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes back to foreground
+      _refreshData();
+    }
   }
 
   Future<void> _refreshData() async {
     await _animalProvider.fetchAnimals();
+    await _loadTransferredCount();
+  }
+
+  Future<void> _loadTransferredCount() async {
+    setState(() => _isLoadingTransferred = true);
+    try {
+      final transferredAnimals = await _animalProvider.getTransferredAnimalsCount();
+      setState(() => _transferredCount = transferredAnimals);
+    } catch (e) {
+      // Keep current count on error
+    } finally {
+      setState(() => _isLoadingTransferred = false);
+    }
   }
 
   @override
@@ -34,8 +65,8 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
     final user = authProvider.user;
 
     return Scaffold(
-      appBar: createAppBarWithBackButton(
-        title: 'Farmer Dashboard',
+      appBar: AppBar(
+        title: const Text('Farmer Dash'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -55,253 +86,159 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
       body: RefreshIndicator(
         onRefresh: _refreshData,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0).copyWith(bottom: 88.0), // Extra padding for FAB
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            // Welcome section
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome, ${user?.username ?? 'Farmer'}!',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryRed,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Manage your livestock and track your animals through the supply chain.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
-                    ),
-                  ],
+              // Welcome section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome, ${user?.username ?? 'Farmer'}!',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Be a good farmer, Okay?',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Quick Actions
-            Text(
-              'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+              // Quick Actions
+              const Text(
+                'Quick Actions',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 16),
+
+              // Action buttons grid - 2x2 layout
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  _buildActionButton(
+                    context,
+                    'Register\nLivestock',
+                    Icons.add_circle,
+                    () => context.go('/register-animal'),
                   ),
-            ),
-            const SizedBox(height: 16),
-
-            // Action buttons grid
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: [
-                _buildActionCard(
-                  context,
-                  'Register Animal',
-                  Icons.add_circle,
-                  AppTheme.primaryRed,
-                  () => context.go('/register-animal'),
-                ),
-                _buildActionCard(
-                  context,
-                  'Slaughter Animal',
-                  Icons.restaurant_menu,
-                  AppTheme.accentMaroon,
-                  () => context.go('/slaughter-animal'),
-                ),
-                _buildActionCard(
-                  context,
-                  'Livestock History',
-                  Icons.thermostat,
-                  AppTheme.secondaryBurgundy,
-                  () => context.go('/livestock-history'),
-                ),
-                _buildActionCard(
-                  context,
-                  'Transfer Carcasses',
-                  Icons.location_on,
-                  AppTheme.secondaryBurgundy,
-                  () => context.go('/select-animals-transfer'),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            // Stats section
-            Text(
-              'Your Stats',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                  _buildActionButton(
+                    context,
+                    'Slaughter\nLivestock',
+                    Icons.restaurant_menu,
+                    () => context.go('/slaughter-animal'),
                   ),
-            ),
-            const SizedBox(height: 16),
+                  _buildActionButton(
+                    context,
+                    'History',
+                    Icons.history,
+                    () => context.go('/livestock-history'),
+                  ),
+                  _buildActionButton(
+                    context,
+                    'Transfer',
+                    Icons.send,
+                    () => context.go('/select-animals-transfer'),
+                  ),
+                ],
+              ),
 
-            Consumer<AnimalProvider>(
-              builder: (context, animalProvider, child) {
-                final totalAnimals = animalProvider.animals.length;
-                final activeAnimals = animalProvider.animals.where((a) => !a.slaughtered).length;
-                final slaughtered = animalProvider.animals.where((a) => a.slaughtered).length;
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Total Animals',
-                            totalAnimals.toString(),
-                            Icons.pets,
-                            AppTheme.primaryRed,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Active Animals',
-                            activeAnimals.toString(),
-                            Icons.timeline,
-                            AppTheme.secondaryBurgundy,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Slaughtered',
-                            slaughtered.toString(),
-                            Icons.inventory,
-                            AppTheme.accentMaroon,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            'Transferred',
-                            '0', // TODO: Implement transfer count
-                            Icons.send,
-                            AppTheme.secondaryBurgundy,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+              const SizedBox(height: 24),
+
+              // Stats section
+              const Text(
+                'Farm Stats',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 16),
+
+              Consumer<AnimalProvider>(
+                builder: (context, animalProvider, child) {
+                  final totalAnimals = animalProvider.animals.length;
+                  final activeAnimals = animalProvider.animals.where((a) => !a.slaughtered).length;
+                  final slaughtered = animalProvider.animals.where((a) => a.slaughtered).length;
+                  return Column(
+                    children: [
+                      _buildStatCard(context, 'Total Animals', totalAnimals.toString()),
+                      const SizedBox(height: 16),
+                      _buildStatCard(context, 'Active Animals', activeAnimals.toString()),
+                      const SizedBox(height: 16),
+                      _buildStatCard(context, 'Slaughtered Animals', slaughtered.toString()),
+                      const SizedBox(height: 16),
+                      _buildStatCard(
+                        context,
+                        'Transferred Animals',
+                        _isLoadingTransferred ? '...' : _transferredCount.toString()
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
 
-      // Floating action button for quick animal registration
+      // FAB
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.go('/register-animal'),
-        backgroundColor: AppTheme.accentMaroon,
         child: const Icon(Icons.add),
       ),
     );
   }
 
 
-  Widget _buildActionCard(
+  Widget _buildActionButton(
     BuildContext context,
     String title,
     IconData icon,
-    Color color,
     VoidCallback onTap,
   ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 40,
-                color: color,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-              ),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 80, // Fixed height to ensure proper layout
+        decoration: BoxDecoration(
+          border: Border.all(color: AppTheme.dividerGray),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildStatCard(BuildContext context, String title, String value) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
-            ),
+            Text(title),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       ),

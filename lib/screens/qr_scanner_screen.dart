@@ -6,9 +6,12 @@ import 'dart:convert';
 import 'product_display_screen.dart';
 import '../services/scan_history_service.dart';
 import '../widgets/enhanced_back_button.dart';
+import '../widgets/order_details_overlay.dart';
 
 class QrScannerScreen extends StatefulWidget {
-  const QrScannerScreen({super.key});
+  final String? source;
+
+  const QrScannerScreen({super.key, this.source});
 
   @override
   State<QrScannerScreen> createState() => _QrScannerScreenState();
@@ -86,27 +89,29 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     }
   }
 
+  String _getFallbackRoute() {
+    if (widget.source == 'shop') {
+      return '/shop-home';
+    } else if (widget.source == 'processor') {
+      return '/processor-home';
+    } else {
+      return '/shop-home'; // default fallback
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: createAppBarWithBackButton(
-        title: 'Scan QR Code',
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Scan QR'),
+        leading: EnhancedBackButton(fallbackRoute: _getFallbackRoute()),
         actions: [
           IconButton(
             icon: Icon(
               _isFlashOn ? Icons.flash_on : Icons.flash_off,
-              color: Colors.white,
             ),
             onPressed: _toggleFlash,
             tooltip: _isFlashOn ? 'Turn off flash' : 'Turn on flash',
-          ),
-          IconButton(
-            icon: const Icon(Icons.photo_library, color: Colors.white),
-            onPressed: _scanFromGallery,
-            tooltip: 'Scan from gallery',
           ),
         ],
       ),
@@ -175,7 +180,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Scan Product QR Code',
+                    'Scan QR Code',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: const Color(0xFF212121),
                           fontWeight: FontWeight.bold,
@@ -184,7 +189,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Position the QR code within the frame to scan',
+                    'Scan product or order QR codes',
                     style: TextStyle(
                       color: Color(0xFF757575),
                       fontSize: 14,
@@ -335,8 +340,21 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   }
 
   void _processScannedData(String data) {
+    // Check if it's an order QR code
+    if (data.startsWith('ORDER_')) {
+      final orderId = data.substring(6); // Remove 'ORDER_' prefix
+
+      if (int.tryParse(orderId) != null) {
+        _showOrderDetailsOverlay(int.parse(orderId));
+      } else {
+        _showErrorDialog('Invalid order QR code format.');
+      }
+      return;
+    }
+
     // Extract product_id from QR data
     String? productId = _extractProductId(data);
+
     if (productId != null) {
       // Save to scan history
       final scanHistoryService = ScanHistoryService();
@@ -365,7 +383,23 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         return jsonData['product_id'].toString();
       }
     } catch (e) {
-      // Not JSON, treat as plain string
+      // Not JSON, continue to other checks
+    }
+
+    // Check if it's a URL containing product ID
+    if (data.contains('/api/v2/products/')) {
+      final uri = Uri.tryParse(data);
+      if (uri != null) {
+        // Extract product ID from URL path
+        final pathSegments = uri.pathSegments;
+        final productsIndex = pathSegments.indexOf('products');
+        if (productsIndex != -1 && productsIndex + 1 < pathSegments.length) {
+          final productId = pathSegments[productsIndex + 1];
+          if (int.tryParse(productId) != null) {
+            return productId;
+          }
+        }
+      }
     }
 
     // Assume plain string is product_id
@@ -415,6 +449,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         ],
       ),
     );
+  }
+
+
+  void _showOrderDetailsOverlay(int orderId) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => OrderDetailsOverlay(orderId: orderId),
+    ).then((_) {
+      // Resume scanning when overlay is closed
+      _isScanning = true;
+    });
   }
 
   @override

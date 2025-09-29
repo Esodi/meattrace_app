@@ -116,10 +116,20 @@ class ProductService {
 
   Future<Product> updateProduct(Product product) async {
     try {
-      final response = await _dioClient.dio.put(
-        '${Constants.productsEndpoint}${product.id}/',
-        data: product.toMap(),
-      );
+      Response response;
+      if (product.quantity == 0) {
+        // Partial update for price only (used in inventory management)
+        response = await _dioClient.dio.patch(
+          '${Constants.productsEndpoint}${product.id}/',
+          data: {'price': product.price},
+        );
+      } else {
+        // Full update
+        response = await _dioClient.dio.put(
+          '${Constants.productsEndpoint}${product.id}/',
+          data: product.toMap(),
+        );
+      }
       return Product.fromMap(response.data);
     } on DioException catch (e) {
       throw Exception('Failed to update product: ${e.message}');
@@ -131,6 +141,66 @@ class ProductService {
       await _dioClient.dio.delete('${Constants.productsEndpoint}$id/');
     } on DioException catch (e) {
       throw Exception('Failed to delete product: ${e.message}');
+    }
+  }
+
+  Future<Map<String, dynamic>> transferProducts(List<int> productIds, int shopId) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '${Constants.productsEndpoint}transfer/',
+        data: {
+          'product_ids': productIds,
+          'shop_id': shopId,
+        },
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to transfer products: ${e.message}');
+    }
+  }
+
+  Future<List<Product>> getTransferredProducts() async {
+    try {
+      final response = await _dioClient.dio.get('${Constants.productsEndpoint}transferred_products/');
+      final data = response.data;
+      if (data is List) {
+        return data.map((json) => Product.fromMap(json)).toList();
+      } else if (data is Map && data.containsKey('results')) {
+        final results = data['results'] as List;
+        return results.map((json) => Product.fromMap(json)).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch transferred products: ${e.message}');
+    }
+  }
+
+  Future<Map<String, dynamic>> receiveProducts(List<int> productIds) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '${Constants.productsEndpoint}receive_products/',
+        data: {
+          'product_ids': productIds,
+        },
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to receive products: ${e.message}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getShops() async {
+    try {
+      final response = await _dioClient.dio.get(Constants.shopsEndpoint);
+      final data = response.data;
+      if (data is Map && data.containsKey('results')) {
+        return List<Map<String, dynamic>>.from(data['results']);
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch shops: ${e.message}');
     }
   }
 }

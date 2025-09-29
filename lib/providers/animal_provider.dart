@@ -255,6 +255,29 @@ class AnimalProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<int> getTransferredAnimalsCount() async {
+    try {
+      final transferredAnimals = await _animalService.getTransferredAnimalsForFarmer();
+      return transferredAnimals.length;
+    } catch (e) {
+      // If API fails, try to count from local data (though it won't have transferred animals)
+      return _animals.where((a) => a.transferredTo != null).length;
+    }
+  }
+
+  Future<void> deleteAnimal(int animalId) async {
+    try {
+      await _animalService.deleteAnimal(animalId);
+      _animals.removeWhere((animal) => animal.id == animalId);
+      await _saveToDatabase();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getProcessingUnits() async {
     try {
       return await _animalService.getProcessingUnits();

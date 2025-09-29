@@ -103,7 +103,13 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
             ),
           ),
         ),
-        if (_selectedProduct != null) _buildProductPreview(),
+        Visibility(
+          visible: _selectedProduct != null,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: _buildProductPreview(),
+        ),
       ],
     );
   }
@@ -138,7 +144,13 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
                   },
                 ),
         ),
-        if (_selectedProduct != null) _buildProductPreview(),
+        Visibility(
+          visible: _selectedProduct != null,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: _buildProductPreview(),
+        ),
       ],
     );
   }
@@ -156,7 +168,7 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
             Text('Product ID: ${_selectedProduct!.id}'),
             Text('Batch: ${_selectedProduct!.batchNumber}'),
             Text(
-              'Weight: ${_selectedProduct!.weight} ${_selectedProduct!.weightUnit}',
+              'Weight: ${_selectedProduct!.weight != null ? '${_selectedProduct!.weight} ${_selectedProduct!.weightUnit}' : 'N/A'}',
             ),
             const SizedBox(height: 16),
             _buildReceiptForm(),
@@ -288,7 +300,7 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
     final receipt = ShopReceipt(
       shop: _selectedShop!.id!,
       product: _selectedProduct!.id!,
-      receivedQuantity: _selectedProduct!.weight,
+      receivedQuantity: _selectedProduct!.weight ?? 0.0,
       receivedAt: _receivedDate,
     );
 

@@ -1,6 +1,6 @@
 {
-    "name": "meattrace_app",
-    "short_name": "meattrace_app",
+    "name": "Nyama Tamu",
+    "short_name": "Nyama Tamu",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

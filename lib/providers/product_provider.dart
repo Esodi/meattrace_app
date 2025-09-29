@@ -136,4 +136,67 @@ class ProductProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  Future<Map<String, dynamic>> transferProducts(List<int> productIds, int shopId) async {
+    try {
+      final response = await _productService.transferProducts(productIds, shopId);
+      // Refresh products list after transfer
+      await fetchProducts();
+      return response;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<List<Product>> fetchTransferredProducts() async {
+    try {
+      return await _productService.getTransferredProducts();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> receiveProducts(List<int> productIds) async {
+    try {
+      final response = await _productService.receiveProducts(productIds);
+      return response;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<Product?> updateProduct(Product product) async {
+    try {
+      final updatedProduct = await _productService.updateProduct(product);
+      // Update the product in the local list
+      final index = _products.indexWhere((p) => p.id == product.id);
+      if (index != -1) {
+        _products[index] = updatedProduct;
+        await _saveToDatabase();
+      }
+      _error = null;
+      notifyListeners();
+      return updatedProduct;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getShops() async {
+    try {
+      return await _productService.getShops();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
 }

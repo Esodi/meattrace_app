@@ -177,6 +177,63 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
     await _loadAnimals();
   }
 
+  /// Show delete confirmation dialog
+  void _showDeleteConfirmationDialog(Animal animal) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Animal'),
+          content: Text(
+            'Are you sure you want to delete ${animal.species} ${animal.animalName ?? animal.animalId ?? '#${animal.id}'}? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                await _deleteAnimal(animal);
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Delete animal
+  Future<void> _deleteAnimal(Animal animal) async {
+    try {
+      final animalProvider = context.read<AnimalProvider>();
+      await animalProvider.deleteAnimal(animal.id!);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${animal.species} deleted successfully'),
+            backgroundColor: AppTheme.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete animal: $e'),
+            backgroundColor: AppTheme.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
   /// Get preserved state for back navigation
   Map<String, dynamic> _getPreservedState() {
     return {
@@ -486,30 +543,46 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
                     ],
                   ),
                 ),
-                // Status indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: animal.slaughtered
-                        ? AppTheme.errorRed.withOpacity(0.1)
-                        : AppTheme.successGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: animal.slaughtered
-                          ? AppTheme.errorRed
-                          : AppTheme.successGreen,
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    animal.slaughtered ? 'Slaughtered' : 'Active',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                // Status indicator and delete button
+                Row(
+                  children: [
+                    // Status indicator
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: animal.slaughtered
+                            ? AppTheme.errorRed.withOpacity(0.1)
+                            : AppTheme.successGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
                           color: animal.slaughtered
                               ? AppTheme.errorRed
                               : AppTheme.successGreen,
-                          fontWeight: FontWeight.w600,
+                          width: 1,
                         ),
-                  ),
+                      ),
+                      child: Text(
+                        animal.slaughtered ? 'Slaughtered' : 'Active',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: animal.slaughtered
+                                  ? AppTheme.errorRed
+                                  : AppTheme.successGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Delete button (only for active animals)
+                    if (!animal.slaughtered)
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _showDeleteConfirmationDialog(animal),
+                        tooltip: 'Delete animal',
+                        iconSize: 20,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                  ],
                 ),
               ],
             ),

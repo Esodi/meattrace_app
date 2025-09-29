@@ -52,20 +52,20 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
     });
 
     await NetworkHelper.printNetworkDiagnostics();
-    
-    final workingUrl = await NetworkHelper.findWorkingBaseUrl();
-    if (workingUrl != null) {
-      Constants.setBaseUrl(workingUrl);
+
+    // Test the fixed base URL
+    final isReachable = await NetworkHelper.testConnection('${Constants.baseUrl}health/');
+    if (isReachable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Found working URL: $workingUrl'),
+        const SnackBar(
+          content: Text('✅ Backend URL is reachable'),
           backgroundColor: Colors.green,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('❌ No working backend URL found'),
+          content: Text('❌ Backend URL is not reachable'),
           backgroundColor: Colors.red,
         ),
       );
@@ -142,13 +142,11 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Available URLs',
+              'Current Configuration',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _buildUrlRow('Localhost', Constants.localhostUrl),
-            _buildUrlRow('Emulator', Constants.emulatorUrl),
-            _buildUrlRow('WiFi IP', Constants.wifiUrl),
+            _buildUrlRow('Base URL', Constants.baseUrl),
           ],
         ),
       ),

@@ -92,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryRed,
+      backgroundColor: AppTheme.primaryGreen,
       body: Center(
         child: AnimatedBuilder(
           animation: _animationController,
@@ -101,62 +101,52 @@ class _SplashScreenState extends State<SplashScreen>
               opacity: _fadeAnimation,
               child: ScaleTransition(
                 scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // App Logo/Icon
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // App Logo/Icon - Simplified per wireframe
+                      Icon(
+                        Icons.qr_code_scanner,
+                        size: 80,
                         color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
                       ),
-                      child: Icon(
-                        Icons.restaurant_menu,
-                        size: 60,
-                        color: AppTheme.primaryRed,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    // App Name
-                    Text(
-                      'Nyama Tamu',
-                      style: GoogleFonts.playfairDisplay(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 36,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Tagline
-                    Text(
-                      'Fresh Meat, Trusted Trace',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 16,
-                          ),
-                    ),
-                    const SizedBox(height: 48),
-                    // Loading indicator
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white.withOpacity(0.8),
+                      const SizedBox(height: 24),
+                      // App Name - "Nyama Tamu" per wireframe
+                      Text(
+                        'Nyama Tamu',
+                        style: GoogleFonts.roboto(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 32,
+                          height: 2.0,
                         ),
-                        strokeWidth: 3,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 48),
+                      // Loading Bar - Linear progress indicator per wireframe
+                      SizedBox(
+                        width: 200,
+                        child: LinearProgressIndicator(
+                          value: _animationController.value,
+                          backgroundColor: Colors.white.withOpacity(0.3),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      // Version number per wireframe
+                      Text(
+                        'Version 1.0',
+                        style: GoogleFonts.roboto(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

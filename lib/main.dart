@@ -11,6 +11,8 @@ import 'providers/animal_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/product_category_provider.dart';
 import 'providers/shop_receipt_provider.dart';
+import 'providers/inventory_provider.dart';
+import 'providers/order_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/scan_provider.dart';
 import 'screens/splash_screen.dart';
@@ -33,21 +35,23 @@ import 'screens/qr_scanner_screen.dart';
 import 'screens/scan_history_screen.dart';
 import 'screens/select_animals_transfer_screen.dart';
 import 'screens/select_processing_unit_screen.dart';
+import 'screens/select_products_transfer_screen.dart';
+import 'screens/select_shop_transfer_screen.dart';
+import 'screens/receive_products_screen.dart';
+import 'screens/inventory_management_screen.dart';
+import 'screens/place_order_screen.dart';
 // import 'screens/api_test_screen.dart';
 import 'screens/network_debug_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize network connectivity and find working backend URL
-  await Constants.initializeBaseUrl();
-  
+
   // Print network diagnostics for debugging
   await NetworkHelper.printNetworkDiagnostics();
-  
+
   // Initialize system navigation handler
   SystemNavigationHandler.instance.initialize();
-  
+
   runApp(const MyApp());
 }
 
@@ -80,7 +84,10 @@ class MyApp extends StatelessWidget {
         ),
         GoRoute(
           path: '/qr-scanner',
-          builder: (context, state) => const QrScannerScreen(),
+          builder: (context, state) {
+            final source = state.uri.queryParameters['source'];
+            return QrScannerScreen(source: source);
+          },
         ),
         GoRoute(
           path: '/scan-history',
@@ -122,6 +129,26 @@ class MyApp extends StatelessWidget {
           path: '/select-processing-unit',
           builder: (context, state) => const SelectProcessingUnitScreen(),
         ),
+        GoRoute(
+          path: '/select-products-transfer',
+          builder: (context, state) => const SelectProductsTransferScreen(),
+        ),
+        GoRoute(
+          path: '/select-shop-transfer',
+          builder: (context, state) => const SelectShopTransferScreen(),
+        ),
+        GoRoute(
+          path: '/receive-products',
+          builder: (context, state) => const ReceiveProductsScreen(),
+        ),
+        GoRoute(
+          path: '/inventory',
+          builder: (context, state) => const InventoryManagementScreen(),
+        ),
+        GoRoute(
+          path: '/place-order',
+          builder: (context, state) => const PlaceOrderScreen(),
+        ),
       ],
     );
 
@@ -133,6 +160,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ProductCategoryProvider()),
         ChangeNotifierProvider(create: (_) => ShopReceiptProvider()),
+        ChangeNotifierProvider(create: (_) => InventoryProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => ScanProvider()),
       ],
