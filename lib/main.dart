@@ -24,7 +24,6 @@ import 'screens/shop_home_screen.dart';
 import 'screens/livestock_history_screen.dart';
 import 'screens/slaughter_animal_screen.dart';
 import 'screens/register_animal_screen.dart';
-// import 'screens/home_screen.dart';
 import 'screens/receive_product_screen.dart';
 import 'screens/receive_animals_screen.dart';
 import 'screens/create_product_screen.dart';
@@ -40,7 +39,6 @@ import 'screens/select_shop_transfer_screen.dart';
 import 'screens/receive_products_screen.dart';
 import 'screens/inventory_management_screen.dart';
 import 'screens/place_order_screen.dart';
-// import 'screens/api_test_screen.dart';
 import 'screens/network_debug_screen.dart';
 
 void main() async {
@@ -70,7 +68,6 @@ class MyApp extends StatelessWidget {
         GoRoute(path: '/shop-home', builder: (context, state) => const ShopHomeScreen()),
         GoRoute(path: '/livestock-history', builder: (context, state) => const EnhancedLivestockHistoryScreen()),
         GoRoute(path: '/slaughter-animal', builder: (context, state) => const SlaughterAnimalScreen()),
-        // GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(
           path: '/receive-product',
           builder: (context, state) => const ReceiveProductScreen(),
@@ -93,10 +90,6 @@ class MyApp extends StatelessWidget {
           path: '/scan-history',
           builder: (context, state) => const ScanHistoryScreen(),
         ),
-        // GoRoute(
-        //   path: '/api-test',
-        //   builder: (context, state) => const ApiTestScreen(),
-        // ),
         GoRoute(
           path: '/network-debug',
           builder: (context, state) => const NetworkDebugScreen(),
