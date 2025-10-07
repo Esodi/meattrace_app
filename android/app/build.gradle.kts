@@ -29,6 +29,9 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        }
     }
 
     buildTypes {
@@ -44,15 +47,6 @@ android {
         }
     }
 
-    // Split APKs for different architectures to reduce size
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = false
-        }
-    }
 }
 
 flutter {

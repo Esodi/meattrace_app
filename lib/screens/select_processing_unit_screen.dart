@@ -87,6 +87,7 @@ class _SelectProcessingUnitScreenState extends State<SelectProcessingUnitScreen>
               : _buildProcessingUnitsList(),
       floatingActionButton: _selectedProcessingUnit != null
           ? FloatingActionButton(
+              heroTag: null,
               onPressed: _isTransferring ? null : _initiateTransfer,
               backgroundColor: AppTheme.accentOrange,
               child: _isTransferring
@@ -275,3 +276,10 @@ class _SelectProcessingUnitScreenState extends State<SelectProcessingUnitScreen>
     }
   }
 }
+
+
+
+
+
+
+

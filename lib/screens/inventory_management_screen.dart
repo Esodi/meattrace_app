@@ -9,6 +9,7 @@ import '../models/product.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/enhanced_back_button.dart';
 import '../utils/theme.dart';
+import '../utils/responsive.dart';
 
 class InventoryManagementScreen extends StatefulWidget {
   const InventoryManagementScreen({super.key});
@@ -105,7 +106,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
         return Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(Responsive.getPadding(context)),
               child: Row(
                 children: [
                   Expanded(
@@ -232,9 +233,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
 
   Widget _buildFilters() {
     return Card(
-      margin: const EdgeInsets.all(16),
+      margin: EdgeInsets.all(Responsive.getPadding(context)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(Responsive.getPadding(context)),
         child: Column(
           children: [
             TextField(
@@ -314,7 +315,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
       itemBuilder: (context, index) {
         final item = inventory[index];
         return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          margin: EdgeInsets.symmetric(horizontal: Responsive.getPadding(context), vertical: 4),
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: item.isLowStock ? Colors.orange : Colors.green,
@@ -881,3 +882,10 @@ class InventoryDetailsDialog extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+

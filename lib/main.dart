@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'utils/theme.dart';
-import 'utils/constants.dart';
-import 'utils/system_navigation_handler.dart';
 import 'services/network_helper.dart';
+import 'services/navigation_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/meat_trace_provider.dart';
 import 'providers/animal_provider.dart';
@@ -14,7 +13,11 @@ import 'providers/shop_receipt_provider.dart';
 import 'providers/inventory_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/connectivity_provider.dart';
+import 'providers/theme_provider.dart';
 import 'providers/scan_provider.dart';
+import 'providers/yield_trends_provider.dart';
+import 'providers/weather_provider.dart';
+import 'models/animal.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
@@ -23,6 +26,7 @@ import 'screens/processor_home_screen.dart';
 import 'screens/shop_home_screen.dart';
 import 'screens/livestock_history_screen.dart';
 import 'screens/slaughter_animal_screen.dart';
+import 'screens/carcass_measurement_screen.dart';
 import 'screens/register_animal_screen.dart';
 import 'screens/receive_product_screen.dart';
 import 'screens/receive_animals_screen.dart';
@@ -31,6 +35,7 @@ import 'screens/product_category_screen.dart';
 import 'screens/products_dashboard_screen.dart';
 import 'screens/product_detail_screen.dart';
 import 'screens/qr_scanner_screen.dart';
+import 'screens/processing_qr_scanner_screen.dart';
 import 'screens/scan_history_screen.dart';
 import 'screens/select_animals_transfer_screen.dart';
 import 'screens/select_processing_unit_screen.dart';
@@ -40,15 +45,13 @@ import 'screens/receive_products_screen.dart';
 import 'screens/inventory_management_screen.dart';
 import 'screens/place_order_screen.dart';
 import 'screens/network_debug_screen.dart';
+import 'screens/transferred_animals_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Print network diagnostics for debugging
   await NetworkHelper.printNetworkDiagnostics();
-
-  // Initialize system navigation handler
-  SystemNavigationHandler.instance.initialize();
 
   runApp(const MyApp());
 }
@@ -58,6 +61,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('Building MyApp');
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
@@ -67,6 +71,17 @@ class MyApp extends StatelessWidget {
         GoRoute(path: '/processor-home', builder: (context, state) => const ProcessorHomeScreen()),
         GoRoute(path: '/shop-home', builder: (context, state) => const ShopHomeScreen()),
         GoRoute(path: '/livestock-history', builder: (context, state) => const EnhancedLivestockHistoryScreen()),
+        GoRoute(
+          path: '/carcass-measurement',
+          builder: (context, state) {
+            final animal = state.extra as Animal?;
+            if (animal == null) {
+              // Handle case where animal is not provided
+              return const FarmerHomeScreen(); // Or show an error screen
+            }
+            return CarcassMeasurementScreen(animal: animal);
+          },
+        ),
         GoRoute(path: '/slaughter-animal', builder: (context, state) => const SlaughterAnimalScreen()),
         GoRoute(
           path: '/receive-product',
@@ -85,6 +100,10 @@ class MyApp extends StatelessWidget {
             final source = state.uri.queryParameters['source'];
             return QrScannerScreen(source: source);
           },
+        ),
+        GoRoute(
+          path: '/processing-qr-scanner',
+          builder: (context, state) => const ProcessingQrScannerScreen(),
         ),
         GoRoute(
           path: '/scan-history',
@@ -142,11 +161,16 @@ class MyApp extends StatelessWidget {
           path: '/place-order',
           builder: (context, state) => const PlaceOrderScreen(),
         ),
+        GoRoute(
+          path: '/transferred-animals',
+          builder: (context, state) => const TransferredAnimalsScreen(),
+        ),
       ],
     );
 
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MeatTraceProvider()),
         ChangeNotifierProvider(create: (_) => AnimalProvider()),
@@ -157,12 +181,34 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => ScanProvider()),
+        ChangeNotifierProvider(create: (_) => YieldTrendsProvider()),
+        ChangeNotifierProvider(create: (_) => WeatherProvider()),
       ],
-      child: MaterialApp.router(
-        title: 'Nyama Tamu',
-        theme: AppTheme.lightTheme,
-        routerConfig: router,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (bool didPop, dynamic result) async {
+          if (!didPop) {
+            final navigator = Navigator.of(context);
+            final handled = await NavigationService.instance.smartNavigateBack(context: context);
+            if (!handled) {
+              navigator.pop();
+            }
+          }
+        },
+        child: MaterialApp.router(
+          title: 'Nyama Tamu',
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+

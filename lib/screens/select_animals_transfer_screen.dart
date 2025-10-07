@@ -67,6 +67,7 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
               : _buildAnimalsList(),
       floatingActionButton: _selectedAnimalIds.isNotEmpty
           ? FloatingActionButton(
+              heroTag: null,
               onPressed: _proceedToSelectProcessingUnit,
               backgroundColor: AppTheme.accentOrange,
               child: const Icon(Icons.arrow_forward),
@@ -204,3 +205,10 @@ class _SelectAnimalsTransferScreenState extends State<SelectAnimalsTransferScree
     context.push('/select-processing-unit', extra: selectedAnimals);
   }
 }
+
+
+
+
+
+
+

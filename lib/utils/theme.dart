@@ -22,6 +22,13 @@ class AppTheme {
   static const Color textSecondary = Color(0xFF757575); // Secondary information
   static const Color dividerGray = Color(0xFFE0E0E0); // Subtle separations
 
+  // Nature-inspired Colors for Processor Dashboard
+  static const Color forestGreen = Color(0xFF2D5A3D); // Deep forest green for primary elements
+  static const Color oceanBlue = Color(0xFF1E3A5F); // Ocean blue for secondary elements
+  static const Color earthBrown = Color(0xFF8B4513); // Earth brown for tertiary elements
+  static const Color skyBlue = Color(0xFF87CEEB); // Sky blue for accents
+  static const Color leafGreen = Color(0xFF32CD32); // Leaf green for success states
+
   // Semantic Colors
   static const Color successGreen = Color(0xFF4CAF50); // Confirmations, completed actions
   static const Color warningOrange = Color(0xFFFF9800); // Cautions, pending states
@@ -435,13 +442,289 @@ class AppTheme {
     ),
   );
 
-  // Dark Theme (Optional - can be implemented later)
-  static ThemeData darkTheme = ThemeData.dark().copyWith(
+  // Dark Theme
+  static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
+    brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
       primary: primaryGreen,
       secondary: secondaryBlue,
       tertiary: accentOrange,
+      surface: Color(0xFF1E1E1E), // Dark surface
+      background: Color(0xFF121212), // Dark background
+      error: errorRed,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: Color(0xFFE0E0E0), // Light text on dark surface
+      onBackground: Color(0xFFE0E0E0), // Light text on dark background
+      onError: Colors.white,
+    ),
+
+    // Typography - Roboto as primary font per design system
+    textTheme: GoogleFonts.robotoTextTheme(ThemeData.dark().textTheme).copyWith(
+      // Headline Large: 32px / 2.0 line-height / Bold (500)
+      displayLarge: GoogleFonts.roboto(
+        fontSize: 32,
+        height: 2.0,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Headline Medium: 28px / 1.8 line-height / Bold (500)
+      displayMedium: GoogleFonts.roboto(
+        fontSize: 28,
+        height: 1.8,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Headline Small: 24px / 1.6 line-height / Bold (500)
+      displaySmall: GoogleFonts.roboto(
+        fontSize: 24,
+        height: 1.6,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Title Large: 22px / 1.5 line-height / Medium (500)
+      headlineLarge: GoogleFonts.roboto(
+        fontSize: 22,
+        height: 1.5,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Title Medium: 18px / 1.4 line-height / Medium (500)
+      headlineMedium: GoogleFonts.roboto(
+        fontSize: 18,
+        height: 1.4,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Title Small: 16px / 1.4 line-height / Medium (500) - adjusted for consistency
+      headlineSmall: GoogleFonts.roboto(
+        fontSize: 16,
+        height: 1.4,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Body Large: 16px / 1.5 line-height / Regular (400)
+      titleLarge: GoogleFonts.roboto(
+        fontSize: 16,
+        height: 1.5,
+        fontWeight: FontWeight.w400,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Body Medium: 14px / 1.4 line-height / Regular (400)
+      titleMedium: GoogleFonts.roboto(
+        fontSize: 14,
+        height: 1.4,
+        fontWeight: FontWeight.w400,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Body Small: 12px / 1.3 line-height / Regular (400)
+      titleSmall: GoogleFonts.roboto(
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w400,
+        color: const Color(0xFFB0B0B0),
+      ),
+      // Label Large: 14px / 1.4 line-height / Medium (500)
+      bodyLarge: GoogleFonts.roboto(
+        fontSize: 14,
+        height: 1.4,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      // Label Medium: 12px / 1.3 line-height / Medium (500)
+      bodyMedium: GoogleFonts.roboto(
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFB0B0B0),
+      ),
+      // Label Small: 12px / 1.3 line-height / Medium (500) - adjusted
+      bodySmall: GoogleFonts.roboto(
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFB0B0B0),
+      ),
+      // Additional labels for buttons and inputs
+      labelLarge: GoogleFonts.roboto(
+        fontSize: 14,
+        height: 1.4,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFE0E0E0),
+      ),
+      labelMedium: GoogleFonts.roboto(
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFB0B0B0),
+      ),
+      labelSmall: GoogleFonts.roboto(
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFFB0B0B0),
+      ),
+    ),
+
+    // AppBar Theme
+    appBarTheme: AppBarTheme(
+      backgroundColor: oceanBlue,
+      foregroundColor: Colors.white,
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.3),
+      titleTextStyle: GoogleFonts.roboto(
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+        color: Colors.white,
+      ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      toolbarHeight: 56,
+    ),
+
+    // Card Theme
+    cardTheme: CardThemeData(
+      color: const Color(0xFF1E1E1E),
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.all(8),
+    ),
+
+    // Button Themes
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryGreen,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
+        minimumSize: const Size(double.infinity, 48),
+      ),
+    ),
+
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: primaryGreen,
+        side: const BorderSide(color: primaryGreen, width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
+        minimumSize: const Size(double.infinity, 48),
+      ),
+    ),
+
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: secondaryBlue,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
+        minimumSize: const Size(44, 44),
+      ),
+    ),
+
+    // Input Decoration Theme
+    inputDecorationTheme: InputDecorationTheme(
+      filled: false,
+      border: const UnderlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFF5F5F5F), width: 1),
+      ),
+      enabledBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFF5F5F5F), width: 1),
+      ),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: primaryGreen, width: 2),
+      ),
+      errorBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: errorRed, width: 1),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      labelStyle: GoogleFonts.roboto(
+        fontSize: 16,
+        color: const Color(0xFFB0B0B0),
+      ),
+      floatingLabelStyle: GoogleFonts.roboto(
+        fontSize: 12,
+        color: primaryGreen,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: GoogleFonts.roboto(
+        fontSize: 16,
+        color: const Color(0xFF7F7F7F),
+      ),
+      errorStyle: GoogleFonts.roboto(
+        fontSize: 12,
+        color: errorRed,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+
+    // Floating Action Button Theme
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: forestGreen,
+      foregroundColor: Colors.white,
+      elevation: 6,
+      shape: CircleBorder(),
+      sizeConstraints: BoxConstraints.tightFor(width: 56, height: 56),
+    ),
+
+    // Bottom Navigation Bar Theme
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Color(0xFF1E1E1E),
+      selectedItemColor: primaryGreen,
+      unselectedItemColor: Color(0xFFB0B0B0),
+      elevation: 8,
+      type: BottomNavigationBarType.fixed,
+      selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      unselectedLabelStyle: TextStyle(fontSize: 12),
+    ),
+
+    // Dialog Theme
+    dialogTheme: DialogThemeData(
+      backgroundColor: const Color(0xFF1E1E1E),
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+
+    // SnackBar Theme
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: const Color(0xFF333333),
+      contentTextStyle: GoogleFonts.roboto(
+        color: Colors.white,
+        fontSize: 14,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      behavior: SnackBarBehavior.floating,
     ),
   );
 }
+
+
+
+
+
+
+

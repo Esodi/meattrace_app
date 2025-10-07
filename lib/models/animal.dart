@@ -1,3 +1,61 @@
+class CarcassMeasurement {
+  final int? id;
+  final int animalId;
+  final Map<String, Map<String, dynamic>> measurements; // {'head_weight': {'value': 5.2, 'unit': 'kg'}}
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  CarcassMeasurement({
+    this.id,
+    required this.animalId,
+    required this.measurements,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory CarcassMeasurement.fromMap(Map<String, dynamic> json) {
+    return CarcassMeasurement(
+      id: json['id'] != null ? int.parse(json['id'].toString()) : null,
+      animalId: int.parse(json['animal_id'].toString()),
+      measurements: Map<String, Map<String, dynamic>>.from(json['measurements'] ?? {}),
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'animal_id': animalId,
+      'measurements': measurements,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  // For creating new carcass measurement
+  Map<String, dynamic> toMapForCreate() {
+    return {
+      'animal_id': animalId,
+      'measurements': measurements,
+    };
+  }
+
+  // Get all measurements as a list
+  List<Map<String, dynamic>> getAllMeasurements() {
+    return measurements.entries.map((entry) => {
+      'name': entry.key,
+      'value': entry.value['value'],
+      'unit': entry.value['unit'],
+    }).toList();
+  }
+
+  // Get a specific measurement
+  Map<String, dynamic>? getMeasurement(String key) {
+    return measurements[key];
+  }
+}
+
 class Animal {
   final int? id;
   final int farmer;
@@ -20,6 +78,8 @@ class Animal {
   // Receive fields
   final int? receivedBy;
   final DateTime? receivedAt;
+  // Carcass measurement
+  final CarcassMeasurement? carcassMeasurement;
 
   Animal({
     this.id,
@@ -41,6 +101,7 @@ class Animal {
     this.transferredAt,
     this.receivedBy,
     this.receivedAt,
+    this.carcassMeasurement,
   });
 
   factory Animal.fromMap(Map<String, dynamic> json) {
@@ -70,6 +131,9 @@ class Animal {
       receivedAt: json['received_at'] != null
           ? DateTime.parse(json['received_at'])
           : null,
+      carcassMeasurement: json['carcass_measurement'] != null
+          ? CarcassMeasurement.fromMap(json['carcass_measurement'])
+          : null,
     );
   }
 
@@ -94,6 +158,7 @@ class Animal {
       'transferred_at': transferredAt?.toIso8601String(),
       'received_by': receivedBy,
       'received_at': receivedAt?.toIso8601String(),
+      'carcass_measurement': carcassMeasurement?.toMap(),
     };
   }
 
@@ -111,3 +176,11 @@ class Animal {
     };
   }
 }
+
+
+
+
+
+
+
+

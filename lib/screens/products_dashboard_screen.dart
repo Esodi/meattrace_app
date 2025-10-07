@@ -11,6 +11,7 @@ import '../models/product.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/enhanced_back_button.dart';
 import '../services/bluetooth_printing_service.dart';
+import '../utils/responsive.dart';
 import 'create_product_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -82,6 +83,7 @@ class _ProductsDashboardScreenState extends State<ProductsDashboardScreen> {
         ],
       ),
       floatingActionButton: _isInventoryMode ? null : FloatingActionButton(
+        heroTag: null,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CreateProductScreen()),
@@ -133,7 +135,7 @@ class _ProductsDashboardScreenState extends State<ProductsDashboardScreen> {
 
   Widget _buildFilters() {
     return Card(
-      margin: const EdgeInsets.all(16),
+      margin: EdgeInsets.all(Responsive.getPadding(context)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -315,9 +317,9 @@ class _ProductsDashboardScreenState extends State<ProductsDashboardScreen> {
     return RefreshIndicator(
       onRefresh: () => context.read<ProductProvider>().fetchProducts(),
       child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        padding: EdgeInsets.all(Responsive.getPadding(context)),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: Responsive.getGridCrossAxisCount(context),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           childAspectRatio: 0.9,
@@ -726,3 +728,10 @@ class _ProductsDashboardScreenState extends State<ProductsDashboardScreen> {
     super.dispose();
   }
 }
+
+
+
+
+
+
+

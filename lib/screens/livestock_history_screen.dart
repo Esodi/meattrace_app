@@ -126,7 +126,7 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
     final animalProvider = context.read<AnimalProvider>();
     await animalProvider.fetchAnimals(
       species: _selectedSpecies,
-      slaughtered: _selectedSlaughterStatus,
+      slaughtered: _selectedSlaughterStatus ?? false, // Default to active animals only
       search: _searchQuery.isNotEmpty ? _searchQuery : null,
     );
   }
@@ -165,7 +165,7 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
   void _clearFilters() {
     setState(() {
       _selectedSpecies = null;
-      _selectedSlaughterStatus = null;
+      _selectedSlaughterStatus = false; // Reset to show active animals only
       _searchQuery = '';
       _searchController.clear();
     });
@@ -763,3 +763,10 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
     return '${date.day}/${date.month}/${date.year}';
   }
 }
+
+
+
+
+
+
+

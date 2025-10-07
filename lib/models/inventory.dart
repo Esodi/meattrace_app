@@ -200,3 +200,10 @@ class Inventory {
     return 'Inventory(id: $id, shop: $shop, product: $product, quantity: $quantity, minStockLevel: $minStockLevel, lastUpdated: $lastUpdated, isLowStock: $isLowStock)';
   }
 }
+
+
+
+
+
+
+

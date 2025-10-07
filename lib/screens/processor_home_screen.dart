@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../providers/auth_provider.dart';
+import '../providers/yield_trends_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/theme.dart';
+import '../utils/responsive.dart';
+import '../widgets/interactive_dashboard_card.dart';
+import '../widgets/data_visualization_widgets.dart';
+import '../widgets/enhanced_yield_trends_chart.dart';
+import '../widgets/custom_dashboard_fabs.dart';
+import '../widgets/responsive_dashboard_layout.dart';
+import '../widgets/theme_toggle.dart';
+import '../widgets/real_time_progress_pipeline.dart';
 import '../services/api_service.dart';
 import '../models/production_stats.dart';
-import 'dart:async';
+import '../models/processing_stage.dart' as models;
 
 class ProcessorHomeScreen extends StatefulWidget {
   const ProcessorHomeScreen({super.key});
@@ -14,30 +25,40 @@ class ProcessorHomeScreen extends StatefulWidget {
   State<ProcessorHomeScreen> createState() => _ProcessorHomeScreenState();
 }
 
-class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> {
-  final ApiService _apiService = ApiService();
+class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsBindingObserver {
+  late ApiService _apiService;
   ProductionStats? _productionStats;
   bool _isLoading = true;
   String? _error;
-  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadProductionStats();
-    // Refresh stats every 30 seconds for real-time monitoring
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _loadProductionStats();
+    _apiService = ApiService();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
     });
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  Future<void> _loadProductionStats() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshData();
+    }
+  }
+
+  Future<void> _refreshData() async {
+    await _loadData();
+  }
+
+  Future<void> _loadData() async {
     try {
       setState(() {
         _isLoading = true;
@@ -67,389 +88,285 @@ class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Processing'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authProvider.logout();
-              if (context.mounted) {
-                context.go('/login');
-              }
-            },
+    return ResponsiveDashboardLayout(
+      currentRoute: '/processor-home',
+      content: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (bool didPop, dynamic result) async {
+          if (didPop) return;
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Exit App'),
+              content: const Text('Are you sure you want to exit the app?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Exit'),
+                ),
+              ],
+            ),
+          );
+          if (shouldExit == true) {
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('MeatTrace Processor'),
+            actions: [
+              const ThemeToggle(),
+              const SizedBox(width: 8),
+              const AccessibilityToggle(),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh data',
+                onPressed: () => _refreshData(),
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'Logout',
+                onPressed: () async {
+                  await authProvider.logout();
+                  if (context.mounted) {
+                    context.go('/login');
+                  }
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+          body: RefreshIndicator(
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(Responsive.getPadding(context)).copyWith(bottom: 88.0),
+              child: AnimationLimiter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome, ${user?.username ?? 'Processor'}!',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                  children: AnimationConfiguration.toStaggeredList(
+                    duration: const Duration(milliseconds: 375),
+                    childAnimationBuilder: (widget) => SlideAnimation(
+                      horizontalOffset: 50.0,
+                      child: FadeInAnimation(child: widget),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Be a good processor, Okay?',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
+                    children: [
+                      // Welcome section
+                      InteractiveDashboardCard(
+                        title: 'Welcome back, ${user?.username ?? 'Processor'}!',
+                        value: 'Processing Dashboard',
+                        icon: Icons.factory,
+                        color: AppTheme.primaryGreen,
+                        subtitle: 'Monitor your meat processing operations and quality control',
+                        animationDelay: Duration.zero,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Key Metrics Row
+                      DashboardSection(
+                        title: 'Key Metrics',
+                        children: [
+                          if (_isLoading)
+                            const Center(child: CircularProgressIndicator())
+                          else if (_error != null)
+                            Center(
+                              child: Column(
+                                children: [
+                                  const Icon(Icons.error, color: Colors.red, size: 48),
+                                  const SizedBox(height: 8),
+                                  Text('Error: $_error'),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed: _loadData,
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (_productionStats != null) ...[
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isSmallScreen = constraints.maxWidth < 400;
+                                final spacing = isSmallScreen ? 8.0 : 16.0;
+                                
+                                return Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: MetricCard(
+                                            title: 'Products Today',
+                                            value: _productionStats!.productsCreatedToday.toString(),
+                                            change: '+12%',
+                                            isPositive: true,
+                                            icon: Icons.inventory_2,
+                                            color: AppTheme.primaryGreen,
+                                            animationDelay: const Duration(milliseconds: 100),
+                                          ),
+                                        ),
+                                        SizedBox(width: spacing),
+                                        Expanded(
+                                          child: MetricCard(
+                                            title: 'Active Processes',
+                                            value: '3', // Mock data
+                                            change: '+8%',
+                                            isPositive: true,
+                                            icon: Icons.settings,
+                                            color: AppTheme.secondaryBlue,
+                                            animationDelay: const Duration(milliseconds: 200),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: spacing),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: MetricCard(
+                                            title: 'Throughput/Day',
+                                            value: _productionStats!.processingThroughputPerDay.toStringAsFixed(1),
+                                            change: '+15%',
+                                            isPositive: true,
+                                            icon: Icons.trending_up,
+                                            color: AppTheme.accentOrange,
+                                            animationDelay: const Duration(milliseconds: 300),
+                                          ),
+                                        ),
+                                        SizedBox(width: spacing),
+                                        Expanded(
+                                          child: InteractiveDashboardCard(
+                                            title: 'Quality Score',
+                                            value: '95%',
+                                            icon: Icons.verified,
+                                            color: AppTheme.successGreen,
+                                            onTap: () => context.go('/quality-reports'),
+                                            animationDelay: const Duration(milliseconds: 400),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Enhanced Yield Trends Section
+                      DashboardSection(
+                        title: 'Processing Yield Trends',
+                        children: [
+                          EnhancedYieldTrendsChart(
+                            title: 'Processing Performance Analytics',
+                            animationDelay: const Duration(milliseconds: 500),
+                            showPeriodSelector: true,
+                            showMetricSelector: true,
+                            fixedRole: 'ProcessingUnit',
+                            onRefresh: _refreshData,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Processing Pipeline Section
+                      DashboardSection(
+                        title: 'Real-Time Processing Pipeline',
+                        children: [
+                          RealTimeProgressPipeline(
+                            title: 'Current Processing Status',
+                            onRefresh: _refreshData,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Quick Actions Row
+                      DashboardSection(
+                        title: 'Quick Actions',
+                        children: [
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final crossAxisCount = Responsive.getGridCrossAxisCount(context);
+                              final spacing = Responsive.isMobile(context) ? 12.0 : 16.0;
+                              final availableWidth = constraints.maxWidth;
+                              final cardWidth = (availableWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+                              
+                              return Wrap(
+                                spacing: spacing,
+                                runSpacing: spacing,
+                                children: [
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: InteractiveDashboardCard(
+                                      title: 'Create Product',
+                                      value: 'New Batch',
+                                      icon: Icons.add_business,
+                                      color: AppTheme.primaryGreen,
+                                      onTap: () => context.go('/create-product'),
+                                      animationDelay: const Duration(milliseconds: 900),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: InteractiveDashboardCard(
+                                      title: 'Receive Animals',
+                                      value: 'Incoming',
+                                      icon: Icons.inventory,
+                                      color: AppTheme.secondaryBlue,
+                                      onTap: () => context.go('/receive-animals'),
+                                      animationDelay: const Duration(milliseconds: 1000),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: InteractiveDashboardCard(
+                                      title: 'Scan QR Code',
+                                      value: 'Process',
+                                      icon: Icons.qr_code_scanner,
+                                      color: AppTheme.accentOrange,
+                                      onTap: () => context.go('/processing-qr-scanner'),
+                                      animationDelay: const Duration(milliseconds: 1100),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: InteractiveDashboardCard(
+                                      title: 'Transfer Products',
+                                      value: 'Send',
+                                      icon: Icons.send,
+                                      color: AppTheme.secondaryBurgundy,
+                                      onTap: () => context.go('/select-products-transfer'),
+                                      animationDelay: const Duration(milliseconds: 1200),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Quick Actions
-            const Text(
-              'Quick Actions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 16),
-
-            // Action buttons grid - 3+1 layout
-            Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionButton(
-                        context,
-                        'Create\nProduct',
-                        Icons.add_business,
-                        () => context.go('/create-product'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildActionButton(
-                        context,
-                        'Receive\nCarcasses',
-                        Icons.inventory,
-                        () => context.go('/receive-animals'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildActionButton(
-                        context,
-                        'Products\nCategories',
-                        Icons.category,
-                        () => context.go('/product-categories'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionButton(
-                        context,
-                        'Scan\nQR',
-                        Icons.qr_code_scanner,
-                        () => context.go('/qr-scanner?source=processor'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildActionButton(
-                        context,
-                        'Transifer\nProducts',
-                        Icons.send,
-                        () => context.go('/select-products-transfer'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(child: Container()), // Empty space
-                  ],
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Stats section
-            const Text(
-              'Production Stats',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 16),
-
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else if (_error != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.error, color: Colors.red, size: 48),
-                      const SizedBox(height: 8),
-                      Text('Error loading stats: $_error'),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: _loadProductionStats,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else if (_productionStats != null)
-              Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          context,
-                          'Products Today',
-                          _productionStats!.productsCreatedToday.toString(),
-                          Icons.inventory_2,
-                          Colors.blue,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildStatCard(
-                          context,
-                          'Animals Today',
-                          _productionStats!.animalsReceivedToday.toString(),
-                          Icons.pets,
-                          Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          context,
-                          'Throughput/Day',
-                          '${_productionStats!.processingThroughputPerDay.toStringAsFixed(1)}',
-                          Icons.trending_up,
-                          Colors.orange,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildStatCardWithAction(
-                          context,
-                          'Transferred Products',
-                          _productionStats!.productsTransferredToday.toString(),
-                          Icons.send,
-                          _productionStats!.transferSuccessRate > 80 ? Colors.green : Colors.orange,
-                          () => _showTransferHistory(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          context,
-                          'Pending Animals',
-                          _productionStats!.pendingAnimalsToProcess.toString(),
-                          Icons.schedule,
-                          Colors.purple,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildStatCard(
-                          context,
-                          'Total Products',
-                          _productionStats!.totalProductsCreated.toString(),
-                          Icons.production_quantity_limits,
-                          Colors.teal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Last updated: ${_formatLastUpdated(_productionStats!.lastUpdated)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              )
-            else
-              const Center(child: Text('No stats available')),
-          ],
-        ),
-      ),
-
-      // FAB
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/create-product'),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    BuildContext context,
-    String title,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        height: 80,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.dividerGray),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(BuildContext context, String title, String value, [IconData? icon, Color? iconColor]) {
-    return _buildStatCardWithAction(context, title, value, icon, iconColor, null);
-  }
-
-  Widget _buildStatCardWithAction(BuildContext context, String title, String value, [IconData? icon, Color? iconColor, VoidCallback? onTap]) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 32, color: iconColor ?? Theme.of(context).primaryColor),
-                const SizedBox(height: 8),
-              ],
-              Text(
-                title,
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: iconColor ?? Theme.of(context).primaryColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (onTap != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Tap for details',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ],
           ),
+
+          // Custom Processor Dashboard FAB
+          floatingActionButton: const ProcessorDashboardFAB(),
         ),
       ),
     );
-  }
-
-  void _showTransferHistory(BuildContext context) {
-    if (_productionStats == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Transfer History'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Total Products Transferred: ${_productionStats!.totalProductsTransferred}'),
-              Text('Products Transferred Today: ${_productionStats!.productsTransferredToday}'),
-              Text('Transfer Success Rate: ${_productionStats!.transferSuccessRate.toStringAsFixed(1)}%'),
-              const SizedBox(height: 16),
-              const Text(
-                'Historical Data:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              // For now, show a simple message. In a real implementation,
-              // this would show a chart or detailed history
-              const Text('• Daily transfer trends available in full version'),
-              const Text('• Transfer success rate over time'),
-              const Text('• Peak transfer periods analysis'),
-              const SizedBox(height: 16),
-              if (_productionStats!.transferSuccessRate < 80) ...[
-                const Text(
-                  '⚠️ Low transfer success rate detected',
-                  style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-                ),
-                const Text('Consider reviewing transfer processes.'),
-              ] else ...[
-                const Text(
-                  '✅ Transfer performance is good',
-                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatLastUpdated(String lastUpdated) {
-    try {
-      final dateTime = DateTime.parse(lastUpdated);
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
-
-      if (difference.inSeconds < 60) {
-        return 'Just now';
-      } else if (difference.inMinutes < 60) {
-        return '${difference.inMinutes}m ago';
-      } else if (difference.inHours < 24) {
-        return '${difference.inHours}h ago';
-      } else {
-        return '${difference.inDays}d ago';
-      }
-    } catch (e) {
-      return 'Recently';
-    }
   }
 }

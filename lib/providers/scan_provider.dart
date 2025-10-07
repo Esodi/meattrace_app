@@ -19,7 +19,7 @@ class ScanProvider with ChangeNotifier {
 
     try {
       final apiService = ApiService();
-      final product = await apiService.fetchProduct(int.parse(productId));
+      final product = await apiService.fetchProduct(productId);
       _currentProduct = product;
 
       // Update scan history with product name
@@ -43,3 +43,11 @@ class ScanProvider with ChangeNotifier {
     notifyListeners();
   }
 }
+
+
+
+
+
+
+
+

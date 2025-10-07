@@ -43,3 +43,11 @@ class ConnectivityProvider with ChangeNotifier {
     await _initConnectivity();
   }
 }
+
+
+
+
+
+
+
+

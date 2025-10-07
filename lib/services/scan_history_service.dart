@@ -66,3 +66,11 @@ class ScanHistoryService {
     await prefs.setString(_scanHistoryKey, jsonEncode(historyJson));
   }
 }
+
+
+
+
+
+
+
+

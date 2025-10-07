@@ -10,12 +10,14 @@ class AnimalProvider with ChangeNotifier {
   final AnimalService _animalService = AnimalService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Animal> _animals = [];
+  List<Animal> _transferredAnimals = [];
   bool _isLoading = false;
   bool _isCreatingAnimal = false;
   String? _error;
   SharedPreferences? _prefs;
 
   List<Animal> get animals => _animals;
+  List<Animal> get transferredAnimals => _transferredAnimals;
   bool get isLoading => _isLoading;
   bool get isCreatingAnimal => _isCreatingAnimal;
   String? get error => _error;
@@ -255,6 +257,24 @@ class AnimalProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<List<Animal>> fetchTransferredAnimalsForFarmer() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      _transferredAnimals = await _animalService.getTransferredAnimalsForFarmer();
+      return _transferredAnimals;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<int> getTransferredAnimalsCount() async {
     try {
       final transferredAnimals = await _animalService.getTransferredAnimalsForFarmer();
@@ -288,3 +308,11 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 }
+
+
+
+
+
+
+
+

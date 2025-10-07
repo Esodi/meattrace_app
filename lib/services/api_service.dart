@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../models/meat_trace.dart';
 import '../models/product.dart';
+import '../models/animal.dart';
 import '../models/production_stats.dart';
 import 'dio_client.dart';
 
@@ -74,7 +75,7 @@ class ApiService {
     }
   }
 
-  Future<Product> fetchProduct(int productId) async {
+  Future<Product> fetchProduct(String productId) async {
     try {
       final response = await _dioClient.dio.get('/products/$productId/');
       return Product.fromMap(response.data);
@@ -86,6 +87,39 @@ class ApiService {
     }
   }
 
+  Future<Animal> fetchAnimal(String animalId) async {
+    try {
+      final response = await _dioClient.dio.get('/animals/$animalId/');
+      return Animal.fromMap(response.data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception('Animal not found');
+      }
+      throw Exception('Failed to fetch animal: ${e.message}');
+    }
+  }
+
+  Future<List<Product>> fetchProductsByBatch(String batchNumber) async {
+    try {
+      final response = await _dioClient.dio.get(
+        '/products/',
+        queryParameters: {'batch_number': batchNumber},
+      );
+
+      final data = response.data;
+      if (data is Map && data.containsKey('results')) {
+        final results = data['results'] as List;
+        return results.map((json) => Product.fromMap(json)).toList();
+      } else if (data is List) {
+        return data.map((json) => Product.fromMap(json)).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch products by batch: ${e.message}');
+    }
+  }
+
   Future<ProductionStats> fetchProductionStats() async {
     try {
       final response = await _dioClient.dio.get('/production-stats/');
@@ -94,4 +128,21 @@ class ApiService {
       throw Exception('Failed to fetch production stats: ${e.message}');
     }
   }
+
+  Future<Map<String, dynamic>> fetchProcessingPipeline() async {
+    try {
+      final response = await _dioClient.dio.get('/processing-pipeline/');
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch processing pipeline: ${e.message}');
+    }
+  }
 }
+
+
+
+
+
+
+
+

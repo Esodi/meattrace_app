@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:async';
+import 'package:rxdart/rxdart.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../services/database_helper.dart';
@@ -13,12 +15,27 @@ class ProductProvider with ChangeNotifier {
   String? _error;
   SharedPreferences? _prefs;
 
+  // Stream-based updates
+  final BehaviorSubject<List<Product>> _productsStream = BehaviorSubject.seeded([]);
+  final BehaviorSubject<bool> _isLoadingStream = BehaviorSubject.seeded(false);
+  final BehaviorSubject<String?> _errorStream = BehaviorSubject.seeded(null);
+
+  // Background sync
+  Timer? _backgroundSyncTimer;
+  bool _isBackgroundSyncEnabled = true;
+
   List<Product> get products => _products;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  // Stream getters
+  Stream<List<Product>> get productsStream => _productsStream.stream;
+  Stream<bool> get isLoadingStream => _isLoadingStream.stream;
+  Stream<String?> get errorStream => _errorStream.stream;
+
   ProductProvider() {
     _initPrefs();
+    _startBackgroundSync();
   }
 
   Future<void> _initPrefs() async {
@@ -199,4 +216,54 @@ class ProductProvider with ChangeNotifier {
       rethrow;
     }
   }
+
+  void _startBackgroundSync() {
+    if (!_isBackgroundSyncEnabled) return;
+    _backgroundSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      // Run sync in background without blocking UI
+      _performBackgroundSync();
+    });
+  }
+
+  Future<void> _performBackgroundSync() async {
+    try {
+      // Fetch latest data in background
+      final latestProducts = await _productService.getProducts();
+      if (latestProducts.isNotEmpty && latestProducts != _products) {
+        _products = latestProducts;
+        await _saveToDatabase();
+        _productsStream.add(_products);
+        notifyListeners();
+      }
+    } catch (e) {
+      // Silent fail for background sync
+    }
+  }
+
+  void stopBackgroundSync() {
+    _backgroundSyncTimer?.cancel();
+    _isBackgroundSyncEnabled = false;
+  }
+
+  void startBackgroundSync() {
+    _isBackgroundSyncEnabled = true;
+    _startBackgroundSync();
+  }
+
+  @override
+  void dispose() {
+    _backgroundSyncTimer?.cancel();
+    _productsStream.close();
+    _isLoadingStream.close();
+    _errorStream.close();
+    super.dispose();
+  }
 }
+
+
+
+
+
+
+
+

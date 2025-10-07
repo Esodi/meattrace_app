@@ -255,3 +255,11 @@ class NoInternetException implements Exception {
   @override
   String toString() => message;
 }
+
+
+
+
+
+
+
+

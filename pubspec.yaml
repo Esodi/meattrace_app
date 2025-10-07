@@ -51,6 +51,13 @@ dependencies:
   google_fonts: ^6.1.0
   flutter_blue_plus: ^2.0.0
   esc_pos_utils: ^1.1.0
+  fl_chart: ^0.66.2
+  flutter_staggered_animations: ^1.1.1
+  flutter_speed_dial: ^7.0.0
+  flutter_hooks: ^0.20.5
+  cached_network_image: ^3.3.1
+  rxdart: ^0.28.0
+  geolocator: ^10.1.0
 
   # Custom fonts for meat-themed design
   # Playfair Display - elegant serif font for app name

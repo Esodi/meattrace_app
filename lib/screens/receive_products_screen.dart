@@ -75,6 +75,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       ),
       floatingActionButton: _selectedProducts.isNotEmpty
           ? FloatingActionButton(
+              heroTag: null,
               onPressed: _isReceiving ? null : _receiveSelectedProducts,
               backgroundColor: AppTheme.accentOrange,
               child: _isReceiving
@@ -280,3 +281,10 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
     }
   }
 }
+
+
+
+
+
+
+

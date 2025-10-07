@@ -133,3 +133,11 @@ class ShopReceiptProvider with ChangeNotifier {
     notifyListeners();
   }
 }
+
+
+
+
+
+
+
+

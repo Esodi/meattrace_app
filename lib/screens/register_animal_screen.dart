@@ -585,3 +585,11 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+

@@ -70,6 +70,7 @@ class _SelectProductsTransferScreenState extends State<SelectProductsTransferScr
               builder: (context) {
                 debugPrint('Building FAB, selected ids: $_selectedProductIds');
                 return FloatingActionButton(
+                  heroTag: null,
                   onPressed: _proceedToSelectShop,
                   backgroundColor: AppTheme.accentOrange,
                   child: const Icon(Icons.arrow_forward),
@@ -234,3 +235,10 @@ class _SelectProductsTransferScreenState extends State<SelectProductsTransferScr
     context.push('/select-shop-transfer', extra: selectedProducts);
   }
 }
+
+
+
+
+
+
+

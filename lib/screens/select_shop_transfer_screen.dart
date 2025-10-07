@@ -88,6 +88,7 @@ class _SelectShopTransferScreenState extends State<SelectShopTransferScreen> {
               : _buildShopsList(),
       floatingActionButton: _selectedShop != null
           ? FloatingActionButton(
+              heroTag: null,
               onPressed: _isTransferring ? null : _initiateTransfer,
               backgroundColor: AppTheme.accentOrange,
               child: _isTransferring
@@ -288,3 +289,10 @@ class _SelectShopTransferScreenState extends State<SelectShopTransferScreen> {
     }
   }
 }
+
+
+
+
+
+
+

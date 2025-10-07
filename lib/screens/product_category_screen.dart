@@ -103,6 +103,7 @@ class _ProductCategoryScreenState extends State<ProductCategoryScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: _showAddCategoryDialog,
         child: const Icon(Icons.add),
       ),
@@ -280,3 +281,11 @@ class _ProductCategoryScreenState extends State<ProductCategoryScreen> {
     super.dispose();
   }
 }
+
+
+
+
+
+
+
+

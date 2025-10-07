@@ -13,3 +13,11 @@ class Shop {
     return {'id': id, 'name': name, 'location': location};
   }
 }
+
+
+
+
+
+
+
+

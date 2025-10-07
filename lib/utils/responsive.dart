@@ -40,6 +40,9 @@ class Responsive {
   static EdgeInsets getCardPadding(BuildContext context) =>
       EdgeInsets.all(isMobile(context) ? 16.0 : 24.0);
 
+  static double getChartHeight(BuildContext context) =>
+      isMobile(context) ? 150.0 : isTablet(context) ? 200.0 : 250.0;
+
   static double getIconSize(BuildContext context, double baseSize) =>
       isMobile(context) ? baseSize : baseSize * 1.2;
 
@@ -161,3 +164,10 @@ class ResponsivePadding extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+

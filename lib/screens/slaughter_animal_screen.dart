@@ -133,7 +133,14 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             backgroundColor: AppTheme.successGreen,
           ),
         );
-        context.go('/farmer-home');
+        // Refresh the list of registered animals to remove the slaughtered animal
+        await _loadRegisteredAnimals();
+        // Clear the selected animal since it's now slaughtered
+        setState(() {
+          _selectedAnimal = null;
+        });
+        // Navigate to carcass measurement screen instead of home
+        context.go('/carcass-measurement', extra: _selectedAnimal);
       }
     } catch (e) {
       _showError('Failed to slaughter animal: ${e.toString()}');
@@ -596,3 +603,11 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 }
+
+
+
+
+
+
+
+

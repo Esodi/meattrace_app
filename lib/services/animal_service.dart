@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../models/animal.dart';
+import '../utils/constants.dart';
 import 'dio_client.dart';
 import '../utils/constants.dart';
 
@@ -214,4 +215,59 @@ class AnimalService {
       throw Exception('Failed to fetch processing units: $e');
     }
   }
+
+  Future<CarcassMeasurement> createCarcassMeasurement(CarcassMeasurement measurement) async {
+    try {
+      final response = await _dioClient.dio.post(
+        Constants.carcassMeasurementsEndpoint,
+        data: measurement.toMapForCreate(),
+      );
+      return CarcassMeasurement.fromMap(response.data);
+    } catch (e) {
+      throw Exception('Failed to create carcass measurement: $e');
+    }
+  }
+
+  Future<CarcassMeasurement?> getCarcassMeasurementForAnimal(int animalId) async {
+    try {
+      final response = await _dioClient.dio.get(
+        Constants.carcassMeasurementsEndpoint,
+        queryParameters: {'animal': animalId},
+      );
+
+      final data = response.data;
+      if (data is Map && data.containsKey('results') && (data['results'] as List).isNotEmpty) {
+        return CarcassMeasurement.fromMap((data['results'] as List).first);
+      } else if (data is List && data.isNotEmpty) {
+        return CarcassMeasurement.fromMap(data.first);
+      } else {
+        return null; // No carcass measurement found
+      }
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 404) {
+        return null; // No carcass measurement found
+      }
+      throw Exception('Failed to fetch carcass measurement: $e');
+    }
+  }
+
+  Future<CarcassMeasurement> updateCarcassMeasurement(CarcassMeasurement measurement) async {
+    try {
+      final response = await _dioClient.dio.put(
+        '${Constants.carcassMeasurementsEndpoint}${measurement.id}/',
+        data: measurement.toMap(),
+      );
+      return CarcassMeasurement.fromMap(response.data);
+    } catch (e) {
+      throw Exception('Failed to update carcass measurement: $e');
+    }
+  }
 }
+
+
+
+
+
+
+
+

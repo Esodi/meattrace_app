@@ -310,6 +310,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
+          heroTag: null,
           onPressed: onPressed,
           backgroundColor: color,
           foregroundColor: Colors.white,
@@ -498,3 +499,11 @@ class ScanningAnimationPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+
+
+
+
+
+
+
