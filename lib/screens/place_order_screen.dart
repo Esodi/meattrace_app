@@ -10,6 +10,7 @@ import '../models/order.dart';
 import '../services/bluetooth_printing_service.dart';
 import '../widgets/enhanced_back_button.dart';
 import '../utils/theme.dart';
+import '../utils/constants.dart';
 import '../widgets/loading_indicator.dart';
 
 class PlaceOrderScreen extends StatefulWidget {
@@ -532,8 +533,9 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
       }
 
       // Print order header
+      final qrData = '${Constants.baseUrl}/product-info/view/${order.id}';
       await printingService.printQRCode(
-        'ORDER_${order.id ?? 'unknown'}',
+        qrData,
         'Order #${order.id ?? 'unknown'}',
         'Total: \$${order.totalAmount.toStringAsFixed(2)}',
       );

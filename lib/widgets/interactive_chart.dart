@@ -4,9 +4,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../utils/theme.dart';
+import '../widgets/loading_indicator.dart';
+import '../deferred/charts_deferred.dart' deferred as chartsDeferred;
 
 class InteractiveChart extends StatefulWidget {
   final List<double> data;
@@ -35,6 +35,9 @@ class _InteractiveChartState extends State<InteractiveChart> with TickerProvider
   late Animation<double> _animation;
   final GlobalKey _chartKey = GlobalKey();
   bool _isExporting = false;
+  late Future<void> _libraryLoader;
+  bool _isLibraryLoaded = false;
+  String? _loadError;
 
   int? _hoveredIndex;
   double? _hoveredValue;
@@ -50,6 +53,20 @@ class _InteractiveChartState extends State<InteractiveChart> with TickerProvider
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
+    _libraryLoader = _loadLibrary();
+  }
+
+  Future<void> _loadLibrary() async {
+    try {
+      await chartsDeferred.loadLibrary();
+      setState(() {
+        _isLibraryLoaded = true;
+      });
+    } catch (e) {
+      setState(() {
+        _loadError = e.toString();
+      });
+    }
   }
 
   @override
@@ -59,21 +76,22 @@ class _InteractiveChartState extends State<InteractiveChart> with TickerProvider
   }
 
   Future<void> _exportAsImage() async {
+    if (!_isLibraryLoaded) return;
     setState(() => _isExporting = true);
     try {
       final boundary = _chartKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 2.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await image.toByteData(format: chartsDeferred.ImageByteFormat.png);
       if (byteData == null) return;
 
       final buffer = byteData.buffer.asUint8List();
-      final tempDir = await getTemporaryDirectory();
+      final tempDir = await chartsDeferred.getTemporaryDirectory();
       final file = File('${tempDir.path}/chart_${DateTime.now().millisecondsSinceEpoch}.png');
       await file.writeAsBytes(buffer);
 
-      await Share.shareXFiles([XFile(file.path)], text: '${widget.title} Chart');
+      await chartsDeferred.Share.shareXFiles([chartsDeferred.XFile(file.path)], text: '${widget.title} Chart');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Export failed: $e')),
@@ -86,6 +104,62 @@ class _InteractiveChartState extends State<InteractiveChart> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text('Failed to load chart'),
+                const SizedBox(height: 8),
+                Text(_loadError!, style: const TextStyle(fontSize: 12)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _loadError = null;
+                      _libraryLoader = _loadLibrary();
+                    });
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!_isLibraryLoaded) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                LoadingIndicator(),
+                SizedBox(height: 16),
+                Text('Loading chart...'),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -143,7 +217,7 @@ class _InteractiveChartState extends State<InteractiveChart> with TickerProvider
                 builder: (context, child) {
                   return SizedBox(
                     height: 300,
-                    child: LineChart(
+                    child: chartsDeferred.LineChart(
                       LineChartData(
                         gridData: FlGridData(
                           show: true,

@@ -45,7 +45,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         _filteredHistory = _scanHistory;
       } else {
         _filteredHistory = _scanHistory.where((item) {
-          return item.productId.contains(query) ||
+          return item.productId.toLowerCase().contains(query.toLowerCase()) ||
               (item.productName?.toLowerCase().contains(query.toLowerCase()) ??
                   false);
         }).toList();
@@ -179,7 +179,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                     Expanded(
                       child: _buildStatCard(
                         'Total Scans',
-                        _scanHistory.length.toString(),
+                        _filteredHistory.length.toString(),
                         Icons.qr_code_scanner,
                         const Color(0xFF4CAF50),
                       ),
@@ -496,9 +496,9 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
   }
 
   int _calculateSuccessRate() {
-    if (_scanHistory.isEmpty) return 0;
-    final successCount = _scanHistory.where((item) => item.status == 'success').length;
-    return ((successCount / _scanHistory.length) * 100).round();
+    if (_filteredHistory.isEmpty) return 0;
+    final successCount = _filteredHistory.where((item) => item.status == 'success').length;
+    return ((successCount / _filteredHistory.length) * 100).round();
   }
 
   void _exportHistory() {

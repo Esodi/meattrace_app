@@ -37,7 +37,7 @@ class SystemNavigationHandler {
     return null;
   }
 
-  /// Create a WillPopScope wrapper that handles system back button
+  /// Create a PopScope wrapper that handles system back button
   static Widget wrapWithSystemBackHandler({
     required Widget child,
     required BuildContext context,
@@ -45,20 +45,26 @@ class SystemNavigationHandler {
     Map<String, dynamic>? preservedState,
     VoidCallback? onWillPop,
   }) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Custom onWillPop takes precedence
-        if (onWillPop != null) {
-          onWillPop();
-          return false;
-        }
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Custom onWillPop takes precedence
+          if (onWillPop != null) {
+            onWillPop();
+            return;
+          }
 
-        // Use our enhanced navigation service
-        return await NavigationService.instance.smartNavigateBack(
-          context: context,
-          userType: userType,
-          preservedState: preservedState,
-        );
+          // Use our enhanced navigation service
+          final shouldPop = await NavigationService.instance.smartNavigateBack(
+            context: context,
+            userType: userType,
+            preservedState: preservedState,
+          );
+          if (shouldPop) {
+            if (context.mounted) Navigator.of(context).pop();
+          }
+        }
       },
       child: child,
     );

@@ -232,13 +232,19 @@ class _TransferredAnimalsScreenState extends State<TransferredAnimalsScreen>
   Widget build(BuildContext context) {
     super.build(context);
     
-    return WillPopScope(
-      onWillPop: () async {
-        _saveCurrentState();
-        return await context.smartNavigateBack(
-          userType: 'farmer',
-          preservedState: _getPreservedState(),
-        );
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          _saveCurrentState();
+          final shouldPop = await context.smartNavigateBack(
+            userType: 'farmer',
+            preservedState: _getPreservedState(),
+          );
+          if (shouldPop) {
+            if (mounted) Navigator.of(context).pop();
+          }
+        }
       },
       child: Scaffold(
         appBar: createEnhancedAppBarWithBackButton(

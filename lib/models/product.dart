@@ -160,6 +160,56 @@ class Product {
       'category': category,
     };
   }
+
+  Product copyWith({
+    int? id,
+    String? processingUnit,
+    int? animal,
+    String? productType,
+    double? quantity,
+    DateTime? createdAt,
+    String? name,
+    String? batchNumber,
+    double? weight,
+    String? weightUnit,
+    double? price,
+    String? description,
+    String? manufacturer,
+    int? category,
+    String? qrCode,
+    List<ProductTimelineEvent>? timeline,
+    int? transferredTo,
+    DateTime? transferredAt,
+    String? transferredToUsername,
+    int? receivedBy,
+    DateTime? receivedAt,
+    String? receivedByUsername,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      processingUnit: processingUnit ?? this.processingUnit,
+      animal: animal ?? this.animal,
+      productType: productType ?? this.productType,
+      quantity: quantity ?? this.quantity,
+      createdAt: createdAt ?? this.createdAt,
+      name: name ?? this.name,
+      batchNumber: batchNumber ?? this.batchNumber,
+      weight: weight ?? this.weight,
+      weightUnit: weightUnit ?? this.weightUnit,
+      price: price ?? this.price,
+      description: description ?? this.description,
+      manufacturer: manufacturer ?? this.manufacturer,
+      category: category ?? this.category,
+      qrCode: qrCode ?? this.qrCode,
+      timeline: timeline ?? this.timeline,
+      transferredTo: transferredTo ?? this.transferredTo,
+      transferredAt: transferredAt ?? this.transferredAt,
+      transferredToUsername: transferredToUsername ?? this.transferredToUsername,
+      receivedBy: receivedBy ?? this.receivedBy,
+      receivedAt: receivedAt ?? this.receivedAt,
+      receivedByUsername: receivedByUsername ?? this.receivedByUsername,
+    );
+  }
 }
 
 

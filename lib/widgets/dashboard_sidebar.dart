@@ -54,6 +54,51 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
           'color': AppTheme.successGreen,
         },
       ];
+    } else if (widget.currentRoute.startsWith('/shop')) {
+      return [
+        {
+          'title': 'Dashboard Overview',
+          'icon': Icons.dashboard,
+          'route': '/shop-home',
+          'color': AppTheme.secondaryBurgundy,
+        },
+        {
+          'title': 'Place Order',
+          'icon': Icons.shopping_cart,
+          'route': '/place-order',
+          'color': AppTheme.accentOrange,
+        },
+        {
+          'title': 'Product Display',
+          'icon': Icons.store,
+          'route': '/products-dashboard',
+          'color': AppTheme.secondaryBlue,
+        },
+        {
+          'title': 'Receive Products',
+          'icon': Icons.inventory_2,
+          'route': '/receive-products',
+          'color': AppTheme.primaryGreen,
+        },
+        {
+          'title': 'Inventory Management',
+          'icon': Icons.warehouse,
+          'route': '/inventory-management',
+          'color': AppTheme.successGreen,
+        },
+        {
+          'title': 'Scan QR Code',
+          'icon': Icons.qr_code_scanner,
+          'route': '/qr-scanner?source=shop',
+          'color': AppTheme.accentMaroon,
+        },
+        {
+          'title': 'Reports',
+          'icon': Icons.analytics,
+          'route': '/reports',
+          'color': AppTheme.primaryRed,
+        },
+      ];
     } else {
       // Farmer menu items
       return [
@@ -92,11 +137,23 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
   }
 
   String get _headerTitle {
-    return widget.currentRoute.startsWith('/processor') ? 'MeatTrace' : 'FarmHub';
+    if (widget.currentRoute.startsWith('/processor')) {
+      return 'MeatTrace';
+    } else if (widget.currentRoute.startsWith('/shop')) {
+      return 'ShopHub';
+    } else {
+      return 'FarmHub';
+    }
   }
 
   IconData get _headerIcon {
-    return widget.currentRoute.startsWith('/processor') ? Icons.factory : Icons.agriculture;
+    if (widget.currentRoute.startsWith('/processor')) {
+      return Icons.factory;
+    } else if (widget.currentRoute.startsWith('/shop')) {
+      return Icons.store;
+    } else {
+      return Icons.agriculture;
+    }
   }
 
   List<Color> get _gradientColors {
@@ -105,6 +162,12 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
         AppTheme.primaryGreen.withOpacity(0.9),
         AppTheme.primaryGreen.withOpacity(0.7),
         AppTheme.secondaryBlue.withOpacity(0.8),
+      ];
+    } else if (widget.currentRoute.startsWith('/shop')) {
+      return [
+        AppTheme.secondaryBurgundy.withOpacity(0.9),
+        AppTheme.secondaryBurgundy.withOpacity(0.7),
+        AppTheme.accentOrange.withOpacity(0.8),
       ];
     } else {
       return [

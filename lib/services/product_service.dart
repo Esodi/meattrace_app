@@ -203,6 +203,21 @@ class ProductService {
       throw Exception('Failed to fetch shops: ${e.message}');
     }
   }
+
+  Future<String> regenerateQrCode(String productId) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '${Constants.productsEndpoint}$productId/regenerate_qr/',
+      );
+      final qrCodeUrl = response.data['qr_code_url'];
+      if (qrCodeUrl == null || qrCodeUrl is! String) {
+        throw Exception('Invalid QR code URL in response');
+      }
+      return qrCodeUrl;
+    } on DioException catch (e) {
+      throw Exception('Failed to regenerate QR code: ${e.message}');
+    }
+  }
 }
 
 

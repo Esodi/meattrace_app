@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'product_display_screen.dart';
 import '../services/scan_history_service.dart';
 import '../widgets/enhanced_back_button.dart';
 import '../widgets/order_details_overlay.dart';
+import '../widgets/loading_indicator.dart';
+import 'package:permission_handler/permission_handler.dart' as perm;
+import '../deferred/qr_scanner_deferred.dart' deferred as qrDeferred show QRView, QRViewController, QrScannerOverlayShape, Permission, PermissionStatus, openAppSettings;
 
 class QrScannerScreen extends StatefulWidget {
   final String? source;
@@ -19,7 +20,10 @@ class QrScannerScreen extends StatefulWidget {
 
 class _QrScannerScreenState extends State<QrScannerScreen> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  QRViewController? controller;
+  late Future<void> _libraryLoader;
+  bool _isLibraryLoaded = false;
+  String? _loadError;
+  dynamic controller;
   bool _isFlashOn = false;
   bool _isScanning = true;
   bool _showSuccessAnimation = false;
@@ -27,19 +31,34 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   void initState() {
     super.initState();
-    _requestCameraPermission();
+    _libraryLoader = _loadLibrary();
+  }
+
+  Future<void> _loadLibrary() async {
+    try {
+      await qrDeferred.loadLibrary();
+      setState(() {
+        _isLibraryLoaded = true;
+      });
+      _requestCameraPermission();
+    } catch (e) {
+      setState(() {
+        _loadError = e.toString();
+      });
+    }
   }
 
   Future<void> _requestCameraPermission() async {
-    final status = await Permission.camera.request();
+    if (!_isLibraryLoaded) return;
+    final status = await perm.Permission.camera.request();
     if (!status.isGranted) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Camera permission is required to scan QR codes'),
+          SnackBar(
+            content: const Text('Camera permission is required to scan QR codes'),
             action: SnackBarAction(
               label: 'Settings',
-              onPressed: openAppSettings,
+              onPressed: qrDeferred.openAppSettings,
             ),
           ),
         );
@@ -101,6 +120,56 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Scan QR'),
+          leading: EnhancedBackButton(fallbackRoute: _getFallbackRoute()),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text('Failed to load QR scanner'),
+              const SizedBox(height: 8),
+              Text(_loadError!, style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _loadError = null;
+                    _libraryLoader = _loadLibrary();
+                  });
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_isLibraryLoaded) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Scan QR'),
+          leading: EnhancedBackButton(fallbackRoute: _getFallbackRoute()),
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              LoadingIndicator(),
+              SizedBox(height: 16),
+              Text('Loading QR scanner...'),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan QR'),
@@ -129,10 +198,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           ),
 
           // QR Scanner
-          QRView(
+          qrDeferred.QRView(
             key: qrKey,
             onQRViewCreated: _onQRViewCreated,
-            overlay: QrScannerOverlayShape(
+            overlay: qrDeferred.QrScannerOverlayShape(
               borderColor: Colors.white,
               borderRadius: 16,
               borderLength: 40,
@@ -330,7 +399,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     );
   }
 
-  void _onQRViewCreated(QRViewController controller) {
+  void _onQRViewCreated(dynamic controller) {
     this.controller = controller;
     controller.scannedDataStream.listen((scanData) {
       if (_isScanning && scanData.code != null) {
@@ -387,15 +456,25 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       // Not JSON, continue to other checks
     }
 
-    // Check if it's a URL containing product ID
-    if (data.contains('/api/v2/products/')) {
+    // Check if it's a URL containing product ID (support both v2 and product-info paths)
+    if (data.contains('/api/v2/products/') || data.contains('/api/product-info/')) {
       final uri = Uri.tryParse(data);
       if (uri != null) {
         // Extract product ID from URL path
         final pathSegments = uri.pathSegments;
         final productsIndex = pathSegments.indexOf('products');
+        final productInfoIndex = pathSegments.indexOf('product-info');
+        
+        // Try v2 products path first
         if (productsIndex != -1 && productsIndex + 1 < pathSegments.length) {
           final productId = pathSegments[productsIndex + 1];
+          if (int.tryParse(productId) != null) {
+            return productId;
+          }
+        } 
+        // Try product-info path
+        else if (productInfoIndex != -1 && productInfoIndex + 1 < pathSegments.length) {
+          final productId = pathSegments[productInfoIndex + 1];
           if (int.tryParse(productId) != null) {
             return productId;
           }

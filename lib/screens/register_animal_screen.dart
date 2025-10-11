@@ -14,17 +14,18 @@ class RegisterAnimalScreen extends StatefulWidget {
 }
 
 class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _animalNameController = TextEditingController(); // Optional custom name
-  final _weightController = TextEditingController();
-  final _breedController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _healthStatusController = TextEditingController();
+   final _formKey = GlobalKey<FormState>();
+   final _animalNameController = TextEditingController(); // Optional custom name
+   final _weightController = TextEditingController();
+   final _breedController = TextEditingController();
+   final _ageController = TextEditingController();
+   final _healthStatusController = TextEditingController();
 
-  String? _selectedType;
-  String? _selectedFarm;
-  DateTime _selectedDate = DateTime.now();
-  String? _generatedAnimalId; // Will be shown after successful registration
+   String? _selectedType;
+   String? _selectedFarm;
+   DateTime _selectedDate = DateTime.now();
+   String? _generatedAnimalId; // Will be shown after successful registration
+   bool _isSubmitted = false; // Prevent multiple submissions
 
   final List<String> _animalTypes = ['Cow', 'Pig', 'Sheep'];
   final List<String> _farms = ['Farm A', 'Farm B', 'Farm C']; // Mock farms
@@ -54,6 +55,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   }
 
   void _submitForm() async {
+    if (_isSubmitted) return; // Prevent multiple submissions
     if (_formKey.currentState!.validate()) {
       // Additional checks for required dropdowns
       if (_selectedType == null || _selectedType!.isEmpty) {
@@ -104,28 +106,47 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
       final createdAnimal = await provider.createAnimal(animal, isOnline: isOnline);
 
       if (!mounted) return;
+      print('Mounted after await: $mounted');
 
       if (provider.error == null || provider.error!.contains('Saved offline')) {
         if (isOnline && createdAnimal != null) {
+          print('About to setState for online success, mounted: $mounted');
           setState(() {
             _generatedAnimalId = createdAnimal.animalId;
+            _isSubmitted = true; // Prevent further submissions
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Animal registered successfully! ID: ${createdAnimal.animalId}')),
-          );
+          print('About to show SnackBar for online success, mounted: $mounted');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Animal registered successfully! ID: ${createdAnimal.animalId}')),
+            );
+          }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(isOnline ? 'Animal registered successfully' : 'Animal saved offline')),
-          );
+          print('About to setState for offline success, mounted: $mounted');
+          setState(() {
+            _isSubmitted = true; // Prevent further submissions
+          });
+          print('About to show SnackBar for offline success, mounted: $mounted');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(isOnline ? 'Animal registered successfully' : 'Animal saved offline')),
+            );
+          }
         }
         // Don't auto-pop, let user see the generated ID
         if (!isOnline) {
-          Navigator.of(context).pop();
+          print('About to pop, mounted: $mounted');
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${provider.error}')),
-        );
+        print('About to show error SnackBar, mounted: $mounted');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${provider.error}')),
+          );
+        }
       }
     }
   }
@@ -452,7 +473,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                       return SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: provider.isCreatingAnimal ? null : _submitForm,
+                          onPressed: (provider.isCreatingAnimal || _isSubmitted) ? null : _submitForm,
                           icon: provider.isCreatingAnimal
                               ? const SizedBox(
                                   width: 20,

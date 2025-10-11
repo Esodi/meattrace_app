@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/theme.dart';
-import '../utils/accessibility.dart';
 
 class ThemeProvider with ChangeNotifier {
   bool _isDarkMode = false;
@@ -99,7 +98,7 @@ class ThemeProvider with ChangeNotifier {
       // Enhanced contrast for cards
       cardTheme: baseTheme.cardTheme.copyWith(
         color: _isDarkMode ? Colors.black : Colors.white,
-        shadowColor: _isDarkMode ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.3),
+        shadowColor: _isDarkMode ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.3),
       ),
 
       // Enhanced button contrast

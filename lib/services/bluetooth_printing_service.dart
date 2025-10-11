@@ -4,6 +4,8 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:ui' as ui;
 
 class PrinterManager {
@@ -67,9 +69,24 @@ class PrinterManager {
   Future<void> writeBytes(Uint8List bytes) async {
     if (_currentDevice != null && _writeCharacteristic != null) {
       try {
-        print('📤 [PrinterManager] Writing ${bytes.length} bytes to printer...');
-        await _writeCharacteristic!.write(bytes, withoutResponse: true);
-        print('✅ [PrinterManager] Bytes written successfully');
+        const int chunkSize = 200; // Use smaller chunks to avoid MTU limits
+        final totalBytes = bytes.length;
+        print('📤 [PrinterManager] Writing $totalBytes bytes to printer in chunks of $chunkSize...');
+
+        for (int i = 0; i < totalBytes; i += chunkSize) {
+          final end = (i + chunkSize < totalBytes) ? i + chunkSize : totalBytes;
+          final chunk = bytes.sublist(i, end);
+          print('📤 [PrinterManager] Writing chunk ${i ~/ chunkSize + 1} (${chunk.length} bytes)...');
+
+          await _writeCharacteristic!.write(chunk, withoutResponse: true);
+
+          // Small delay between chunks to prevent overwhelming the printer
+          if (end < totalBytes) {
+            await Future.delayed(const Duration(milliseconds: 50));
+          }
+        }
+
+        print('✅ [PrinterManager] All bytes written successfully');
       } catch (e) {
         print('❌ [PrinterManager] Failed to write bytes: $e');
         // Reset connection state on write failure
@@ -125,6 +142,10 @@ class BluetoothPrintingService {
       final location = await Permission.location.request();
       print('📍 Location permission: ${location.toString()}');
 
+      // Check if location services are enabled (required for BLE scanning)
+      final locationEnabled = await Permission.location.serviceStatus.isEnabled;
+      print('📍 Location services enabled: $locationEnabled');
+
       final allGranted = bluetoothScan.isGranted && bluetoothConnect.isGranted && location.isGranted;
       print('✅ [BluetoothPrintingService] All permissions granted: $allGranted');
 
@@ -135,16 +156,43 @@ class BluetoothPrintingService {
     }
   }
 
+  Future<void> openLocationSettings() async {
+    print('🔧 [BluetoothPrintingService] Opening location settings...');
+    try {
+      await Geolocator.openLocationSettings();
+      print('✅ [BluetoothPrintingService] Location settings opened');
+    } catch (e) {
+      print('❌ [BluetoothPrintingService] Failed to open location settings: $e');
+      // Fallback to app settings
+      try {
+        await openAppSettings();
+        print('✅ [BluetoothPrintingService] App settings opened as fallback');
+      } catch (e2) {
+        print('❌ [BluetoothPrintingService] Failed to open app settings: $e2');
+      }
+    }
+  }
+
   Future<List<BluetoothDevice>> scanPrinters() async {
     try {
-      print('🔍 [BluetoothPrintingService] Starting printer scan...');
+      print('🔍 [BluetoothPrintingService] Starting BLE printer scan (note: ESC/POS printers typically use Classic Bluetooth, not BLE)...');
+
+      // Check if location services are enabled (required for BLE scanning)
+      final locationEnabled = await Permission.location.serviceStatus.isEnabled;
+      if (!locationEnabled) {
+        print('⚠️ [BluetoothPrintingService] Location services are disabled. Opening location settings...');
+        await openLocationSettings();
+        throw Exception('Location services are required for Bluetooth scanning. Please enable location services and try again.');
+      }
 
       // Check if Bluetooth is available and enabled
       if (!await FlutterBluePlus.isSupported) {
         throw Exception('Bluetooth is not supported on this device');
       }
 
-      if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      print('📡 [BluetoothPrintingService] Bluetooth adapter state: $adapterState');
+      if (adapterState != BluetoothAdapterState.on) {
         throw Exception('Bluetooth is not enabled. Please enable Bluetooth and try again.');
       }
 
@@ -152,7 +200,10 @@ class BluetoothPrintingService {
       // Convert ScanResult to BluetoothDevice, filtering for printers if possible
       final devices = scanResults.map((result) => result.device).toList();
 
-      print('✅ [BluetoothPrintingService] Found ${devices.length} Bluetooth devices');
+      print('✅ [BluetoothPrintingService] Found ${devices.length} BLE devices');
+      if (devices.isEmpty) {
+        print('⚠️ [BluetoothPrintingService] No BLE devices found. If using Classic Bluetooth printer, this library only supports BLE. Consider switching to flutter_bluetooth_serial for Classic Bluetooth.');
+      }
       return devices;
     } catch (e) {
       print('❌ [BluetoothPrintingService] Failed to scan printers: $e');
@@ -229,6 +280,7 @@ class BluetoothPrintingService {
 
   Future<void> printQRCode(String qrData, String productName, String batchNumber) async {
     print('🖨️ [BluetoothPrintingService] Starting QR code print for: $productName (Batch: $batchNumber)');
+    print('📊 [BluetoothPrintingService] QR data being encoded: $qrData');
 
     BluetoothDevice? printerToUse = _selectedPrinter;
     if (printerToUse == null) {

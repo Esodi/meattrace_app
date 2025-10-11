@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../models/animal.dart';
-import '../services/animal_service.dart';
 import '../services/animal_service.dart';
 import '../utils/theme.dart';
 import '../widgets/enhanced_back_button.dart';
@@ -20,7 +18,7 @@ class _CarcassMeasurementScreenState extends State<CarcassMeasurementScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, String> _units = {};
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _isSubmitting = false;
 
   // Default measurement fields
@@ -288,10 +286,10 @@ class _CarcassMeasurementScreenState extends State<CarcassMeasurementScreen> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withOpacity(0.1),
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: AppTheme.primaryGreen.withOpacity(0.3),
+                                  color: AppTheme.primaryGreen.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Text(

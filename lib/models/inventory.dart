@@ -1,8 +1,3 @@
-// Import Product model for the relationship
-import 'product.dart' as product_model;
-
-// Import Product model for the relationship
-
 class InventoryProduct {
   final int? id;
   final String name;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:async/async.dart';
 import '../providers/auth_provider.dart';
 import '../providers/animal_provider.dart';
 import '../utils/theme.dart';
@@ -28,6 +29,8 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> with WidgetsBinding
   bool _isLoadingTransferred = false;
   WeatherData? _weatherData;
   bool _isWeatherLoading = true;
+  CancelableOperation? _weatherOperation;
+  CancelableOperation? _transferredOperation;
 
   @override
   void initState() {
@@ -44,6 +47,8 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> with WidgetsBinding
 
   @override
   void dispose() {
+    _weatherOperation?.cancel();
+    _transferredOperation?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -63,26 +68,43 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> with WidgetsBinding
   }
 
   Future<void> _loadTransferredCount() async {
+    if (!mounted) return;
     setState(() => _isLoadingTransferred = true);
+    _transferredOperation = CancelableOperation.fromFuture(
+      _animalProvider.getTransferredAnimalsCount(),
+      onCancel: () {
+        if (mounted) setState(() => _isLoadingTransferred = false);
+      },
+    );
+
     try {
-      final transferredAnimals = await _animalProvider.getTransferredAnimalsCount();
-      setState(() => _transferredCount = transferredAnimals);
+      final transferredAnimals = await _transferredOperation!.value;
+      if (mounted) setState(() => _transferredCount = transferredAnimals);
     } catch (e) {
+      if (!mounted) return;
       // Keep current count on error
     } finally {
-      setState(() => _isLoadingTransferred = false);
+      if (mounted) setState(() => _isLoadingTransferred = false);
     }
   }
 
   Future<void> _loadWeatherData() async {
+    if (!mounted) return;
     setState(() => _isWeatherLoading = true);
+    _weatherOperation = CancelableOperation.fromFuture(
+      WeatherService().getWeatherData(),
+      onCancel: () {
+        if (mounted) setState(() => _isWeatherLoading = false);
+      },
+    );
+
     try {
-      final weatherService = WeatherService();
-      _weatherData = await weatherService.getWeatherData();
+      _weatherData = await _weatherOperation!.value;
     } catch (e) {
+      if (!mounted) return;
       // Keep default
     } finally {
-      setState(() => _isWeatherLoading = false);
+      if (mounted) setState(() => _isWeatherLoading = false);
     }
   }
 
@@ -221,19 +243,14 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> with WidgetsBinding
 
                               final crossAxisCount = Responsive.getGridCrossAxisCount(context);
                               final spacing = Responsive.getPadding(context);
-                              final screenWidth = MediaQuery.of(context).size.width;
-                              final totalPadding = Responsive.getPadding(context) * 2; // Left and right padding
-                              final totalSpacing = spacing * (crossAxisCount - 1); // Spacing between cards
-                              final availableWidth = screenWidth - totalPadding - totalSpacing;
-                              final cardWidth = availableWidth / crossAxisCount;
 
-                              return Wrap(
-                                spacing: spacing,
-                                runSpacing: spacing,
-                                children: metricCards.map((card) => SizedBox(
-                                  width: cardWidth,
-                                  child: card,
-                                )).toList(),
+                              return GridView.count(
+                                crossAxisCount: crossAxisCount,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                mainAxisSpacing: spacing,
+                                crossAxisSpacing: spacing,
+                                children: metricCards,
                               );
                             },
                           ),
@@ -299,59 +316,45 @@ class _FarmerHomeScreenState extends State<FarmerHomeScreen> with WidgetsBinding
                             builder: (context, constraints) {
                               final crossAxisCount = Responsive.getGridCrossAxisCount(context);
                               final spacing = Responsive.getPadding(context);
-                              final screenWidth = MediaQuery.of(context).size.width;
-                              final totalPadding = Responsive.getPadding(context) * 2;
-                              final totalSpacing = spacing * (crossAxisCount - 1);
-                              final availableWidth = screenWidth - totalPadding - totalSpacing;
-                              final cardWidth = availableWidth / crossAxisCount;
 
-                              return Wrap(
-                                spacing: spacing,
-                                runSpacing: spacing,
+                              return GridView.count(
+                                crossAxisCount: crossAxisCount,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                mainAxisSpacing: spacing,
+                                crossAxisSpacing: spacing,
                                 children: [
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: InteractiveDashboardCard(
-                                      title: 'Register Livestock',
-                                      value: 'Add New',
-                                      icon: Icons.add_circle,
-                                      color: AppTheme.primaryGreen,
-                                      onTap: () => context.go('/register-animal'),
-                                      animationDelay: const Duration(milliseconds: 900),
-                                    ),
+                                  InteractiveDashboardCard(
+                                    title: 'Register Livestock',
+                                    value: 'Add New',
+                                    icon: Icons.add_circle,
+                                    color: AppTheme.primaryGreen,
+                                    onTap: () => context.go('/register-animal'),
+                                    animationDelay: const Duration(milliseconds: 900),
                                   ),
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: InteractiveDashboardCard(
-                                      title: 'Process Livestock',
-                                      value: 'Slaughter',
-                                      icon: Icons.restaurant_menu,
-                                      color: AppTheme.secondaryBurgundy,
-                                      onTap: () => context.go('/slaughter-animal'),
-                                      animationDelay: const Duration(milliseconds: 1000),
-                                    ),
+                                  InteractiveDashboardCard(
+                                    title: 'Process Livestock',
+                                    value: 'Slaughter',
+                                    icon: Icons.restaurant_menu,
+                                    color: AppTheme.secondaryBurgundy,
+                                    onTap: () => context.go('/slaughter-animal'),
+                                    animationDelay: const Duration(milliseconds: 1000),
                                   ),
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: InteractiveDashboardCard(
-                                      title: 'View History',
-                                      value: 'Records',
-                                      icon: Icons.history,
-                                      color: AppTheme.secondaryBlue,
-                                      onTap: () => context.go('/livestock-history'),
-                                      animationDelay: const Duration(milliseconds: 1100),
-                                    ),
+                                  InteractiveDashboardCard(
+                                    title: 'View History',
+                                    value: 'Records',
+                                    icon: Icons.history,
+                                    color: AppTheme.secondaryBlue,
+                                    onTap: () => context.go('/livestock-history'),
+                                    animationDelay: const Duration(milliseconds: 1100),
                                   ),
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: InteractiveDashboardCard(
-                                      title: 'Transfer Animals',
-                                      value: 'Move',
-                                      icon: Icons.send,
-                                      color: AppTheme.accentOrange,
-                                      onTap: () => context.go('/select-animals-transfer'),
-                                      animationDelay: const Duration(milliseconds: 1200),
-                                    ),
+                                  InteractiveDashboardCard(
+                                    title: 'Transfer Animals',
+                                    value: 'Move',
+                                    icon: Icons.send,
+                                    color: AppTheme.accentOrange,
+                                    onTap: () => context.go('/select-animals-transfer'),
+                                    animationDelay: const Duration(milliseconds: 1200),
                                   ),
                                 ],
                               );

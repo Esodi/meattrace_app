@@ -5,12 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../providers/product_provider.dart';
 import '../providers/product_category_provider.dart';
 import '../providers/animal_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/product.dart';
 import '../models/animal.dart';
 import '../models/product_category.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/enhanced_back_button.dart';
 import '../services/bluetooth_printing_service.dart';
+import '../utils/constants.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class CreateProductScreen extends StatefulWidget {
@@ -35,6 +37,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   bool _isPrinting = false;
   List<Product> _createdProducts = [];
 
+  // Animal selection state
+  List<Animal> _availableAnimals = [];
+  bool _isLoadingAnimals = false;
+  String? _animalsError;
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +54,133 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     await Future.wait([
       context.read<AnimalProvider>().fetchAnimals(),
       context.read<ProductCategoryProvider>().fetchCategories(),
+      context.read<ProductProvider>().fetchProducts(),
     ]);
+    await _loadAvailableAnimals();
+  }
+
+  Future<void> _loadAvailableAnimals() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingAnimals = true;
+      _animalsError = null;
+    });
+
+    try {
+      final animalProvider = context.read<AnimalProvider>();
+      final productProvider = context.read<ProductProvider>();
+      final authProvider = context.read<AuthProvider>();
+
+      // Get current user's processing unit - assuming it's the user's ID for now
+      // In a real implementation, this would come from user profile or separate service
+      final currentUserId = authProvider.user?.id;
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get all products to check which animals have been used
+      final usedAnimalIds = productProvider.products
+          .map((product) => product.animal)
+          .toSet();
+
+      // Filter available animals
+      final availableAnimals = animalProvider.animals.where((animal) {
+        return animal.slaughtered &&
+               animal.receivedBy != null &&
+               animal.receivedBy == currentUserId && // Belongs to current user's processing unit
+               !usedAnimalIds.contains(animal.id); // Not used for product creation
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _availableAnimals = availableAnimals;
+          _isLoadingAnimals = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _animalsError = e.toString();
+          _isLoadingAnimals = false;
+        });
+      }
+    }
+  }
+
+  void _showAnimalSelectionDialog() async {
+    final selectedAnimal = await showDialog<Animal>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Animal'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: _isLoadingAnimals
+              ? const Center(child: LoadingIndicator())
+              : _animalsError != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error, color: Colors.red, size: 48),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading animals: $_animalsError',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _loadAvailableAnimals();
+                            },
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _availableAnimals.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No available animals found.\nAnimals must be slaughtered, received at your processing unit, and not yet used for product creation.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _availableAnimals.length,
+                          itemBuilder: (context, index) {
+                            final animal = _availableAnimals[index];
+                            final isSelected = _selectedAnimal?.id == animal.id;
+                            return ListTile(
+                              title: Text(
+                                animal.animalName != null
+                                    ? '${animal.species} - ${animal.animalName}'
+                                    : '${animal.species} - ${animal.animalId}',
+                              ),
+                              subtitle: Text(
+                                'ID: ${animal.animalId} • Farm: ${animal.farmName}',
+                              ),
+                              trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+                              onTap: () => Navigator.of(context).pop(animal),
+                            );
+                          },
+                        ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (selectedAnimal != null) {
+      setState(() => _selectedAnimal = selectedAnimal);
+    }
   }
 
   @override
@@ -70,7 +203,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildAnimalDropdown(),
+                    _buildAnimalSelection(),
                     SizedBox(height: isTablet ? 24 : 16),
                     _buildCategoryMultiSelect(),
                     if (_selectedCategories.isNotEmpty) ...[
@@ -90,52 +223,60 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     );
   }
 
-  Widget _buildAnimalDropdown() {
-    return Consumer<AnimalProvider>(
-      builder: (context, animalProvider, child) {
-        final slaughteredAnimals = animalProvider.animals
-            .where((animal) => animal.slaughtered && animal.receivedBy != null)
-            .toList();
-
-        return Semantics(
-          label: 'Select a slaughtered animal for the product',
-          child: DropdownButtonFormField<Animal>(
-            initialValue: _selectedAnimal,
-            decoration: InputDecoration(
-              labelText: 'Select Received & Confirmed Animal',
-              border: const OutlineInputBorder(),
-              helperText: 'Choose from available received animals',
-              suffixIcon: Tooltip(
-                message: 'Select the animal from which products will be created. Only slaughtered animals that have been confirmed as received at your processing unit are available.',
-                child: const Icon(Icons.help_outline, size: 18),
-              ),
+  Widget _buildAnimalSelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Select Received & Confirmed Animal',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
-            items: slaughteredAnimals.isEmpty
-                ? [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text(
-                        'No received animals available. Please receive animals first.',
-                        style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-                      ),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'Select the animal from which products will be created. Only slaughtered animals that have been confirmed as received at your processing unit and not yet used for product creation are available.',
+              child: const Icon(Icons.help_outline, size: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Semantics(
+          label: 'Select a slaughtered animal for the product',
+          child: ElevatedButton(
+            onPressed: _showAnimalSelectionDialog,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              alignment: Alignment.centerLeft,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _selectedAnimal != null
+                        ? (_selectedAnimal!.animalName != null
+                            ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
+                            : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}')
+                        : 'Select an animal...',
+                    style: TextStyle(
+                      color: _selectedAnimal != null ? Colors.black : Colors.grey,
                     ),
-                  ]
-                : slaughteredAnimals.map((animal) {
-                    return DropdownMenuItem(
-                      value: animal,
-                      child: Text(
-                        animal.animalName != null
-                            ? '${animal.species} - ${animal.animalName} (${animal.animalId ?? animal.id})'
-                            : '${animal.species} - ${animal.animalId ?? animal.id}',
-                      ),
-                    );
-                  }).toList(),
-            onChanged: (value) => setState(() => _selectedAnimal = value),
-            validator: (value) =>
-                value == null ? 'Please select an animal' : null,
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+        if (_animalsError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Error loading animals: $_animalsError',
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
+      ],
     );
   }
 
@@ -630,8 +771,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
       // Print
       if (product != null) {
+        final qrData = '${Constants.baseUrl}/product-info/view/${product.id}';
         await printingService.printQRCode(
-          'product:${product.id}:${product.batchNumber}',
+          qrData,
           product.name,
           product.batchNumber,
         );
@@ -640,8 +782,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         );
       } else if (products != null) {
         for (final prod in products) {
+          final qrData = '${Constants.baseUrl}/product-info/view/${prod.id}';
           await printingService.printQRCode(
-            'product:${prod.id}:${prod.batchNumber}',
+            qrData,
             prod.name,
             prod.batchNumber,
           );
@@ -655,9 +798,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       await printingService.disconnect();
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Printing failed: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Printing failed: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isPrinting = false);

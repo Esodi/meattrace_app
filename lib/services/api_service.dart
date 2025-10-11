@@ -3,6 +3,7 @@ import '../models/meat_trace.dart';
 import '../models/product.dart';
 import '../models/animal.dart';
 import '../models/production_stats.dart';
+import '../models/order.dart';
 import 'dio_client.dart';
 
 class ApiService {
@@ -75,6 +76,15 @@ class ApiService {
     }
   }
 
+  Future<String> regenerateProductQrCode(String productId) async {
+    try {
+      final response = await _dioClient.dio.post('/products/$productId/regenerate_qr/');
+      return response.data['qr_code_url'];
+    } on DioException catch (e) {
+      throw Exception('Failed to regenerate QR code: ${e.message}');
+    }
+  }
+
   Future<Product> fetchProduct(String productId) async {
     try {
       final response = await _dioClient.dio.get('/products/$productId/');
@@ -84,39 +94,6 @@ class ApiService {
         throw Exception('Product not found');
       }
       throw Exception('Failed to fetch product: ${e.message}');
-    }
-  }
-
-  Future<Animal> fetchAnimal(String animalId) async {
-    try {
-      final response = await _dioClient.dio.get('/animals/$animalId/');
-      return Animal.fromMap(response.data);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        throw Exception('Animal not found');
-      }
-      throw Exception('Failed to fetch animal: ${e.message}');
-    }
-  }
-
-  Future<List<Product>> fetchProductsByBatch(String batchNumber) async {
-    try {
-      final response = await _dioClient.dio.get(
-        '/products/',
-        queryParameters: {'batch_number': batchNumber},
-      );
-
-      final data = response.data;
-      if (data is Map && data.containsKey('results')) {
-        final results = data['results'] as List;
-        return results.map((json) => Product.fromMap(json)).toList();
-      } else if (data is List) {
-        return data.map((json) => Product.fromMap(json)).toList();
-      } else {
-        throw Exception('Unexpected response format');
-      }
-    } on DioException catch (e) {
-      throw Exception('Failed to fetch products by batch: ${e.message}');
     }
   }
 
@@ -135,6 +112,23 @@ class ApiService {
       return response.data;
     } on DioException catch (e) {
       throw Exception('Failed to fetch processing pipeline: ${e.message}');
+    }
+  }
+
+  Future<List<Order>> fetchOrders() async {
+    try {
+      final response = await _dioClient.dio.get('/orders/');
+      final data = response.data;
+      if (data is Map && data.containsKey('results')) {
+        final results = data['results'] as List;
+        return results.map((json) => Order.fromJson(json)).toList();
+      } else if (data is List) {
+        return data.map((json) => Order.fromJson(json)).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch orders: ${e.message}');
     }
   }
 }

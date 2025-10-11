@@ -91,8 +91,13 @@ class _SelectProcessingUnitScreenState extends State<SelectProcessingUnitScreen>
               onPressed: _isTransferring ? null : _initiateTransfer,
               backgroundColor: AppTheme.accentOrange,
               child: _isTransferring
-                  ? const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
                     )
                   : const Icon(Icons.send),
             )
@@ -156,34 +161,36 @@ class _SelectProcessingUnitScreenState extends State<SelectProcessingUnitScreen>
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: _processingUnits.length,
-            itemBuilder: (context, index) {
-              final processingUnit = _processingUnits[index];
-              final isSelected = _selectedProcessingUnit?['id'] == processingUnit['id'];
-
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: RadioListTile<Map<String, dynamic>>(
-                  title: Text(
-                    processingUnit['username'],
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  subtitle: Text(
-                    processingUnit['email'],
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  value: processingUnit,
-                  groupValue: _selectedProcessingUnit,
-                  onChanged: (Map<String, dynamic>? value) {
-                    setState(() {
-                      _selectedProcessingUnit = value;
-                    });
-                  },
-                  activeColor: AppTheme.accentOrange,
-                ),
-              );
+          child: RadioGroup<Map<String, dynamic>>(
+            groupValue: _selectedProcessingUnit,
+            onChanged: (Map<String, dynamic>? value) {
+              setState(() {
+                _selectedProcessingUnit = value;
+              });
             },
+            child: ListView.builder(
+              itemCount: _processingUnits.length,
+              itemBuilder: (context, index) {
+                final processingUnit = _processingUnits[index];
+                final isSelected = _selectedProcessingUnit?['id'] == processingUnit['id'];
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: RadioListTile<Map<String, dynamic>>(
+                    title: Text(
+                      processingUnit['username'],
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: Text(
+                      processingUnit['email'],
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: processingUnit,
+                    activeColor: AppTheme.accentOrange,
+                  ),
+                );
+              },
+            ),
           ),
         ),
         if (_selectedProcessingUnit != null)
@@ -251,28 +258,37 @@ class _SelectProcessingUnitScreenState extends State<SelectProcessingUnitScreen>
       final response = await _animalProvider.transferAnimals(animalIds, processingUnitId);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Transfer completed successfully'),
-            backgroundColor: AppTheme.successGreen,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-
-        // Navigate back to farmer home
-        context.go('/farmer-home');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(response['message'] ?? 'Transfer completed successfully'),
+                backgroundColor: AppTheme.successGreen,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+            // Navigate back to farmer home
+            context.go('/farmer-home');
+          }
+        });
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Transfer failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Transfer failed: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        });
       }
     } finally {
-      setState(() => _isTransferring = false);
+      if (mounted) {
+        setState(() => _isTransferring = false);
+      }
     }
   }
 }

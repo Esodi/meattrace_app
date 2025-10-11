@@ -57,6 +57,7 @@ class AnimalProvider with ChangeNotifier {
   }
 
   Future<void> fetchAnimals({String? species, bool? slaughtered, String? search, int? page}) async {
+    debugPrint('AnimalProvider: Fetching animals with slaughtered parameter: $slaughtered (null=show all, false=active, true=slaughtered)');
     _isLoading = true;
     _error = null;
     notifyListeners();

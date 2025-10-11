@@ -8,6 +8,7 @@ class Order {
   final DateTime updatedAt;
   final String? deliveryAddress;
   final String? notes;
+  final String? qrCode;
   final List<OrderItem> items;
 
   Order({
@@ -20,6 +21,7 @@ class Order {
     required this.updatedAt,
     this.deliveryAddress,
     this.notes,
+    this.qrCode,
     this.items = const [],
   });
 
@@ -34,6 +36,7 @@ class Order {
       updatedAt: DateTime.parse(json['updated_at']),
       deliveryAddress: json['delivery_address'],
       notes: json['notes'],
+      qrCode: json['qr_code'],
       items: json['items'] != null
           ? (json['items'] as List).map((item) => OrderItem.fromJson(item)).toList()
           : [],
@@ -51,6 +54,7 @@ class Order {
       'updated_at': updatedAt.toIso8601String(),
       'delivery_address': deliveryAddress,
       'notes': notes,
+      'qr_code': qrCode,
       'items': items.map((item) => item.toJson()).toList(),
     };
   }
@@ -65,6 +69,7 @@ class Order {
     DateTime? updatedAt,
     String? deliveryAddress,
     String? notes,
+    String? qrCode,
     List<OrderItem>? items,
   }) {
     return Order(
@@ -77,6 +82,7 @@ class Order {
       updatedAt: updatedAt ?? this.updatedAt,
       deliveryAddress: deliveryAddress ?? this.deliveryAddress,
       notes: notes ?? this.notes,
+      qrCode: qrCode ?? this.qrCode,
       items: items ?? this.items,
     );
   }

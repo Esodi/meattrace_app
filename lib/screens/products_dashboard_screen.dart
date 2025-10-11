@@ -12,6 +12,7 @@ import '../widgets/loading_indicator.dart';
 import '../widgets/enhanced_back_button.dart';
 import '../services/bluetooth_printing_service.dart';
 import '../utils/responsive.dart';
+import '../utils/constants.dart';
 import 'create_product_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -65,6 +66,11 @@ class _ProductsDashboardScreenState extends State<ProductsDashboardScreen> {
               tooltip: 'Cancel selection',
             ),
           ] else ...[
+            IconButton(
+              icon: const Icon(Icons.category),
+              onPressed: () => context.go('/product-categories'),
+              tooltip: 'Manage product categories',
+            ),
             IconButton(
               icon: const Icon(Icons.checklist),
               onPressed: () => setState(() => _isSelectionMode = true),
@@ -626,14 +632,14 @@ class _ProductsDashboardScreenState extends State<ProductsDashboardScreen> {
 
       // Print
       if (product != null) {
-        final qrData = product.qrCode ?? 'https://meat-trace.com/product/${product.id}';
+        final qrData = '${Constants.baseUrl}/product-info/view/${product.id}';
         await printingService.printQRCode(qrData, product.name, product.batchNumber);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Printed QR code for ${product.name}')),
         );
       } else if (products != null) {
         for (final prod in products) {
-          final qrData = prod.qrCode ?? 'https://meat-trace.com/product/${prod.id}';
+          final qrData = '${Constants.baseUrl}/product-info/view/${prod.id}';
           await printingService.printQRCode(qrData, prod.name, prod.batchNumber);
         }
         ScaffoldMessenger.of(context).showSnackBar(

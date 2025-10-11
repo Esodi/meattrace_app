@@ -34,22 +34,26 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   Future<void> _loadRegisteredAnimals() async {
+    if (!mounted) return;
     setState(() => _isLoadingAnimals = true);
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
       await animalProvider.fetchAnimals(slaughtered: false);
-      setState(() {
-        _registeredAnimals = animalProvider.animals.where((animal) => !animal.slaughtered).toList();
-        _isLoadingAnimals = false;
-      });
+      if (mounted) {
+        setState(() {
+          _registeredAnimals = animalProvider.animals.where((animal) => !animal.slaughtered).toList();
+          _isLoadingAnimals = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoadingAnimals = false);
-      _showError('Failed to load registered animals: $e');
+      if (mounted) setState(() => _isLoadingAnimals = false);
+      if (mounted) _showError('Failed to load registered animals: $e');
     }
   }
 
   Future<void> _searchAnimal() async {
     if (_searchController.text.isEmpty) return;
+    if (!mounted) return;
 
     setState(() {
       _isSearching = true;
@@ -78,21 +82,26 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         );
       }
 
-      setState(() {
-        _selectedAnimal = foundAnimal;
-      });
+      if (mounted) {
+        setState(() {
+          _selectedAnimal = foundAnimal;
+        });
+      }
     } catch (e) {
       final searchField = _searchType == 'id' ? 'ID' : 'name';
-      _showError('Animal not found. Please check the $searchField and try again.');
+      if (mounted) _showError('Animal not found. Please check the $searchField and try again.');
     } finally {
-      setState(() {
-        _isSearching = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+        });
+      }
     }
   }
 
   Future<void> _slaughterAnimal() async {
     if (_selectedAnimal == null) return;
+    if (!mounted) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -122,7 +131,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
       await animalProvider.slaughterAnimal(
-        _selectedAnimal!.animalId!,
+        _selectedAnimal!.animalId,
         DateTime.now(),
       );
 
@@ -136,14 +145,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         // Refresh the list of registered animals to remove the slaughtered animal
         await _loadRegisteredAnimals();
         // Clear the selected animal since it's now slaughtered
-        setState(() {
-          _selectedAnimal = null;
-        });
+        if (mounted) {
+          setState(() {
+            _selectedAnimal = null;
+          });
+        }
         // Navigate to carcass measurement screen instead of home
         context.go('/carcass-measurement', extra: _selectedAnimal);
       }
     } catch (e) {
-      _showError('Failed to slaughter animal: ${e.toString()}');
+      if (mounted) _showError('Failed to slaughter animal: ${e.toString()}');
     }
   }
 
@@ -187,39 +198,33 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                     ),
                     const SizedBox(height: 16),
                     // Search type selection
-                    Row(
-                      children: [
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Search by ID'),
-                            value: 'id',
-                            groupValue: _searchType,
-                            onChanged: (value) {
-                              setState(() {
-                                _searchType = value!;
-                                _searchController.clear();
-                                _selectedAnimal = null;
-                              });
-                            },
-                            dense: true,
+                    RadioGroup<String>(
+                      groupValue: _searchType,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchType = value!;
+                          _searchController.clear();
+                          _selectedAnimal = null;
+                        });
+                      },
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: RadioListTile<String>(
+                              title: const Text('Search by ID'),
+                              value: 'id',
+                              dense: true,
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Search by Name'),
-                            value: 'name',
-                            groupValue: _searchType,
-                            onChanged: (value) {
-                              setState(() {
-                                _searchType = value!;
-                                _searchController.clear();
-                                _selectedAnimal = null;
-                              });
-                            },
-                            dense: true,
+                          Expanded(
+                            child: RadioListTile<String>(
+                              title: const Text('Search by Name'),
+                              value: 'name',
+                              dense: true,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -305,13 +310,13 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                             final isSelected = _selectedAnimal?.id == animal.id;
 
                             return Card(
-                              color: isSelected ? AppTheme.primaryGreen.withOpacity(0.1) : null,
+                              color: isSelected ? AppTheme.primaryGreen.withValues(alpha:0.1) : null,
                               child: ListTile(
                                 leading: Container(
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryGreen.withOpacity(0.1),
+                                    color: AppTheme.primaryGreen.withValues(alpha:0.1),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: const Icon(
@@ -371,7 +376,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                             width: 60,
                             height: 60,
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withOpacity(0.1),
+                              color: AppTheme.primaryGreen.withValues(alpha:0.1),
                               borderRadius: BorderRadius.circular(30),
                             ),
                             child: const Icon(
@@ -437,7 +442,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                           Expanded(
                             child: _buildInfoItem(
                               'Farm',
-                              _selectedAnimal!.farmName ?? 'N/A',
+                              _selectedAnimal!.farmName,
                               Icons.home,
                             ),
                           ),
@@ -450,10 +455,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.warningAmber.withOpacity(0.1),
+                          color: AppTheme.warningAmber.withValues(alpha:0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: AppTheme.warningAmber.withOpacity(0.3),
+                            color: AppTheme.warningAmber.withValues(alpha:0.3),
                           ),
                         ),
                         child: Row(

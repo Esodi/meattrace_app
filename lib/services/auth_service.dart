@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/user.dart';
 import 'dio_client.dart';
@@ -17,8 +18,8 @@ class AuthService {
   Future<User> login(String username, String password) async {
     try {
       // Log the attempt for debugging
-      print('🔐 Attempting login for user: $username');
-      print('🌐 Using base URL: ${Constants.baseUrl}');
+      debugPrint('🔐 Attempting login for user: $username');
+      debugPrint('🌐 Using base URL: ${Constants.baseUrl}');
       
       // Use FormData for login endpoint (TokenObtainPairView expects form data)
       final formData = FormData.fromMap({
@@ -26,14 +27,14 @@ class AuthService {
         'password': password,
       });
 
-      print('📤 Sending login request to: ${Constants.baseUrl}${Constants.loginEndpoint}');
+      debugPrint('📤 Sending login request to: ${Constants.baseUrl}${Constants.loginEndpoint}');
       
       final response = await _dioClient.dio.post(
         Constants.loginEndpoint,
         data: formData,
       );
 
-      print('✅ Login request successful, status: ${response.statusCode}');
+      debugPrint('✅ Login request successful, status: ${response.statusCode}');
       
       final tokens = response.data;
       final accessToken = tokens['access'];
@@ -45,19 +46,19 @@ class AuthService {
 
       // Store tokens
       await _dioClient.setAuthTokens(accessToken, refreshToken);
-      print('💾 Tokens stored successfully');
+      debugPrint('💾 Tokens stored successfully');
 
       // Get user profile information
-      print('👤 Fetching user profile...');
+      debugPrint('👤 Fetching user profile...');
       final user = await _getUserProfile(accessToken);
-      print('✅ User profile fetched successfully: ${user.username}');
+      debugPrint('✅ User profile fetched successfully: ${user.username}');
 
       return user;
     } on DioException catch (e) {
-      print('❌ Login failed with DioException: ${e.type} - ${e.message}');
+      debugPrint('❌ Login failed with DioException: ${e.type} - ${e.message}');
       if (e.response != null) {
-        print('📄 Response status: ${e.response?.statusCode}');
-        print('📄 Response data: ${e.response?.data}');
+        debugPrint('📄 Response status: ${e.response?.statusCode}');
+        debugPrint('📄 Response data: ${e.response?.data}');
       }
       
       // Provide more specific error messages
@@ -79,7 +80,7 @@ class AuthService {
         throw Exception('Login failed: ${e.message ?? 'Unknown error'}');
       }
     } catch (e) {
-      print('❌ Login failed with unexpected error: $e');
+      debugPrint('❌ Login failed with unexpected error: $e');
       throw Exception('Login failed: $e');
     }
   }
@@ -137,7 +138,7 @@ class AuthService {
 
   Future<User> _getUserProfile(String accessToken) async {
     try {
-      print('👤 Fetching user profile from: ${Constants.baseUrl}${Constants.userProfileEndpoint}');
+      debugPrint('👤 Fetching user profile from: ${Constants.baseUrl}${Constants.userProfileEndpoint}');
       
       // Create a temporary Dio instance with the token for this request
       final tempDio = Dio(
@@ -154,8 +155,8 @@ class AuthService {
 
       // Get user profile from the dedicated endpoint
       final response = await tempDio.get(Constants.userProfileEndpoint);
-      print('✅ Profile response status: ${response.statusCode}');
-      print('📄 Profile data: ${response.data}');
+      debugPrint('✅ Profile response status: ${response.statusCode}');
+      debugPrint('📄 Profile data: ${response.data}');
       
       final profileData = response.data;
 
@@ -165,9 +166,9 @@ class AuthService {
 
       return User.fromJson(profileData);
     } on DioException catch (e) {
-      print('❌ Profile fetch failed with DioException: ${e.type} - ${e.message}');
+      debugPrint('❌ Profile fetch failed with DioException: ${e.type} - ${e.message}');
       if (e.response != null) {
-        print('📄 Profile error response: ${e.response?.statusCode} - ${e.response?.data}');
+        debugPrint('📄 Profile error response: ${e.response?.statusCode} - ${e.response?.data}');
       }
       
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -179,7 +180,7 @@ class AuthService {
         throw Exception('Failed to get user profile: ${e.message ?? 'Unknown error'}');
       }
     } catch (e) {
-      print('❌ Profile fetch failed with unexpected error: $e');
+      debugPrint('❌ Profile fetch failed with unexpected error: $e');
       throw Exception('Failed to get user profile: $e');
     }
   }

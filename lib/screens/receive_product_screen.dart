@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +9,7 @@ import '../models/shop_receipt.dart';
 import '../providers/product_provider.dart';
 import '../services/shop_receipt_service.dart';
 import '../widgets/loading_indicator.dart';
+import '../deferred/qr_scanner_deferred.dart' deferred as qrDeferred show QRView, QRViewController, QrScannerOverlayShape;
 
 class ReceiveProductScreen extends StatefulWidget {
   const ReceiveProductScreen({super.key});
@@ -22,7 +22,10 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  QRViewController? qrController;
+  late Future<void> _libraryLoader;
+  bool _isLibraryLoaded = false;
+  String? _loadError;
+  dynamic qrController;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _receivedDateController = TextEditingController();
 
@@ -41,7 +44,21 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
     _receivedDateController.text = DateFormat(
       'yyyy-MM-dd',
     ).format(_receivedDate);
+    _libraryLoader = _loadLibrary();
     _loadShops();
+  }
+
+  Future<void> _loadLibrary() async {
+    try {
+      await qrDeferred.loadLibrary();
+      setState(() {
+        _isLibraryLoaded = true;
+      });
+    } catch (e) {
+      setState(() {
+        _loadError = e.toString();
+      });
+    }
   }
 
   Future<void> _loadShops() async {
@@ -76,14 +93,52 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
   }
 
   Widget _buildQRScanTab() {
+    if (_loadError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text('Failed to load QR scanner'),
+            const SizedBox(height: 8),
+            Text(_loadError!, style: const TextStyle(fontSize: 12)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _loadError = null;
+                  _libraryLoader = _loadLibrary();
+                });
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!_isLibraryLoaded) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            LoadingIndicator(),
+            SizedBox(height: 16),
+            Text('Loading QR scanner...'),
+          ],
+        ),
+      );
+    }
+
     return Column(
       children: [
         Expanded(
           flex: 4,
-          child: QRView(
+          child: qrDeferred.QRView(
             key: qrKey,
             onQRViewCreated: _onQRViewCreated,
-            overlay: QrScannerOverlayShape(
+            overlay: qrDeferred.QrScannerOverlayShape(
               borderColor: Colors.red,
               borderRadius: 10,
               borderLength: 30,
@@ -222,7 +277,7 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
     );
   }
 
-  void _onQRViewCreated(QRViewController controller) {
+  void _onQRViewCreated(dynamic controller) {
     setState(() {
       qrController = controller;
     });
@@ -236,20 +291,29 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
   }
 
   Future<void> _processQRCode(String qrCode) async {
-    // Assume QR code format: 'product:{id}:{batch}'
-    final parts = qrCode.split(':');
-    if (parts.length >= 3 && parts[0] == 'product') {
-      final productId = int.tryParse(parts[1]);
-      if (productId != null) {
-        final product = await context.read<ProductProvider>().fetchProductByQR(
-          qrCode,
-        );
-        if (product != null) {
-          setState(() => _selectedProduct = product);
-          Fluttertoast.showToast(msg: 'Product scanned successfully');
-        } else {
-          Fluttertoast.showToast(msg: 'Product not found');
+    String? productId;
+    
+    // Parse the product info URL
+    if (qrCode.contains('/api/product-info/')) {
+      final uri = Uri.tryParse(qrCode);
+      if (uri != null) {
+        final segments = uri.pathSegments;
+        final index = segments.indexOf('product-info');
+        if (index != -1 && index + 1 < segments.length) {
+          productId = segments[index + 1];
         }
+      }
+    }
+
+    if (productId != null) {
+      final product = await context.read<ProductProvider>().fetchProductByQR(
+        qrCode,
+      );
+      if (product != null) {
+        setState(() => _selectedProduct = product);
+        Fluttertoast.showToast(msg: 'Product scanned successfully');
+      } else {
+        Fluttertoast.showToast(msg: 'Product not found');
       }
     }
   }
@@ -307,7 +371,9 @@ class _ReceiveProductScreenState extends State<ReceiveProductScreen>
     try {
       await ShopReceiptService().recordReceipt(receipt);
       Fluttertoast.showToast(msg: 'Product received successfully');
-      currentContext.go('/product-detail/$productId');
+      if (mounted) {
+        currentContext.go('/product-detail/$productId');
+      }
     } catch (e) {
       Fluttertoast.showToast(msg: 'Failed to record receipt: $e');
     } finally {

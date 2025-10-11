@@ -199,24 +199,12 @@ class ProcessorDashboardFAB extends StatelessWidget {
           child: const Icon(Icons.inventory_2, color: Colors.white),
           backgroundColor: AppTheme.accentOrange,
           foregroundColor: Colors.white,
-          label: 'Update Inventory',
+          label: 'Producer Inventory',
           labelStyle: const TextStyle(fontSize: 14.0, color: Colors.white),
           labelBackgroundColor: AppTheme.accentOrange,
           onTap: () {
             HapticFeedback.lightImpact();
-            context.go('/inventory-management');
-          },
-        ),
-        SpeedDialChild(
-          child: const Icon(Icons.qr_code_scanner, color: Colors.white),
-          backgroundColor: AppTheme.secondaryBurgundy,
-          foregroundColor: Colors.white,
-          label: 'Processing Scanner',
-          labelStyle: const TextStyle(fontSize: 14.0, color: Colors.white),
-          labelBackgroundColor: AppTheme.secondaryBurgundy,
-          onTap: () {
-            HapticFeedback.lightImpact();
-            context.go('/processing-qr-scanner');
+            context.go('/producer-inventory');
           },
         ),
         SpeedDialChild(

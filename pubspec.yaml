@@ -54,8 +54,6 @@ dependencies:
   fl_chart: ^0.66.2
   flutter_staggered_animations: ^1.1.1
   flutter_speed_dial: ^7.0.0
-  flutter_hooks: ^0.20.5
-  cached_network_image: ^3.3.1
   rxdart: ^0.28.0
   geolocator: ^10.1.0
 
@@ -77,7 +75,7 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icons/qr-code.png"
+  image_path: "assets/icons/qr-code.webp"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

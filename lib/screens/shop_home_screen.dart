@@ -67,26 +67,31 @@ class ShopHomeScreen extends StatefulWidget {
 
     return ResponsiveDashboardLayout(
       currentRoute: '/shop-home',
-      content: WillPopScope(
-        onWillPop: () async {
-          final shouldExit = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Exit App'),
-              content: const Text('Are you sure you want to exit the app?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Exit'),
-                ),
-              ],
-            ),
-          );
-          return shouldExit ?? false;
+      content: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (!didPop) {
+            final shouldExit = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Exit App'),
+                content: const Text('Are you sure you want to exit the app?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Exit'),
+                  ),
+                ],
+              ),
+            );
+            if (shouldExit == true) {
+              if (mounted) Navigator.of(context).pop();
+            }
+          }
         },
         child: Scaffold(
           appBar: AppBar(

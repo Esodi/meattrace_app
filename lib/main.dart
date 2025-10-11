@@ -35,7 +35,6 @@ import 'screens/product_category_screen.dart';
 import 'screens/products_dashboard_screen.dart';
 import 'screens/product_detail_screen.dart';
 import 'screens/qr_scanner_screen.dart';
-import 'screens/processing_qr_scanner_screen.dart';
 import 'screens/scan_history_screen.dart';
 import 'screens/select_animals_transfer_screen.dart';
 import 'screens/select_processing_unit_screen.dart';
@@ -43,9 +42,11 @@ import 'screens/select_products_transfer_screen.dart';
 import 'screens/select_shop_transfer_screen.dart';
 import 'screens/receive_products_screen.dart';
 import 'screens/inventory_management_screen.dart';
+import 'screens/producer_inventory_screen.dart';
 import 'screens/place_order_screen.dart';
 import 'screens/network_debug_screen.dart';
 import 'screens/transferred_animals_screen.dart';
+import 'screens/processor_qr_codes_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -102,10 +103,6 @@ class MyApp extends StatelessWidget {
           },
         ),
         GoRoute(
-          path: '/processing-qr-scanner',
-          builder: (context, state) => const ProcessingQrScannerScreen(),
-        ),
-        GoRoute(
           path: '/scan-history',
           builder: (context, state) => const ScanHistoryScreen(),
         ),
@@ -158,12 +155,20 @@ class MyApp extends StatelessWidget {
           builder: (context, state) => const InventoryManagementScreen(),
         ),
         GoRoute(
+          path: '/producer-inventory',
+          builder: (context, state) => const ProducerInventoryScreen(),
+        ),
+        GoRoute(
           path: '/place-order',
           builder: (context, state) => const PlaceOrderScreen(),
         ),
         GoRoute(
           path: '/transferred-animals',
           builder: (context, state) => const TransferredAnimalsScreen(),
+        ),
+        GoRoute(
+          path: '/processor-qr-codes',
+          builder: (context, state) => const ProcessorQrCodesScreen(),
         ),
       ],
     );

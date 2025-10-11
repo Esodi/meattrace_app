@@ -1,7 +1,7 @@
 class Constants {
   // API Configuration - Fixed base URL for backend
-  // static const String baseUrl = 'https://dev.shambabora.co.tz/api/v2';
-  static const String baseUrl = 'http://192.168.44.223:8000/api/v2';
+  static const String baseUrl = 'https://dev.shambabora.co.tz/api/v2';
+  // static const String baseUrl = 'http://192.168.44.223:8000/api/v2';
 
   // API Endpoints
   static const String loginEndpoint = '/token/';

@@ -15,8 +15,10 @@ import '../widgets/responsive_dashboard_layout.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/real_time_progress_pipeline.dart';
 import '../services/api_service.dart';
+import '../services/dio_client.dart';
 import '../models/production_stats.dart';
 import '../models/processing_stage.dart' as models;
+import '../models/order.dart';
 
 class ProcessorHomeScreen extends StatefulWidget {
   const ProcessorHomeScreen({super.key});
@@ -27,7 +29,9 @@ class ProcessorHomeScreen extends StatefulWidget {
 
 class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsBindingObserver {
   late ApiService _apiService;
+  late DioClient _dioClient;
   ProductionStats? _productionStats;
+  List<Order> _orders = [];
   bool _isLoading = true;
   String? _error;
 
@@ -35,6 +39,7 @@ class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsB
   void initState() {
     super.initState();
     _apiService = ApiService();
+    _dioClient = DioClient();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -66,10 +71,12 @@ class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsB
       });
 
       final stats = await _apiService.fetchProductionStats();
+      final orders = await _apiService.fetchOrders();
 
       if (mounted) {
         setState(() {
           _productionStats = stats;
+          _orders = orders;
           _isLoading = false;
         });
       }
@@ -80,6 +87,132 @@ class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsB
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Widget _buildOrdersList() {
+    return Column(
+      children: _orders.map((order) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Order #${order.id}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(order.status),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        order.status.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Customer: ${order.customer}',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
+                Text(
+                  'Total: \$${order.totalAmount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: AppTheme.primaryGreen,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  'Created: ${order.createdAt.toLocal().toString().split('.')[0]}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                if (order.qrCode != null && order.qrCode!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Processing QR Code:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.textSecondary.withOpacity(0.3)),
+                      ),
+                      child: Image.network(
+                        '${DioClient.baseUrl}${order.qrCode}',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.qr_code,
+                            size: 60,
+                            color: Colors.grey,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Scan for detailed processing info',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'confirmed':
+        return Colors.blue;
+      case 'preparing':
+        return Colors.purple;
+      case 'ready':
+        return Colors.teal;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -239,16 +372,6 @@ class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsB
                                           ),
                                         ),
                                         SizedBox(width: spacing),
-                                        Expanded(
-                                          child: InteractiveDashboardCard(
-                                            title: 'Quality Score',
-                                            value: '95%',
-                                            icon: Icons.verified,
-                                            color: AppTheme.successGreen,
-                                            onTap: () => context.go('/quality-reports'),
-                                            animationDelay: const Duration(milliseconds: 400),
-                                          ),
-                                        ),
                                       ],
                                     ),
                                   ],
@@ -291,6 +414,17 @@ class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsB
 
                       const SizedBox(height: 32),
 
+                      // Processing Orders Section
+                      if (_orders.isNotEmpty) ...[
+                        DashboardSection(
+                          title: 'Processing Orders',
+                          children: [
+                            _buildOrdersList(),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+
                       // Quick Actions Row
                       DashboardSection(
                         title: 'Quick Actions',
@@ -331,23 +465,45 @@ class _ProcessorHomeScreenState extends State<ProcessorHomeScreen> with WidgetsB
                                   SizedBox(
                                     width: cardWidth,
                                     child: InteractiveDashboardCard(
-                                      title: 'Scan QR Code',
-                                      value: 'Process',
-                                      icon: Icons.qr_code_scanner,
-                                      color: AppTheme.accentOrange,
-                                      onTap: () => context.go('/processing-qr-scanner'),
-                                      animationDelay: const Duration(milliseconds: 1100),
+                                      title: 'View QR Codes',
+                                      value: 'Generated',
+                                      icon: Icons.qr_code,
+                                      color: AppTheme.primaryGreen,
+                                      onTap: () => context.go('/processor-qr-codes'),
+                                      animationDelay: const Duration(milliseconds: 1150),
                                     ),
                                   ),
                                   SizedBox(
                                     width: cardWidth,
                                     child: InteractiveDashboardCard(
-                                      title: 'Transfer Products',
-                                      value: 'Send',
-                                      icon: Icons.send,
-                                      color: AppTheme.secondaryBurgundy,
-                                      onTap: () => context.go('/select-products-transfer'),
+                                      title: 'Quality Score',
+                                      value: '95%',
+                                      icon: Icons.verified,
+                                      color: AppTheme.successGreen,
+                                      onTap: () => context.go('/quality-reports'),
                                       animationDelay: const Duration(milliseconds: 1200),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: InteractiveDashboardCard(
+                                      title: 'Producer Inventory',
+                                      value: 'Manage Products',
+                                      icon: Icons.inventory_2,
+                                      color: AppTheme.secondaryBlue,
+                                      onTap: () => context.go('/producer-inventory'),
+                                      animationDelay: const Duration(milliseconds: 1300),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: InteractiveDashboardCard(
+                                      title: 'Create Product Category',
+                                      value: 'Manage',
+                                      icon: Icons.category,
+                                      color: AppTheme.accentOrange,
+                                      onTap: () => context.go('/product-categories'),
+                                      animationDelay: const Duration(milliseconds: 1400),
                                     ),
                                   ),
                                 ],

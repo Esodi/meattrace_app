@@ -103,6 +103,22 @@ class NavigationService {
     }
   }
 
+  /// Save state for a route
+  Future<void> saveState(String route, Map<String, dynamic> state) async {
+    try {
+      _preservedStates[route] = state;
+
+      // Also save to persistent storage
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'navigation_state_$route',
+        json.encode(state),
+      );
+    } catch (e) {
+      // Ignore storage errors - state preservation is not critical
+    }
+  }
+
   /// Restore saved state for a route
   Future<Map<String, dynamic>?> restoreState(String route) async {
     try {

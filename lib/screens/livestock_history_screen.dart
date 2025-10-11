@@ -22,16 +22,12 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
   final TextEditingController _searchController = TextEditingController();
   
   // Filter states
-  String? _selectedSpecies;
-  bool? _selectedSlaughterStatus;
+  bool? _selectedSlaughterStatus = false;
   String _searchQuery = '';
-  
+
   // UI states
-  bool _showFilters = false;
+  bool _showFilters = true;
   double _lastScrollPosition = 0.0;
-  
-  // Available species for filtering
-  final List<String> _availableSpecies = ['Cow', 'Pig', 'Chicken', 'Sheep', 'Goat'];
   
   @override
   bool get wantKeepAlive => true;
@@ -78,10 +74,9 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
       final state = await NavigationService.instance.restoreState('/livestock-history');
       if (state != null) {
         setState(() {
-          _selectedSpecies = state['selectedSpecies'];
-          _selectedSlaughterStatus = state['selectedSlaughterStatus'];
+          _selectedSlaughterStatus = state['selectedSlaughterStatus'] ?? false;
           _searchQuery = state['searchQuery'] ?? '';
-          _showFilters = state['showFilters'] ?? false;
+          _showFilters = state['showFilters'] ?? true;
           _lastScrollPosition = state['scrollPosition'] ?? 0.0;
         });
         
@@ -108,25 +103,24 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
   /// Save current state for restoration
   void _saveCurrentState() {
     final state = {
-      'selectedSpecies': _selectedSpecies,
       'selectedSlaughterStatus': _selectedSlaughterStatus,
       'searchQuery': _searchQuery,
       'showFilters': _showFilters,
       'scrollPosition': _lastScrollPosition,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     };
-    
-    NavigationService.instance.restoreState('/livestock-history').then((_) {
+
+    NavigationService.instance.saveState('/livestock-history', state).then((_) {
       // Save state asynchronously to avoid blocking UI
     });
   }
 
   /// Load animals with current filters
   Future<void> _loadAnimals() async {
+    debugPrint('LivestockHistoryScreen: Fetching animals with slaughtered filter: $_selectedSlaughterStatus (false=active, true=slaughtered)');
     final animalProvider = context.read<AnimalProvider>();
     await animalProvider.fetchAnimals(
-      species: _selectedSpecies,
-      slaughtered: _selectedSlaughterStatus ?? false, // Default to active animals only
+      slaughtered: _selectedSlaughterStatus, // false=active, true=slaughtered
       search: _searchQuery.isNotEmpty ? _searchQuery : null,
     );
   }
@@ -145,14 +139,6 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
     });
   }
 
-  /// Handle species filter change
-  void _onSpeciesFilterChanged(String? species) {
-    setState(() {
-      _selectedSpecies = species;
-    });
-    _loadAnimals();
-  }
-
   /// Handle slaughter status filter change
   void _onSlaughterStatusFilterChanged(bool? status) {
     setState(() {
@@ -164,8 +150,7 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
   /// Clear all filters
   void _clearFilters() {
     setState(() {
-      _selectedSpecies = null;
-      _selectedSlaughterStatus = false; // Reset to show active animals only
+      _selectedSlaughterStatus = false; // Reset to show active animals
       _searchQuery = '';
       _searchController.clear();
     });
@@ -237,7 +222,6 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
   /// Get preserved state for back navigation
   Map<String, dynamic> _getPreservedState() {
     return {
-      'selectedSpecies': _selectedSpecies,
       'selectedSlaughterStatus': _selectedSlaughterStatus,
       'searchQuery': _searchQuery,
       'showFilters': _showFilters,
@@ -250,13 +234,19 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
   Widget build(BuildContext context) {
     super.build(context);
     
-    return WillPopScope(
-      onWillPop: () async {
-        _saveCurrentState();
-        return await context.smartNavigateBack(
-          userType: 'farmer',
-          preservedState: _getPreservedState(),
-        );
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          _saveCurrentState();
+          final shouldPop = await context.smartNavigateBack(
+            userType: 'farmer',
+            preservedState: _getPreservedState(),
+          );
+          if (shouldPop) {
+            if (mounted) Navigator.of(context).pop();
+          }
+        }
       },
       child: Scaffold(
         appBar: createEnhancedAppBarWithBackButton(
@@ -382,19 +372,6 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
             spacing: 8,
             runSpacing: 8,
             children: [
-              // Species filter
-              DropdownButton<String>(
-                value: _selectedSpecies,
-                hint: const Text('Species'),
-                items: _availableSpecies.map((species) {
-                  return DropdownMenuItem(
-                    value: species,
-                    child: Text(species),
-                  );
-                }).toList(),
-                onChanged: _onSpeciesFilterChanged,
-              ),
-              
               // Slaughter status filter
               DropdownButton<bool>(
                 value: _selectedSlaughterStatus,
@@ -693,35 +670,12 @@ class _EnhancedLivestockHistoryScreenState extends State<EnhancedLivestockHistor
   }
 
   List<Animal> _getFilteredAnimals(List<Animal> animals) {
-    return animals.where((animal) {
-      // Species filter
-      if (_selectedSpecies != null && 
-          animal.species.toLowerCase() != _selectedSpecies!.toLowerCase()) {
-        return false;
-      }
-      
-      // Slaughter status filter
-      if (_selectedSlaughterStatus != null && 
-          animal.slaughtered != _selectedSlaughterStatus!) {
-        return false;
-      }
-      
-      // Search filter
-      if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
-        return animal.species.toLowerCase().contains(query) ||
-               (animal.animalId?.toLowerCase().contains(query) ?? false) ||
-               (animal.breed?.toLowerCase().contains(query) ?? false) ||
-               (animal.farmName?.toLowerCase().contains(query) ?? false);
-      }
-      
-      return true;
-    }).toList();
+    // API already handles filtering, so return animals as-is
+    return animals;
   }
 
   bool _hasActiveFilters() {
-    return _selectedSpecies != null || 
-           _selectedSlaughterStatus != null || 
+    return _selectedSlaughterStatus == true ||
            _searchQuery.isNotEmpty;
   }
 

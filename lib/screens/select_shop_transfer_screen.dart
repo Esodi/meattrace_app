@@ -158,42 +158,44 @@ class _SelectShopTransferScreenState extends State<SelectShopTransferScreen> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: _shops.length,
-            itemBuilder: (context, index) {
-              final shop = _shops[index];
-              final isSelected = _selectedShop?['id'] == shop['id'];
-
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: SizedBox(
-                  height: 70,
-                  child: RadioListTile<Map<String, dynamic>>(
-                    title: Text(
-                      shop['username'],
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      shop['email'],
-                      style: const TextStyle(fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    value: shop,
-                    groupValue: _selectedShop,
-                    onChanged: (Map<String, dynamic>? value) {
-                      debugPrint('Shop selection changed: ${value?['username']}, id: ${value?['id']}');
-                      setState(() {
-                        _selectedShop = value;
-                      });
-                    },
-                    activeColor: AppTheme.accentOrange,
-                  ),
-                ),
-              );
+          child: RadioGroup<Map<String, dynamic>>(
+            groupValue: _selectedShop,
+            onChanged: (Map<String, dynamic>? value) {
+              debugPrint('Shop selection changed: ${value?['username']}, id: ${value?['id']}');
+              setState(() {
+                _selectedShop = value;
+              });
             },
+            child: ListView.builder(
+              itemCount: _shops.length,
+              itemBuilder: (context, index) {
+                final shop = _shops[index];
+                final isSelected = _selectedShop?['id'] == shop['id'];
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: SizedBox(
+                    height: 70,
+                    child: RadioListTile<Map<String, dynamic>>(
+                      title: Text(
+                        shop['username'],
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        shop['email'],
+                        style: const TextStyle(fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      value: shop,
+                      activeColor: AppTheme.accentOrange,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
         Container(

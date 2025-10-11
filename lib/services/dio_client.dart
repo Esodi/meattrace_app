@@ -63,10 +63,20 @@ class _AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    // Skip adding authorization header for authentication endpoints
+    if (options.path.contains('/register/') || options.path.contains('/token/')) {
+      developer.log('AuthInterceptor: Skipping Authorization header for auth endpoint ${options.path}');
+      super.onRequest(options, handler);
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(DioClient.accessTokenKey);
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
+      developer.log('AuthInterceptor: Added Authorization header for ${options.path}');
+    } else {
+      developer.log('AuthInterceptor: No token found for ${options.path}');
     }
     super.onRequest(options, handler);
   }
