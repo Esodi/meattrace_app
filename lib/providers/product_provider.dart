@@ -6,6 +6,7 @@ import 'package:rxdart/rxdart.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../services/database_helper.dart';
+import '../utils/initialization_helper.dart';
 
 class ProductProvider with ChangeNotifier {
   final ProductService _productService = ProductService();
@@ -14,6 +15,7 @@ class ProductProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   SharedPreferences? _prefs;
+  bool _isInitialized = false;
 
   // Stream-based updates
   final BehaviorSubject<List<Product>> _productsStream = BehaviorSubject.seeded([]);
@@ -27,20 +29,55 @@ class ProductProvider with ChangeNotifier {
   List<Product> get products => _products;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isInitialized => _isInitialized;
 
   // Stream getters
   Stream<List<Product>> get productsStream => _productsStream.stream;
   Stream<bool> get isLoadingStream => _isLoadingStream.stream;
   Stream<String?> get errorStream => _errorStream.stream;
 
+  // Lazy initializer for background data loading
+  late final LazyInitializer<void> _dataInitializer;
+
   ProductProvider() {
-    _initPrefs();
+    _dataInitializer = LazyInitializer(() => _initPrefs());
+    // Start initialization in background immediately
+    _startBackgroundInitialization();
     _startBackgroundSync();
   }
 
+  Future<void> _startBackgroundInitialization() async {
+    try {
+      await _dataInitializer.value;
+    } catch (e) {
+      // Handle initialization errors silently for now
+      debugPrint('ProductProvider initialization error: $e');
+    }
+  }
+
   Future<void> _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    await _loadOfflineData();
+    if (_isInitialized) return; // Already initialized
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Initialize SharedPreferences in background isolate
+      _prefs = await InitializationHelper.initSharedPreferences();
+      await _loadOfflineData();
+      _isInitialized = true;
+    } catch (e) {
+      debugPrint('Failed to initialize ProductProvider: $e');
+      _isInitialized = true; // Mark as initialized even on error
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Ensures data is initialized before proceeding
+  Future<void> ensureInitialized() async {
+    await _dataInitializer.value;
   }
 
   Future<void> _loadOfflineData() async {

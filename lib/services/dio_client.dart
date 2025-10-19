@@ -135,9 +135,6 @@ class _ErrorInterceptor extends Interceptor {
     developer.log('Error Message: ${err.message}');
     developer.log('================================');
 
-    // Check connectivity - simplified to avoid async issues
-    // Note: Connectivity check removed to keep interceptor synchronous
-
     switch (err.response?.statusCode) {
       case 400:
         // Enhanced error message with full response data
@@ -153,8 +150,13 @@ class _ErrorInterceptor extends Interceptor {
         developer.log('BadRequestException: $errorMessage');
         throw BadRequestException(errorMessage);
       case 401:
-        // For synchronous interceptor, throw immediately without token refresh
-        throw UnauthorizedException('Unauthorized');
+        // Session expired or invalid token
+        developer.log('🔒 Unauthorized: Session expired or invalid token');
+        // Clear tokens on 401 (unless it's a refresh token request)
+        if (!err.requestOptions.path.contains('/token/refresh/')) {
+          _clearTokensAsync();
+        }
+        throw UnauthorizedException('Your session has expired. Please login again.');
       case 403:
         throw ForbiddenException('Forbidden');
       case 404:
@@ -187,25 +189,18 @@ class _ErrorInterceptor extends Interceptor {
     }
   }
 
-  Future<bool> _tryRefreshToken() async {
-    try {
-      final refreshToken = await DioClient().getRefreshToken();
-      if (refreshToken == null) return false;
-
-      final response = await DioClient().dio.post(Constants.refreshTokenEndpoint, data: {
-        'refresh': refreshToken,
-      });
-
-      final newAccessToken = response.data['access'];
-      if (newAccessToken != null) {
+  // Helper method to clear tokens asynchronously
+  void _clearTokensAsync() {
+    Future.microtask(() async {
+      try {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(DioClient.accessTokenKey, newAccessToken);
-        return true;
+        await prefs.remove(DioClient.accessTokenKey);
+        await prefs.remove(DioClient.refreshTokenKey);
+        developer.log('🗑️ Tokens cleared due to 401 error');
+      } catch (e) {
+        developer.log('❌ Error clearing tokens: $e');
       }
-      return false;
-    } catch (e) {
-      return false;
-    }
+    });
   }
 }
 

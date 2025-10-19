@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io';
 import '../models/animal.dart';
 import '../services/animal_service.dart';
 import '../services/database_helper.dart';
 import '../services/dio_client.dart';
+import '../utils/initialization_helper.dart';
 
 class AnimalProvider with ChangeNotifier {
   final AnimalService _animalService = AnimalService();
@@ -15,26 +17,55 @@ class AnimalProvider with ChangeNotifier {
   bool _isCreatingAnimal = false;
   String? _error;
   SharedPreferences? _prefs;
+  bool _isInitialized = false;
 
   List<Animal> get animals => _animals;
   List<Animal> get transferredAnimals => _transferredAnimals;
   bool get isLoading => _isLoading;
   bool get isCreatingAnimal => _isCreatingAnimal;
   String? get error => _error;
+  bool get isInitialized => _isInitialized;
+
+  // Lazy initializer for background data loading
+  late final LazyInitializer<void> _dataInitializer;
 
   AnimalProvider() {
-    _initPrefs();
+    _dataInitializer = LazyInitializer(() => _initPrefs());
+    // Start initialization in background immediately
+    _startBackgroundInitialization();
+  }
+
+  Future<void> _startBackgroundInitialization() async {
+    try {
+      await _dataInitializer.value;
+    } catch (e) {
+      // Handle initialization errors silently for now
+      debugPrint('AnimalProvider initialization error: $e');
+    }
   }
 
   Future<void> _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    await _loadOfflineData();
+    if (_isInitialized) return; // Already initialized
+
+    try {
+      // Initialize SharedPreferences in background isolate
+      _prefs = await InitializationHelper.initSharedPreferences();
+      await _loadOfflineData();
+      _isInitialized = true;
+    } catch (e) {
+      debugPrint('Failed to initialize AnimalProvider: $e');
+      _isInitialized = true; // Mark as initialized even on error
+    }
+  }
+
+  /// Ensures data is initialized before proceeding
+  Future<void> ensureInitialized() async {
+    await _dataInitializer.value;
   }
 
   Future<void> _loadOfflineData() async {
     try {
       _animals = await _dbHelper.getAnimals();
-      notifyListeners();
     } catch (e) {
       // If database fails, try shared preferences as fallback
       if (_prefs != null) {
@@ -43,7 +74,6 @@ class AnimalProvider with ChangeNotifier {
           try {
             final data = json.decode(cached) as List;
             _animals = data.map((json) => Animal.fromMap(json)).toList();
-            notifyListeners();
           } catch (e) {
             // Ignore invalid cache
           }
@@ -56,28 +86,52 @@ class AnimalProvider with ChangeNotifier {
     await _dbHelper.insertAnimals(_animals);
   }
 
+  /// Clear local animal cache - useful before forcing a fresh fetch from server
+  Future<void> clearAnimals() async {
+    _animals = [];
+    await _dbHelper.clearAnimals();
+    debugPrint('AnimalProvider: Local animal cache and database cleared');
+  }
+
   Future<void> fetchAnimals({String? species, bool? slaughtered, String? search, int? page}) async {
-    debugPrint('AnimalProvider: Fetching animals with slaughtered parameter: $slaughtered (null=show all, false=active, true=slaughtered)');
+    debugPrint('🟦 AnimalProvider.fetchAnimals - START');
+    debugPrint('🟦 Parameters: species=$species, slaughtered=$slaughtered, search=$search, page=$page');
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      debugPrint('🟦 Calling AnimalService.getAnimals...');
       final result = await _animalService.getAnimals(
         species: species,
         slaughtered: slaughtered,
         search: search,
         page: page,
+        ordering: '-created_at', // Order by newest first
       );
+      debugPrint('🟦 AnimalService returned ${result['results'].length} animals');
       _animals = result['results'] as List<Animal>;
+      debugPrint('🟦 Updated _animals list. New count: ${_animals.length}');
+      
+      // Log each animal
+      for (var i = 0; i < _animals.length; i++) {
+        final animal = _animals[i];
+        debugPrint('  [$i] ${animal.animalId} - ${animal.species} (slaughtered: ${animal.slaughtered})');
+      }
+      
       await _saveToDatabase();
-    } catch (e) {
+      debugPrint('✅ AnimalProvider.fetchAnimals - SUCCESS. Total animals: ${_animals.length}');
+    } catch (e, stackTrace) {
+      debugPrint('❌ AnimalProvider.fetchAnimals - ERROR: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       _error = e.toString();
       // Load offline data if API fails
       await _loadOfflineData();
+      debugPrint('🟦 Loaded offline data. Animals count: ${_animals.length}');
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('🟦 AnimalProvider.fetchAnimals - COMPLETE. Notified listeners.');
     }
   }
 
@@ -91,7 +145,7 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 
-  Future<Animal?> createAnimal(Animal animal, {bool isOnline = true}) async {
+  Future<Animal?> createAnimal(Animal animal, {bool isOnline = true, File? photo}) async {
     _isCreatingAnimal = true;
     _error = null;
     notifyListeners();
@@ -99,9 +153,13 @@ class AnimalProvider with ChangeNotifier {
     try {
       Animal? createdAnimal;
       if (isOnline) {
-        createdAnimal = await _animalService.createAnimal(animal);
+        print('AnimalProvider.createAnimal - Creating animal online');
+        createdAnimal = await _animalService.createAnimal(animal, photo: photo);
+        print('AnimalProvider.createAnimal - Animal created: ${createdAnimal.animalId}');
         _animals.add(createdAnimal);
         await _saveToDatabase();
+        print('AnimalProvider.createAnimal - Animal added to local list. Total animals: ${_animals.length}');
+        notifyListeners(); // Notify listeners immediately after adding
       } else {
         // Save offline with synced = false
         final offlineAnimal = Animal(
@@ -109,14 +167,14 @@ class AnimalProvider with ChangeNotifier {
           farmer: animal.farmer,
           species: animal.species,
           age: animal.age,
-          weight: animal.weight,
+          liveWeight: animal.liveWeight,
           createdAt: animal.createdAt,
           slaughtered: animal.slaughtered,
           slaughteredAt: animal.slaughteredAt,
           animalId: animal.animalId,
           animalName: animal.animalName,
           breed: animal.breed,
-          farmName: animal.farmName,
+          abbatoirName: animal.abbatoirName,
           healthStatus: animal.healthStatus,
           synced: false,
         );
@@ -127,31 +185,37 @@ class AnimalProvider with ChangeNotifier {
       notifyListeners();
       return createdAnimal;
     } catch (e) {
+      print('AnimalProvider.createAnimal - API call failed: $e');
+      print('Animal data: species=${animal.species}, age=${animal.age}, abbatoir=${animal.abbatoirName}');
+      print('Connectivity status: ${isOnline ? "online" : "offline"}');
       _error = e.toString();
       // If API fails, try saving offline
       if (e is NetworkException || e is NoInternetException) {
+        print('Network error detected, saving offline');
         final offlineAnimal = Animal(
           id: DateTime.now().millisecondsSinceEpoch,
           farmer: animal.farmer,
           species: animal.species,
           age: animal.age,
-          weight: animal.weight,
+          liveWeight: animal.liveWeight,
           createdAt: animal.createdAt,
           slaughtered: animal.slaughtered,
           slaughteredAt: animal.slaughteredAt,
           animalId: animal.animalId,
           animalName: animal.animalName,
           breed: animal.breed,
-          farmName: animal.farmName,
+          abbatoirName: animal.abbatoirName,
           healthStatus: animal.healthStatus,
           synced: false,
         );
         _animals.add(offlineAnimal);
         await _dbHelper.insertAnimals([offlineAnimal], synced: false);
         _error = 'Saved offline. Will sync when online.';
+        print('Animal saved offline successfully');
         notifyListeners();
         return offlineAnimal;
       }
+      print('Non-network error, not saving offline');
       notifyListeners();
       return null;
     } finally {
@@ -176,13 +240,13 @@ class AnimalProvider with ChangeNotifier {
         farmer: updatedAnimal.farmer,
         species: updatedAnimal.species,
         age: updatedAnimal.age,
-        weight: updatedAnimal.weight,
+        liveWeight: updatedAnimal.liveWeight,
         createdAt: updatedAnimal.createdAt,
         slaughtered: updatedAnimal.slaughtered,
         slaughteredAt: result as DateTime?,  // Use the provided date
         animalId: updatedAnimal.animalId,
         breed: updatedAnimal.breed,
-        farmName: updatedAnimal.farmName,
+        abbatoirName: updatedAnimal.abbatoirName,
         healthStatus: updatedAnimal.healthStatus,
       );
       _animals[index] = updatedWithDate;
@@ -204,32 +268,79 @@ class AnimalProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Map<String, dynamic>> transferAnimals(List<int?> animalIds, int processingUnitId) async {
+  Future<Map<String, dynamic>> transferAnimals(
+    List<int?> animalIds, 
+    int processingUnitId, {
+    List<Map<String, dynamic>>? partTransfers,
+  }) async {
+    // Store original state for rollback
+    final originalAnimals = List<Animal>.from(_animals);
+    
     try {
-      final response = await _animalService.transferAnimals(animalIds, processingUnitId);
-      // Refresh animals list after transfer
+      print('PROVIDER_TRANSFER_START - Animal IDs: $animalIds, Processing Unit ID: $processingUnitId');
+      if (partTransfers != null && partTransfers.isNotEmpty) {
+        print('PROVIDER_TRANSFER_PARTS - Part transfers: $partTransfers');
+      }
+      print('PROVIDER_TRANSFER_ANIMAL_COUNT - Count: ${animalIds.length}');
+      print('PROVIDER_TRANSFER_FILTERED_IDS - Filtered: ${animalIds.where((id) => id != null).toList()}');
+
+      // OPTIMISTIC UPDATE: Immediately update UI before API call
+      final transferredIds = animalIds.where((id) => id != null).cast<int>().toSet();
+      _animals = _animals.where((animal) => !transferredIds.contains(animal.id)).toList();
+      print('PROVIDER_TRANSFER_OPTIMISTIC_UPDATE - Removed ${transferredIds.length} animals from local list');
+      notifyListeners(); // Update UI immediately
+      
+      // Make API call in background
+      final response = await _animalService.transferAnimals(
+        animalIds, 
+        processingUnitId,
+        partTransfers: partTransfers,
+      );
+      print('PROVIDER_TRANSFER_SUCCESS - Response: $response');
+
+      // Refresh from server to get accurate state
+      print('PROVIDER_TRANSFER_REFRESH_START - Refreshing animal list');
       await fetchAnimals();
+      print('PROVIDER_TRANSFER_REFRESH_COMPLETE - Animal list refreshed');
       return response;
     } catch (e) {
+      print('PROVIDER_TRANSFER_ERROR - Exception: $e');
+      print('PROVIDER_TRANSFER_ERROR_TYPE - Type: ${e.runtimeType}');
+      
+      // ROLLBACK: Restore original state on error
+      _animals = originalAnimals;
+      print('PROVIDER_TRANSFER_ROLLBACK - Restored original animal list');
+      notifyListeners(); // Update UI with rolled-back state
+      
       _error = e.toString();
-      notifyListeners();
       rethrow;
     }
   }
 
   Future<List<Animal>> fetchTransferredAnimals() async {
+    debugPrint('🔍 [AnimalProvider] fetchTransferredAnimals called');
     try {
-      return await _animalService.getTransferredAnimals();
+      debugPrint('🔍 [AnimalProvider] Calling _animalService.getTransferredAnimals()');
+      final result = await _animalService.getTransferredAnimals();
+      debugPrint('🔍 [AnimalProvider] Fetched ${result.length} transferred animals');
+      return result;
     } catch (e) {
+      debugPrint('🔍 [AnimalProvider] Error in fetchTransferredAnimals: $e');
       _error = e.toString();
       notifyListeners();
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> receiveAnimals(List<int?> animalIds) async {
+  Future<Map<String, dynamic>> receiveAnimals(
+    List<int?> animalIds, {
+    List<Map<String, dynamic>>? partReceives,
+  }) async {
     try {
-      final response = await _animalService.receiveAnimals(animalIds);
+      final response = await _animalService.receiveAnimals(
+        animalIds,
+        partReceives: partReceives,
+      );
       return response;
     } catch (e) {
       _error = e.toString();
@@ -302,6 +413,101 @@ class AnimalProvider with ChangeNotifier {
   Future<List<Map<String, dynamic>>> getProcessingUnits() async {
     try {
       return await _animalService.getProcessingUnits();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // Slaughter Parts Methods
+  Future<Map<String, dynamic>> getSlaughterParts({
+    int? animalId,
+    SlaughterPartType? partType,
+    String? search,
+    String? ordering,
+    int? page,
+    int? pageSize,
+  }) async {
+    try {
+      return await _animalService.getSlaughterParts(
+        animalId: animalId,
+        partType: partType,
+        search: search,
+        ordering: ordering,
+        page: page,
+        pageSize: pageSize,
+      );
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<List<SlaughterPart>> getSlaughterPartsList({
+    int? animalId,
+    SlaughterPartType? partType,
+    String? search,
+    String? ordering,
+  }) async {
+    try {
+      return await _animalService.getSlaughterPartsList(
+        animalId: animalId,
+        partType: partType,
+        search: search,
+        ordering: ordering,
+      );
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<SlaughterPart> createSlaughterPart(SlaughterPart part) async {
+    try {
+      return await _animalService.createSlaughterPart(part);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<SlaughterPart> updateSlaughterPart(SlaughterPart part) async {
+    try {
+      return await _animalService.updateSlaughterPart(part);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> deleteSlaughterPart(int id) async {
+    try {
+      await _animalService.deleteSlaughterPart(id);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> transferSlaughterParts(List<int?> partIds, int processingUnitId) async {
+    try {
+      return await _animalService.transferSlaughterParts(partIds, processingUnitId);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> receiveSlaughterParts(List<int?> partIds) async {
+    try {
+      return await _animalService.receiveSlaughterParts(partIds);
     } catch (e) {
       _error = e.toString();
       notifyListeners();

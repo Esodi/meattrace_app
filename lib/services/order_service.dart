@@ -23,10 +23,24 @@ class OrderService {
         queryParameters: queryParams,
       );
 
-      final data = response.data as List;
-      return data.map((json) => Order.fromJson(json)).toList();
+      final data = response.data;
+      if (data is Map && data.containsKey('results')) {
+        final results = data['results'] as List;
+        return results.map((json) => Order.fromJson(json)).toList();
+      } else if (data is List) {
+        return data.map((json) => Order.fromJson(json)).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
     } on DioException catch (e) {
-      throw Exception('Failed to fetch orders: ${e.message}');
+      print('🔍 [OrderService] DioException in fetchOrders: ${e.message}');
+      print('🔍 [OrderService] Response status: ${e.response?.statusCode}');
+      print('🔍 [OrderService] Response data: ${e.response?.data}');
+      final errorMessage = e.message ?? 'Unknown network error';
+      throw Exception('Failed to fetch orders: $errorMessage');
+    } catch (e) {
+      print('🔍 [OrderService] General exception in fetchOrders: $e');
+      throw Exception('Failed to fetch orders: $e');
     }
   }
 

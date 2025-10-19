@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'dio_client.dart';
 import '../utils/constants.dart';
@@ -87,6 +88,9 @@ class AuthService {
 
   Future<User> register(String username, String email, String password, String role) async {
     try {
+      debugPrint('🔐 Attempting registration for user: $username with role: $role');
+      debugPrint('🌐 Using base URL: ${Constants.baseUrl}');
+      
       final response = await _dioClient.dio.post(
         Constants.registerEndpoint,
         data: {
@@ -97,6 +101,8 @@ class AuthService {
         },
       );
 
+      debugPrint('✅ Registration request successful, status: ${response.statusCode}');
+
       final data = response.data;
       final tokens = data['tokens'];
       final accessToken = tokens['access'];
@@ -104,14 +110,42 @@ class AuthService {
 
       // Store tokens
       await _dioClient.setAuthTokens(accessToken, refreshToken);
+      debugPrint('💾 Tokens stored successfully');
 
       // Return user from response
       final userData = data['user'];
       final user = User.fromJson(userData);
+      debugPrint('✅ User registered successfully: ${user.username}');
 
       return user;
     } on DioException catch (e) {
-      throw Exception('Registration failed: ${e.message}');
+      debugPrint('❌ Registration failed with DioException: ${e.type} - ${e.message}');
+      if (e.response != null) {
+        debugPrint('📄 Response status: ${e.response?.statusCode}');
+        debugPrint('📄 Response data: ${e.response?.data}');
+      }
+      
+      // Provide more specific error messages
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception('Connection timeout. Please check your internet connection and try again.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception('Cannot connect to server. Please check if the backend is running and accessible.');
+      } else if (e.response?.statusCode == 400) {
+        final errorData = e.response?.data;
+        if (errorData is Map && errorData.containsKey('error')) {
+          throw Exception(errorData['error']);
+        }
+        throw Exception('Invalid registration data. Please check your inputs.');
+      } else if (e.response?.statusCode == 500) {
+        throw Exception('Server error. Please try again later.');
+      } else {
+        throw Exception('Registration failed: ${e.message ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      debugPrint('❌ Registration failed with unexpected error: $e');
+      throw Exception('Registration failed: $e');
     }
   }
 
@@ -124,16 +158,108 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await _dioClient.getAccessToken();
-    return token != null && !_isTokenExpired(token);
+    try {
+      final token = await _dioClient.getAccessToken();
+      if (token == null) {
+        debugPrint('ℹ️ No access token found');
+        return false;
+      }
+
+      // Check if token is expired
+      if (_isTokenExpired(token)) {
+        debugPrint('⚠️ Access token expired, attempting refresh...');
+        
+        // Try to refresh the token
+        final refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          debugPrint('✅ Token refreshed successfully');
+          return true;
+        } else {
+          debugPrint('❌ Token refresh failed, session expired');
+          // Clear expired tokens
+          await _dioClient.clearAuthTokens();
+          return false;
+        }
+      }
+
+      debugPrint('✅ Valid access token found');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error checking login status: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _tryRefreshToken() async {
+    try {
+      final refreshToken = await _dioClient.getRefreshToken();
+      if (refreshToken == null) {
+        debugPrint('⚠️ No refresh token available');
+        return false;
+      }
+
+      // Check if refresh token is expired
+      if (_isTokenExpired(refreshToken)) {
+        debugPrint('⚠️ Refresh token expired');
+        return false;
+      }
+
+      debugPrint('🔄 Attempting to refresh access token...');
+      final response = await _dioClient.dio.post(
+        Constants.refreshTokenEndpoint,
+        data: {'refresh': refreshToken},
+      );
+
+      final newAccessToken = response.data['access'];
+      if (newAccessToken == null) {
+        debugPrint('❌ No access token in refresh response');
+        return false;
+      }
+
+      // Update only the access token (keep the same refresh token)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(DioClient.accessTokenKey, newAccessToken);
+      
+      debugPrint('✅ Access token refreshed successfully');
+      return true;
+    } on DioException catch (e) {
+      debugPrint('❌ Token refresh failed: ${e.response?.statusCode} - ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Unexpected error during token refresh: $e');
+      return false;
+    }
   }
 
   Future<User?> getCurrentUser() async {
-    final token = await _dioClient.getAccessToken();
-    if (token != null && !_isTokenExpired(token)) {
+    try {
+      final token = await _dioClient.getAccessToken();
+      if (token == null) {
+        debugPrint('ℹ️ No access token found');
+        return null;
+      }
+
+      if (_isTokenExpired(token)) {
+        debugPrint('⚠️ Access token expired, attempting refresh...');
+        final refreshed = await _tryRefreshToken();
+        if (!refreshed) {
+          debugPrint('❌ Token refresh failed');
+          await _dioClient.clearAuthTokens();
+          return null;
+        }
+        // Get the new token after refresh
+        final newToken = await _dioClient.getAccessToken();
+        if (newToken == null) {
+          return null;
+        }
+        return await _getUserProfile(newToken);
+      }
+
       return await _getUserProfile(token);
+    } catch (e) {
+      debugPrint('❌ Error getting current user: $e');
+      return null;
     }
-    return null;
   }
 
   Future<User> _getUserProfile(String accessToken) async {
@@ -206,6 +332,103 @@ class AuthService {
     } catch (e) {
       return true;
     }
+  }
+
+  // Permission checking methods
+  bool hasPermission(User user, String permission, {int? processingUnitId}) {
+    // Global admin permissions
+    if (user.role.toLowerCase() == 'admin') {
+      return true;
+    }
+
+    // Check processing unit specific permissions
+    if (processingUnitId != null && user.processingUnitMemberships != null) {
+      final membership = user.processingUnitMemberships!
+          .firstWhere(
+            (m) => m.processingUnitId == processingUnitId && m.isActive,
+            orElse: () => ProcessingUnitMembership(
+              id: -1,
+              processingUnitId: -1,
+              processingUnitName: '',
+              role: '',
+              permissions: '',
+              isActive: false,
+              isSuspended: false,
+              invitedAt: DateTime.now(),
+            ),
+          );
+
+      if (membership.id != -1) {
+        return membership.canRead || membership.canWrite || membership.isAdmin;
+      }
+    }
+
+    // Default permissions based on role
+    switch (user.role.toLowerCase()) {
+      case 'processingunit':
+      case 'processing_unit':
+        return permission == 'read' || permission == 'write';
+      case 'farmer':
+        return permission == 'read';
+      case 'shop':
+        return permission == 'read';
+      default:
+        return false;
+    }
+  }
+
+  bool canManageUsers(User user, {int? processingUnitId}) {
+    if (user.role.toLowerCase() == 'admin') {
+      return true;
+    }
+
+    if (processingUnitId != null && user.processingUnitMemberships != null) {
+      final membership = user.processingUnitMemberships!
+          .firstWhere(
+            (m) => m.processingUnitId == processingUnitId && m.isActive,
+            orElse: () => ProcessingUnitMembership(
+              id: -1,
+              processingUnitId: -1,
+              processingUnitName: '',
+              role: '',
+              permissions: '',
+              isActive: false,
+              isSuspended: false,
+              invitedAt: DateTime.now(),
+            ),
+          );
+
+      return membership.id != -1 && membership.isAdmin;
+    }
+
+    return false;
+  }
+
+  bool isOwnerOrManager(User user, {int? processingUnitId}) {
+    if (user.role.toLowerCase() == 'admin') {
+      return true;
+    }
+
+    if (processingUnitId != null && user.processingUnitMemberships != null) {
+      final membership = user.processingUnitMemberships!
+          .firstWhere(
+            (m) => m.processingUnitId == processingUnitId && m.isActive,
+            orElse: () => ProcessingUnitMembership(
+              id: -1,
+              processingUnitId: -1,
+              processingUnitName: '',
+              role: '',
+              permissions: '',
+              isActive: false,
+              isSuspended: false,
+              invitedAt: DateTime.now(),
+            ),
+          );
+
+      return membership.id != -1 && (membership.role.toLowerCase() == 'owner' || membership.role.toLowerCase() == 'manager' || membership.isAdmin);
+    }
+
+    return false;
   }
 }
 

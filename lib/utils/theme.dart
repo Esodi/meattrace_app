@@ -168,7 +168,7 @@ class AppTheme {
       backgroundColor: primaryGreen,
       foregroundColor: Colors.white,
       elevation: 2, // Level 2 elevation
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       titleTextStyle: GoogleFonts.roboto(
         fontSize: 20,
         fontWeight: FontWeight.w500,
@@ -182,7 +182,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       color: surfaceWhite,
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -265,7 +265,7 @@ class AppTheme {
       ),
       hintStyle: GoogleFonts.roboto(
         fontSize: 16,
-        color: textSecondary.withOpacity(0.7),
+        color: textSecondary.withValues(alpha: 0.7),
       ),
       errorStyle: GoogleFonts.roboto(
         fontSize: 12,
@@ -450,14 +450,15 @@ class AppTheme {
       primary: primaryGreen,
       secondary: secondaryBlue,
       tertiary: accentOrange,
-      surface: Color(0xFF1E1E1E), // Dark surface
-      background: Color(0xFF121212), // Dark background
+      surface: Color(0xFF2D2D2D), // Slightly lighter dark surface for better contrast
+      background: Color(0xFF1A1A1A), // Adjusted dark background
       error: errorRed,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
-      onSurface: Color(0xFFE0E0E0), // Light text on dark surface
-      onBackground: Color(0xFFE0E0E0), // Light text on dark background
+      onSurface: Colors.white, // Better contrast for text on dark surface
+      onBackground: Colors.white, // Better contrast for text on dark background
       onError: Colors.white,
+      surfaceTint: Color(0xFF3D3D3D), // Added for card hover effects
     ),
 
     // Typography - Roboto as primary font per design system
@@ -569,10 +570,10 @@ class AppTheme {
 
     // AppBar Theme
     appBarTheme: AppBarTheme(
-      backgroundColor: oceanBlue,
+      backgroundColor: const Color(0xFF1E1E1E),
       foregroundColor: Colors.white,
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.3),
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       titleTextStyle: GoogleFonts.roboto(
         fontSize: 20,
         fontWeight: FontWeight.w500,
@@ -584,11 +585,12 @@ class AppTheme {
 
     // Card Theme
     cardTheme: CardThemeData(
-      color: const Color(0xFF1E1E1E),
+      color: const Color(0xFF2D2D2D), // Lighter surface for better visibility
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.3),
+      shadowColor: Colors.black.withValues(alpha: 0.4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFF3D3D3D), width: 1), // Subtle border for definition
       ),
       margin: const EdgeInsets.all(8),
     ),

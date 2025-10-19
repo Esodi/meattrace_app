@@ -237,6 +237,37 @@ class OrderProvider with ChangeNotifier {
     }).toList();
   }
 
+  Future<void> updateOrderStatus(int orderId, String status) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final updatedOrder = await _orderService.updateOrderStatus(orderId, status);
+
+      // Update the order in the local list
+      final index = _orders.indexWhere((order) => order.id == orderId);
+      if (index >= 0) {
+        _orders[index] = updatedOrder;
+        await _saveOrdersToDatabase();
+      }
+
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  InventoryProduct? getProductDetails(int productId) {
+    // This is a simplified implementation - in a real app, you'd have a product provider
+    // For now, we'll return null and handle it in the UI
+    return null;
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();

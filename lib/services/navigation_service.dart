@@ -3,6 +3,27 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+/// Enum representing different navigation contexts in the app
+enum NavigationContext {
+  home,
+  list,
+  detail,
+  form,
+  settings,
+  scan,
+  transfer,
+  order,
+  inventory,
+  unknown,
+}
+
+/// Enum representing back button navigation context (root vs navigated access)
+enum BackNavigationContext {
+  root,           // Home screen as app entry point
+  navigated,      // Navigated to from another screen
+  deepLink,       // Opened via deep link
+}
+
 /// Comprehensive navigation service with error handling, state preservation,
 /// and fallback mechanisms for robust back button functionality
 class NavigationService {
@@ -179,6 +200,61 @@ class NavigationService {
     }
   }
 
+  /// Get the back navigation context (root vs navigated access)
+  BackNavigationContext getBackNavigationContext(BuildContext context) {
+    try {
+      final canPop = context.canPop();
+      final hasHistory = _navigationHistory.isNotEmpty;
+
+      debugPrint('🔍 [NavigationService] getBackNavigationContext:');
+      debugPrint('   - canPop: $canPop');
+      debugPrint('   - hasHistory: $hasHistory');
+      debugPrint('   - navigationHistory length: ${_navigationHistory.length}');
+
+      if (canPop || hasHistory) {
+        debugPrint('   → Returning: BackNavigationContext.navigated');
+        return BackNavigationContext.navigated;
+      }
+      debugPrint('   → Returning: BackNavigationContext.root');
+      return BackNavigationContext.root;
+    } catch (e) {
+      debugPrint('   → Error getting context: $e, returning root');
+      return BackNavigationContext.root;
+    }
+  }
+
+  /// Get the current navigation context based on the route
+  NavigationContext getNavigationContext(BuildContext context) {
+    try {
+      final currentRoute = GoRouterState.of(context).uri.toString();
+
+      if (currentRoute.contains('/home') || currentRoute == '/') {
+        return NavigationContext.home;
+      } else if (currentRoute.contains('/list') || currentRoute.contains('/history')) {
+        return NavigationContext.list;
+      } else if (currentRoute.contains('/detail') || currentRoute.contains('/trace')) {
+        return NavigationContext.detail;
+      } else if (currentRoute.contains('/create') || currentRoute.contains('/register') ||
+                 currentRoute.contains('/edit') || currentRoute.contains('/form')) {
+        return NavigationContext.form;
+      } else if (currentRoute.contains('/settings') || currentRoute.contains('/config')) {
+        return NavigationContext.settings;
+      } else if (currentRoute.contains('/scan') || currentRoute.contains('/qr')) {
+        return NavigationContext.scan;
+      } else if (currentRoute.contains('/transfer') || currentRoute.contains('/select')) {
+        return NavigationContext.transfer;
+      } else if (currentRoute.contains('/order') || currentRoute.contains('/place')) {
+        return NavigationContext.order;
+      } else if (currentRoute.contains('/inventory')) {
+        return NavigationContext.inventory;
+      }
+
+      return NavigationContext.unknown;
+    } catch (e) {
+      return NavigationContext.unknown;
+    }
+  }
+
   /// Smart navigation that considers user context and app state
   Future<bool> smartNavigateBack({
     required BuildContext context,
@@ -213,6 +289,129 @@ class NavigationService {
   /// Handle system back button (Android)
   Future<bool> handleSystemBack(BuildContext context) async {
     return await smartNavigateBack(context: context);
+  }
+
+  /// Smart navigation back that considers the current navigation context
+  Future<bool> smartNavigateBackWithContext({
+    required BuildContext context,
+    String? userType,
+    Map<String, dynamic>? preservedState,
+  }) async {
+    final currentContext = getNavigationContext(context);
+
+    // Define context-specific fallback routes
+    String? contextFallbackRoute;
+    switch (currentContext) {
+      case NavigationContext.detail:
+        // From detail screens, go back to list or home
+        contextFallbackRoute = _getListRouteForUserType(userType);
+        break;
+      case NavigationContext.form:
+        // From forms, go back to list or home
+        contextFallbackRoute = _getListRouteForUserType(userType);
+        break;
+      case NavigationContext.scan:
+        // From scan screens, go back to home
+        contextFallbackRoute = _getHomeRouteForUserType(userType);
+        break;
+      case NavigationContext.transfer:
+        // From transfer screens, go back to inventory
+        contextFallbackRoute = _getInventoryRouteForUserType(userType);
+        break;
+      case NavigationContext.order:
+        // From order screens, go back to home
+        contextFallbackRoute = _getHomeRouteForUserType(userType);
+        break;
+      case NavigationContext.settings:
+        // From settings, go back to home
+        contextFallbackRoute = _getHomeRouteForUserType(userType);
+        break;
+      case NavigationContext.list:
+      case NavigationContext.inventory:
+        // From lists, go back to home
+        contextFallbackRoute = _getHomeRouteForUserType(userType);
+        break;
+      case NavigationContext.home:
+      case NavigationContext.unknown:
+        // From home or unknown, use default fallback
+        contextFallbackRoute = _defaultFallbacks[userType ?? 'default'];
+        break;
+    }
+
+    return await navigateBack(
+      context: context,
+      fallbackRoute: contextFallbackRoute,
+      preservedState: preservedState,
+      userType: userType,
+    );
+  }
+
+  /// Smart navigation back that considers back navigation context (root vs navigated)
+  Future<bool> smartNavigateBackWithBackContext({
+    required BuildContext context,
+    required BackNavigationContext backContext,
+    String? userType,
+    Map<String, dynamic>? preservedState,
+  }) async {
+    debugPrint('🚀 [NavigationService] smartNavigateBackWithBackContext:');
+    debugPrint('   - backContext: $backContext');
+    debugPrint('   - userType: $userType');
+
+    // For root access, return false to let screen handle exit logic
+    if (backContext == BackNavigationContext.root) {
+      debugPrint('   → Root context detected, returning false for exit handling');
+      return false;
+    }
+
+    // For navigated access, perform normal smart navigation
+    debugPrint('   → Navigated context detected, performing smart navigation');
+    return await smartNavigateBack(
+      context: context,
+      userType: userType,
+      preservedState: preservedState,
+    );
+  }
+
+  /// Get appropriate list route for user type
+  String? _getListRouteForUserType(String? userType) {
+    switch (userType) {
+      case 'farmer':
+        return '/farmer/livestock-history';
+      case 'processor':
+        return '/processor/inventory';
+      case 'shop':
+        return '/shop/products';
+      default:
+        return '/home';
+    }
+  }
+
+  /// Get appropriate home route for user type
+  String? _getHomeRouteForUserType(String? userType) {
+    switch (userType) {
+      case 'farmer':
+        return '/farmer-home';
+      case 'processor':
+        return '/processor-home';
+      case 'shop':
+        return '/shop-home';
+      default:
+        return '/home';
+    }
+  }
+
+  /// Get appropriate inventory route for user type
+  String? _getInventoryRouteForUserType(String? userType) {
+    switch (userType) {
+      case 'farmer':
+        return '/farmer/livestock-history';
+      case 'processor':
+        return '/processor/inventory';
+      case 'shop':
+        return '/shop/products';
+      default:
+        return '/home';
+    }
   }
 
   /// Clear all navigation data (useful for logout)
@@ -255,6 +454,32 @@ extension NavigationExtension on BuildContext {
   }) async {
     return await NavigationService.instance.smartNavigateBack(
       context: this,
+      userType: userType,
+      preservedState: preservedState,
+    );
+  }
+
+  /// Smart back navigation that considers navigation context
+  Future<bool> smartNavigateBackWithContext({
+    String? userType,
+    Map<String, dynamic>? preservedState,
+  }) async {
+    return await NavigationService.instance.smartNavigateBackWithContext(
+      context: this,
+      userType: userType,
+      preservedState: preservedState,
+    );
+  }
+
+  /// Smart back navigation that considers back navigation context (root vs navigated)
+  Future<bool> smartNavigateBackWithBackContext({
+    required BackNavigationContext backContext,
+    String? userType,
+    Map<String, dynamic>? preservedState,
+  }) async {
+    return await NavigationService.instance.smartNavigateBackWithBackContext(
+      context: this,
+      backContext: backContext,
       userType: userType,
       preservedState: preservedState,
     );

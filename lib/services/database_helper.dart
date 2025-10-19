@@ -25,7 +25,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'meattrace.db');
     return await openDatabase(
       path,
-      version: 7, // Increment version to trigger migration
+      version: 10, // Increment version to trigger migration
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -50,7 +50,7 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         name TEXT NOT NULL,
         batch_number TEXT NOT NULL,
-        weight REAL NOT NULL,
+        live_weight REAL,
         weight_unit TEXT NOT NULL,
         price REAL NOT NULL,
         description TEXT NOT NULL,
@@ -68,9 +68,9 @@ class DatabaseHelper {
         animal_id TEXT,
         animal_name TEXT,
         age INTEGER NOT NULL,
-        weight REAL NOT NULL,
+        live_weight REAL,
         breed TEXT,
-        farm_name TEXT,
+        abbatoir_name TEXT,
         health_status TEXT,
         created_at TEXT NOT NULL,
         slaughtered INTEGER NOT NULL,
@@ -123,7 +123,7 @@ class DatabaseHelper {
       final columnsToAdd = [
         'animal_name TEXT',
         'breed TEXT',
-        'farm_name TEXT',
+        'abbatoir_name TEXT',
         'health_status TEXT',
         'synced INTEGER NOT NULL DEFAULT 1',
       ];
@@ -134,6 +134,14 @@ class DatabaseHelper {
         } catch (e) {
           // Column might already exist, ignore error
         }
+      }
+    }
+    if (oldVersion < 9) {
+      // Add abbatoir_name column if missing (fix for schema mismatch)
+      try {
+        await db.execute('ALTER TABLE animals ADD COLUMN abbatoir_name TEXT');
+      } catch (e) {
+        // Column might already exist, ignore error
       }
     }
     if (oldVersion < 4) {
@@ -150,7 +158,8 @@ class DatabaseHelper {
             created_at TEXT NOT NULL,
             name TEXT NOT NULL,
             batch_number TEXT NOT NULL,
-            weight REAL NOT NULL,
+            live_weight REAL,
+            weight REAL, // Keep old column for backward compatibility
             weight_unit TEXT NOT NULL,
             price REAL NOT NULL,
             description TEXT NOT NULL,
@@ -162,7 +171,7 @@ class DatabaseHelper {
 
         // Copy data
         await db.execute('''
-          INSERT INTO products_new (id, processing_unit, animal, product_type, quantity, created_at, name, batch_number, weight, weight_unit, price, description, manufacturer, category, timeline)
+          INSERT INTO products_new (id, processing_unit, animal, product_type, quantity, created_at, name, batch_number, live_weight, weight_unit, price, description, manufacturer, category, timeline)
           SELECT id, processing_unit, animal, product_type, quantity, created_at, name, batch_number, weight, weight_unit, price, description, manufacturer, category, timeline FROM products
         ''');
 
@@ -258,6 +267,32 @@ class DatabaseHelper {
         // Table might already exist, ignore error
       }
     }
+    if (oldVersion < 8) {
+      // Add live_weight column to animals table
+      try {
+        await db.execute('ALTER TABLE animals ADD COLUMN live_weight REAL');
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
+    if (oldVersion < 10) {
+      // Fix weight column name inconsistency - rename 'weight' to 'live_weight' in products table
+      try {
+        // Check if 'weight' column exists in products table and rename it
+        final result = await db.rawQuery("PRAGMA table_info(products)");
+        final hasWeightColumn = result.any((column) => column['name'] == 'weight');
+
+        if (hasWeightColumn) {
+          // SQLite doesn't support direct column rename, so we need to recreate the table
+          await db.execute('ALTER TABLE products ADD COLUMN live_weight REAL');
+          await db.execute('UPDATE products SET live_weight = weight WHERE weight IS NOT NULL');
+          // Note: We can't drop the old column in SQLite without recreating the table
+          // The old 'weight' column will remain but won't be used
+        }
+      } catch (e) {
+        // Migration might fail, ignore for now
+      }
+    }
   }
 
   // ProductCategory operations
@@ -294,7 +329,8 @@ class DatabaseHelper {
         'created_at': product.createdAt.toIso8601String(),
         'name': product.name,
         'batch_number': product.batchNumber,
-        'weight': product.weight,
+        'live_weight': product.weight, // Use live_weight instead of weight
+        'weight': product.weight, // Keep old column for backward compatibility
         'weight_unit': product.weightUnit,
         'price': product.price,
         'description': product.description,
@@ -324,9 +360,10 @@ class DatabaseHelper {
         'animal_id': animal.animalId,
         'animal_name': animal.animalName,
         'age': animal.age,
-        'weight': animal.weight,
+        'live_weight': animal.liveWeight,
+        'weight': animal.liveWeight, // Keep old column for backward compatibility
         'breed': animal.breed,
-        'farm_name': animal.farmName,
+        'abbatoir_name': animal.abbatoirName,
         'health_status': animal.healthStatus,
         'created_at': animal.createdAt.toIso8601String(),
         'slaughtered': animal.slaughtered ? 1 : 0,
@@ -341,6 +378,11 @@ class DatabaseHelper {
     final db = await database;
     final maps = await db.query('animals');
     return maps.map((map) => Animal.fromMap(map)).toList();
+  }
+
+  Future<void> clearAnimals() async {
+    final db = await database;
+    await db.delete('animals');
   }
 
   Future<List<Animal>> getSlaughteredAnimals() async {

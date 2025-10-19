@@ -35,6 +35,9 @@ class Product {
   final int? id;
   final String processingUnit;
   final int animal;
+  final int? slaughterPartId; // Reference to the specific slaughter part
+  final String? slaughterPartName; // Display name of the slaughter part
+  final String? slaughterPartType; // Type code of the slaughter part
   final String productType;
   final double quantity;
   final DateTime createdAt;
@@ -61,6 +64,9 @@ class Product {
     this.id,
     required this.processingUnit,
     required this.animal,
+    this.slaughterPartId,
+    this.slaughterPartName,
+    this.slaughterPartType,
     required this.productType,
     required this.quantity,
     required this.createdAt,
@@ -87,6 +93,9 @@ class Product {
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       processingUnit: json['processing_unit'].toString(),
       animal: json['animal'] is Map ? json['animal']['id'] : int.parse(json['animal'].toString()),
+      slaughterPartId: json['slaughter_part'] != null ? (json['slaughter_part'] is Map ? json['slaughter_part']['id'] : int.parse(json['slaughter_part'].toString())) : null,
+      slaughterPartName: json['slaughter_part_name'],
+      slaughterPartType: json['slaughter_part_type'],
       productType: json['product_type'],
       quantity: _safeParseDouble(json['quantity']),
       createdAt: DateTime.parse(json['created_at']),
@@ -116,6 +125,7 @@ class Product {
       'id': id,
       'processing_unit': processingUnit,
       'animal': animal,
+      'slaughter_part': slaughterPartId,
       'product_type': productType,
       'quantity': quantity,
       'created_at': createdAt.toIso8601String(),
@@ -148,6 +158,7 @@ class Product {
   Map<String, dynamic> toMapForCreate() {
     return {
       'animal_id': animal,
+      'slaughter_part_id': slaughterPartId,
       'product_type': productType,
       'quantity': quantity,
       'name': name,
@@ -165,6 +176,9 @@ class Product {
     int? id,
     String? processingUnit,
     int? animal,
+    int? slaughterPartId,
+    String? slaughterPartName,
+    String? slaughterPartType,
     String? productType,
     double? quantity,
     DateTime? createdAt,
@@ -189,6 +203,9 @@ class Product {
       id: id ?? this.id,
       processingUnit: processingUnit ?? this.processingUnit,
       animal: animal ?? this.animal,
+      slaughterPartId: slaughterPartId ?? this.slaughterPartId,
+      slaughterPartName: slaughterPartName ?? this.slaughterPartName,
+      slaughterPartType: slaughterPartType ?? this.slaughterPartType,
       productType: productType ?? this.productType,
       quantity: quantity ?? this.quantity,
       createdAt: createdAt ?? this.createdAt,

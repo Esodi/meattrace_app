@@ -3,13 +3,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/theme.dart';
 
 class ThemeProvider with ChangeNotifier {
+  static const String _darkModeKey = 'isDarkMode';
+  static const String _highContrastKey = 'isHighContrastEnabled';
+  static const String _textScaleKey = 'textScale';
+  static const String _reduceMotionKey = 'reduceMotion';
+
   bool _isDarkMode = false;
   bool _isHighContrastEnabled = false;
+  bool _reduceMotion = false;
+  double _textScale = 1.0;
   ThemeData _currentTheme = AppTheme.lightTheme;
 
   bool get isDarkMode => _isDarkMode;
   bool get isHighContrastEnabled => _isHighContrastEnabled;
+  bool get reduceMotion => _reduceMotion;
+  double get textScale => _textScale;
   ThemeData get currentTheme => _currentTheme;
+  ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
   ThemeProvider() {
     _loadThemeFromPrefs();
@@ -17,16 +27,20 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> _loadThemeFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    _isDarkMode = prefs.getBool('isDarkMode') ?? false;
-    _isHighContrastEnabled = prefs.getBool('isHighContrastEnabled') ?? false;
+    _isDarkMode = prefs.getBool(_darkModeKey) ?? false;
+    _isHighContrastEnabled = prefs.getBool(_highContrastKey) ?? false;
+    _textScale = prefs.getDouble(_textScaleKey) ?? 1.0;
+    _reduceMotion = prefs.getBool(_reduceMotionKey) ?? false;
     _updateTheme();
     notifyListeners();
   }
 
   Future<void> _saveThemeToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isDarkMode', _isDarkMode);
-    await prefs.setBool('isHighContrastEnabled', _isHighContrastEnabled);
+    await prefs.setBool(_darkModeKey, _isDarkMode);
+    await prefs.setBool(_highContrastKey, _isHighContrastEnabled);
+    await prefs.setDouble(_textScaleKey, _textScale);
+    await prefs.setBool(_reduceMotionKey, _reduceMotion);
   }
 
   void setLightMode() {
@@ -70,6 +84,33 @@ class ThemeProvider with ChangeNotifier {
     }
   }
 
+  void setTextScale(double scale) {
+    if (_textScale != scale && scale >= 0.8 && scale <= 1.4) {
+      _textScale = scale;
+      _updateTheme();
+      _saveThemeToPrefs();
+      notifyListeners();
+    }
+  }
+
+  void increaseTextSize() {
+    final newScale = (_textScale + 0.1).clamp(0.8, 1.4);
+    setTextScale(newScale);
+  }
+
+  void decreaseTextSize() {
+    final newScale = (_textScale - 0.1).clamp(0.8, 1.4);
+    setTextScale(newScale);
+  }
+
+  void setReduceMotion(bool enabled) {
+    if (_reduceMotion != enabled) {
+      _reduceMotion = enabled;
+      _saveThemeToPrefs();
+      notifyListeners();
+    }
+  }
+
   void _updateTheme() {
     ThemeData baseTheme = _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme;
 
@@ -81,27 +122,37 @@ class ThemeProvider with ChangeNotifier {
   }
 
   ThemeData _createHighContrastTheme(ThemeData baseTheme) {
-    return baseTheme.copyWith(
-      // Enhanced contrast for text
-      textTheme: baseTheme.textTheme.copyWith(
-        bodyLarge: baseTheme.textTheme.bodyLarge?.copyWith(
-          color: _isDarkMode ? Colors.white : Colors.black,
-        ),
-        bodyMedium: baseTheme.textTheme.bodyMedium?.copyWith(
-          color: _isDarkMode ? Colors.white : Colors.black,
-        ),
-        headlineSmall: baseTheme.textTheme.headlineSmall?.copyWith(
-          color: _isDarkMode ? Colors.white : Colors.black,
-        ),
+    // Apply text scaling to the base text theme
+    final scaledTextTheme = baseTheme.textTheme.copyWith(
+      displayLarge: baseTheme.textTheme.displayLarge?.copyWith(fontSize: (baseTheme.textTheme.displayLarge?.fontSize ?? 32) * _textScale),
+      displayMedium: baseTheme.textTheme.displayMedium?.copyWith(fontSize: (baseTheme.textTheme.displayMedium?.fontSize ?? 28) * _textScale),
+      displaySmall: baseTheme.textTheme.displaySmall?.copyWith(fontSize: (baseTheme.textTheme.displaySmall?.fontSize ?? 24) * _textScale),
+      headlineLarge: baseTheme.textTheme.headlineLarge?.copyWith(fontSize: (baseTheme.textTheme.headlineLarge?.fontSize ?? 22) * _textScale),
+      headlineMedium: baseTheme.textTheme.headlineMedium?.copyWith(fontSize: (baseTheme.textTheme.headlineMedium?.fontSize ?? 18) * _textScale),
+      headlineSmall: baseTheme.textTheme.headlineSmall?.copyWith(fontSize: (baseTheme.textTheme.headlineSmall?.fontSize ?? 16) * _textScale),
+      titleLarge: baseTheme.textTheme.titleLarge?.copyWith(fontSize: (baseTheme.textTheme.titleLarge?.fontSize ?? 16) * _textScale),
+      titleMedium: baseTheme.textTheme.titleMedium?.copyWith(fontSize: (baseTheme.textTheme.titleMedium?.fontSize ?? 14) * _textScale),
+      titleSmall: baseTheme.textTheme.titleSmall?.copyWith(fontSize: (baseTheme.textTheme.titleSmall?.fontSize ?? 12) * _textScale),
+      bodyLarge: baseTheme.textTheme.bodyLarge?.copyWith(
+        fontSize: (baseTheme.textTheme.bodyLarge?.fontSize ?? 14) * _textScale,
+        color: _isDarkMode ? Colors.white : Colors.black,
       ),
+      bodyMedium: baseTheme.textTheme.bodyMedium?.copyWith(
+        fontSize: (baseTheme.textTheme.bodyMedium?.fontSize ?? 12) * _textScale,
+        color: _isDarkMode ? Colors.white : Colors.black,
+      ),
+      bodySmall: baseTheme.textTheme.bodySmall?.copyWith(
+        fontSize: (baseTheme.textTheme.bodySmall?.fontSize ?? 12) * _textScale,
+        color: _isDarkMode ? Colors.white : Colors.black,
+      ),
+    );
 
-      // Enhanced contrast for cards
+    return baseTheme.copyWith(
+      textTheme: scaledTextTheme,
       cardTheme: baseTheme.cardTheme.copyWith(
         color: _isDarkMode ? Colors.black : Colors.white,
         shadowColor: _isDarkMode ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.3),
       ),
-
-      // Enhanced button contrast
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: _isDarkMode ? Colors.yellow : Colors.blue.shade900,
@@ -118,8 +169,6 @@ class ThemeProvider with ChangeNotifier {
           minimumSize: const Size(double.infinity, 48),
         ),
       ),
-
-      // Enhanced input decoration
       inputDecorationTheme: baseTheme.inputDecorationTheme.copyWith(
         border: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.black, width: 2),

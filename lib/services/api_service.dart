@@ -16,6 +16,27 @@ class ApiService {
 
   ApiService._internal();
 
+  // Generic HTTP methods for flexibility
+  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
+    return await _dioClient.dio.get(path, queryParameters: queryParameters);
+  }
+
+  Future<Response> post(String path, {dynamic data}) async {
+    return await _dioClient.dio.post(path, data: data);
+  }
+
+  Future<Response> put(String path, {dynamic data}) async {
+    return await _dioClient.dio.put(path, data: data);
+  }
+
+  Future<Response> patch(String path, {dynamic data}) async {
+    return await _dioClient.dio.patch(path, data: data);
+  }
+
+  Future<Response> delete(String path) async {
+    return await _dioClient.dio.delete(path);
+  }
+
   Future<List<MeatTrace>> fetchMeatTraces({
     String? search,
     String? status,
@@ -128,7 +149,15 @@ class ApiService {
         throw Exception('Unexpected response format');
       }
     } on DioException catch (e) {
-      throw Exception('Failed to fetch orders: ${e.message}');
+      print('🔍 [ApiService] DioException in fetchOrders: ${e.message}');
+      print('🔍 [ApiService] Response status: ${e.response?.statusCode}');
+      print('🔍 [ApiService] Response data: ${e.response?.data}');
+      // Handle null message case
+      final errorMessage = e.message ?? 'Unknown network error';
+      throw Exception('Failed to fetch orders: $errorMessage');
+    } catch (e) {
+      print('🔍 [ApiService] General exception in fetchOrders: $e');
+      throw Exception('Failed to fetch orders: $e');
     }
   }
 }
