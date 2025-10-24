@@ -155,7 +155,7 @@ class CustomButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: buttonColor,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: theme.disabledColor,
+            disabledBackgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.12),
             elevation: AppTheme.elevationLevel2,
             padding: EdgeInsets.symmetric(
               horizontal: size == ButtonSize.small ? AppTheme.space16 : AppTheme.space24,
@@ -179,7 +179,7 @@ class CustomButton extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: buttonColor,
             side: BorderSide(color: buttonColor, width: 1.5),
-            disabledForegroundColor: theme.disabledColor,
+            disabledForegroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.38),
             padding: EdgeInsets.symmetric(
               horizontal: size == ButtonSize.small ? AppTheme.space16 : AppTheme.space24,
               vertical: size == ButtonSize.small ? AppTheme.space8 : AppTheme.space12,
@@ -201,7 +201,7 @@ class CustomButton extends StatelessWidget {
           onPressed: isDisabled ? null : onPressed,
           style: TextButton.styleFrom(
             foregroundColor: buttonColor,
-            disabledForegroundColor: theme.disabledColor,
+            disabledForegroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.38),
             padding: EdgeInsets.symmetric(
               horizontal: size == ButtonSize.small ? AppTheme.space12 : AppTheme.space16,
               vertical: size == ButtonSize.small ? AppTheme.space4 : AppTheme.space8,
@@ -220,7 +220,7 @@ class CustomButton extends StatelessWidget {
           onPressed: isDisabled ? null : onPressed,
           icon: buttonChild,
           color: buttonColor,
-          disabledColor: theme.disabledColor,
+          disabledColor: theme.colorScheme.onSurface.withValues(alpha: 0.38),
           iconSize: iconSize,
         );
         break;

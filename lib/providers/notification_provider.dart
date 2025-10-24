@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../models/notification.dart';
-import '../services/notification_service.dart';
+import '../services/notification_api_service.dart';
 
 class NotificationProvider with ChangeNotifier {
-  final NotificationService _notificationService = NotificationService();
+  final NotificationApiService _notificationService = NotificationApiService();
 
   List<NotificationModel> _notifications = [];
   int _unreadCount = 0;

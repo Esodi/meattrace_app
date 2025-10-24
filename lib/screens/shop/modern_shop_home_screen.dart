@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../services/api_service.dart';
+import '../../services/sale_service.dart';
 import '../../models/product.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -41,6 +43,8 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
 
   int _pendingProductsCount = 0;
   bool _isLoadingPending = false;
+  double _totalSales = 0.0;
+  bool _isLoadingSales = false;
 
   @override
   void initState() {
@@ -72,10 +76,34 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
 
   Future<void> _loadData() async {
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final apiService = ApiService();
     await Future.wait([
       productProvider.fetchProducts(),
       _loadPendingProductsCount(),
+      _loadTotalSales(),
+      apiService.fetchDashboard(), // Fetch dashboard data
+      apiService.fetchActivities(), // Fetch activity data
     ]);
+  }
+
+  Future<void> _loadTotalSales() async {
+    if (!mounted) return;
+    setState(() => _isLoadingSales = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final shopId = authProvider.user?.shopId;
+
+      if (shopId != null) {
+        final sales = await SaleService().getSales(shop: shopId);
+        final total = sales.fold<double>(0.0, (prev, s) => prev + (s.totalAmount));
+        if (mounted) setState(() => _totalSales = total);
+      }
+    } catch (e) {
+      debugPrint('Error loading sales total: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingSales = false);
+    }
   }
 
   Future<void> _loadPendingProductsCount() async {
@@ -85,12 +113,12 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
     try {
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final currentUserId = authProvider.user?.id;
+      final shopId = authProvider.user?.shopId;
 
-      if (currentUserId != null) {
+      if (shopId != null) {
         // Count products transferred to this shop but not yet received
         final pendingProducts = productProvider.products.where((product) {
-          return product.transferredTo == currentUserId && product.receivedBy == null;
+          return product.transferredTo == shopId && product.receivedBy == null;
         }).length;
 
         if (mounted) {
@@ -137,7 +165,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner, color: AppColors.textPrimary),
+            icon: const Icon(CustomIcons.MEATTRACE_ICON, color: AppColors.textPrimary),
             tooltip: 'Scan QR Code',
             onPressed: () => context.push('/qr-scanner'),
           ),
@@ -186,9 +214,112 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                 ),
               ),
 
+              // Inventory Overview
+              SliverToBoxAdapter(
+                child: Consumer<ProductProvider>(
+                  builder: (context, productProvider, child) {
+                    return _buildInventoryOverview(productProvider);
+                  },
+                ),
+              ),
+
               // Quick Actions
               SliverToBoxAdapter(
                 child: _buildQuickActions(),
+              ),
+
+              // Featured Products Section
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTheme.space16,
+                    AppTheme.space24,
+                    AppTheme.space16,
+                    AppTheme.space8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Featured Products',
+                        style: AppTypography.headlineMedium(),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/product-inventory'),
+                        child: Text(
+                          'View All',
+                          style: AppTypography.button().copyWith(
+                            color: AppColors.shopPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Featured Products List
+              Consumer<ProductProvider>(
+                builder: (context, productProvider, child) {
+                  if (productProvider.isLoading) {
+                    return const SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.shopPrimary,
+                        ),
+                      ),
+                    );
+                  }
+
+                  final authProvider = Provider.of<AuthProvider>(context);
+                  final currentShopId = authProvider.user?.shopId;
+
+                  // Get featured products (top 3 by price, assuming higher price = premium)
+                  final featuredProducts = productProvider.products
+                      .where((p) => p.receivedBy == currentShopId && p.quantity > 0)
+                      .toList()
+                    ..sort((a, b) => b.price.compareTo(a.price))
+                    ..take(3)
+                    .toList();
+
+                  if (featuredProducts.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppTheme.space32),
+                        child: EmptyStateCard(
+                          icon: Icons.star_border,
+                          message: 'No Featured Products',
+                          subtitle: 'Premium products will appear here once available.',
+                          action: CustomButton(
+                            label: 'Browse Inventory',
+                            onPressed: () => context.push('/product-inventory'),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppTheme.space16,
+                      0,
+                      AppTheme.space16,
+                      AppTheme.space24,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final product = featuredProducts[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: AppTheme.space12),
+                            child: _buildFeaturedProductCard(product),
+                          );
+                        },
+                        childCount: featuredProducts.length,
+                      ),
+                    ),
+                  );
+                },
               ),
 
               // Inventory Section
@@ -204,7 +335,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Inventory',
+                        'Recent Inventory',
                         style: AppTypography.headlineMedium(),
                       ),
                       TextButton(
@@ -235,11 +366,11 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                   }
 
                   final authProvider = Provider.of<AuthProvider>(context);
-                  final currentUserId = authProvider.user?.id;
+                  final currentShopId = authProvider.user?.shopId;
 
                   // Filter products received by this shop
                   final shopProducts = productProvider.products
-                      .where((p) => p.receivedBy == currentUserId)
+                      .where((p) => p.receivedBy == currentShopId)
                       .take(5)
                       .toList();
 
@@ -311,8 +442,8 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
             label: 'Inventory',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Orders',
+            icon: Icon(Icons.point_of_sale),
+            label: 'Sales',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
@@ -322,8 +453,8 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
       ),
       floatingActionButton: _selectedIndex == 0
           ? CustomFAB(
-              icon: Icons.qr_code,
-              label: 'Generate QR',
+              icon: CustomIcons.MEATTRACE_ICON,
+              tooltip: 'Generate QR',
               onPressed: () {
                 // TODO: Navigate to QR generation screen
                 _showQRGenerationDialog();
@@ -331,10 +462,10 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
             )
           : _selectedIndex == 2
               ? CustomFAB(
-                  icon: Icons.add_shopping_cart,
-                  label: 'Place Order',
+                  icon: Icons.point_of_sale,
+                  tooltip: 'New Sale',
                   onPressed: () {
-                    context.push('/shop/place-order');
+                    context.push('/shop/sell');
                   },
                 )
               : null,
@@ -462,18 +593,19 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
 
   Widget _buildStatsSection(ProductProvider productProvider) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final currentUserId = authProvider.user?.id;
+    final currentShopId = authProvider.user?.shopId;
 
-    final totalProducts = productProvider.products.where((p) => p.receivedBy == currentUserId).length;
-    final inStock = productProvider.products.where((p) => p.receivedBy == currentUserId && p.quantity > 0).length;
+    final shopProducts = productProvider.products.where((p) => p.receivedBy == currentShopId).toList();
+    final totalProducts = shopProducts.length;
+    final lowStock = shopProducts.where((p) => p.quantity > 0 && p.quantity <= 10).length;
 
-    // Calculate total inventory value
-    final totalValue = productProvider.products
-        .where((p) => p.receivedBy == currentUserId)
-        .fold<double>(0, (sum, product) => sum + (product.price * product.quantity));
+    // Calculate total inventory value (sum of all products: price * quantity)
+    double totalInventoryValue = 0.0;
+    for (var product in shopProducts) {
+      totalInventoryValue += (product.price * product.quantity);
+    }
 
-    // Calculate today's sales (mock data - replace with actual sales data)
-    final todaySales = 0; // TODO: Implement sales tracking
+  // Use total sales fetched from Sales API
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
@@ -499,10 +631,10 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
               const SizedBox(width: AppTheme.space12),
               Expanded(
                 child: StatsCard(
-                  label: 'Pending',
-                  value: _isLoadingPending ? '...' : _pendingProductsCount.toString(),
-                  subtitle: 'Transfers',
-                  icon: Icons.schedule,
+                  label: 'Low Stock',
+                  value: lowStock.toString(),
+                  subtitle: 'Items',
+                  icon: Icons.warning,
                   color: AppColors.warning,
                 ),
               ),
@@ -513,9 +645,9 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
             children: [
               Expanded(
                 child: StatsCard(
-                  label: 'Value',
-                  value: '\$${totalValue.toStringAsFixed(0)}',
-                  subtitle: 'Inventory',
+                  label: 'Inventory',
+                  value: 'TZS ${totalInventoryValue.toStringAsFixed(0)}',
+                  subtitle: 'Total Value',
                   icon: Icons.attach_money,
                   color: AppColors.success,
                 ),
@@ -523,16 +655,272 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
               const SizedBox(width: AppTheme.space12),
               Expanded(
                 child: StatsCard(
-                  label: 'Stock',
-                  value: inStock.toString(),
-                  subtitle: 'Items',
-                  icon: Icons.inventory,
-                  color: AppColors.info,
+                  label: 'Sales',
+                  value: 'TZS ${_totalSales.toStringAsFixed(2)}',
+                  isLoading: _isLoadingSales,
+                  subtitle: 'Total Sales',
+                  icon: Icons.point_of_sale,
+                  color: AppColors.accentOrange,
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInventoryOverview(ProductProvider productProvider) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentShopId = authProvider.user?.shopId;
+
+    final shopProducts = productProvider.products.where((p) => p.receivedBy == currentShopId).toList();
+    final totalProducts = shopProducts.length;
+    final inStock = shopProducts.where((p) => p.quantity > 10).length;
+    final lowStock = shopProducts.where((p) => p.quantity > 0 && p.quantity <= 10).length;
+    final outOfStock = shopProducts.where((p) => p.quantity == 0).length;
+
+    final inStockPercentage = totalProducts > 0 ? (inStock / totalProducts) * 100 : 0.0;
+    final lowStockPercentage = totalProducts > 0 ? (lowStock / totalProducts) * 100 : 0.0;
+    final outOfStockPercentage = totalProducts > 0 ? (outOfStock / totalProducts) * 100 : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.space16,
+        AppTheme.space24,
+        AppTheme.space16,
+        AppTheme.space8,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Inventory Overview',
+            style: AppTypography.headlineMedium(),
+          ),
+          const SizedBox(height: AppTheme.space16),
+          CustomCard(
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.space16),
+              child: Column(
+                children: [
+                  // In Stock Progress Bar
+                  _buildProgressBar(
+                    label: 'In Stock',
+                    value: inStockPercentage,
+                    color: AppColors.success,
+                    count: inStock,
+                  ),
+                  const SizedBox(height: AppTheme.space16),
+
+                  // Low Stock Progress Bar
+                  _buildProgressBar(
+                    label: 'Low Stock',
+                    value: lowStockPercentage,
+                    color: AppColors.warning,
+                    count: lowStock,
+                  ),
+                  const SizedBox(height: AppTheme.space16),
+
+                  // Out of Stock Progress Bar
+                  _buildProgressBar(
+                    label: 'Out of Stock',
+                    value: outOfStockPercentage,
+                    color: AppColors.error,
+                    count: outOfStock,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar({
+    required String label,
+    required double value,
+    required Color color,
+    required int count,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: AppTypography.bodyMedium().copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '${count} items (${value.toStringAsFixed(0)}%)',
+              style: AppTypography.bodySmall().copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space8),
+        Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: AppColors.dividerLight,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: value / 100,
+              backgroundColor: Colors.transparent,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeaturedProductCard(Product product) {
+    return CustomCard(
+      child: InkWell(
+        onTap: () => context.push('/products/${product.id}'),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.space16),
+          child: Row(
+            children: [
+              // Product Image/Icon
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.shopPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                ),
+                child: Icon(
+                  CustomIcons.meatCut,
+                  color: AppColors.shopPrimary,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space16),
+
+              // Product Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Product Name and Rating
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: AppTypography.titleMedium().copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        // Star Rating
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.space8,
+                            vertical: AppTheme.space4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentOrange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.star,
+                                color: AppColors.accentOrange,
+                                size: 16,
+                              ),
+                              const SizedBox(width: AppTheme.space4),
+                              Text(
+                                '4.8', // Mock rating
+                                style: AppTypography.labelSmall().copyWith(
+                                  color: AppColors.accentOrange,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space4),
+
+                    // Batch Number and Stock
+                    Row(
+                      children: [
+                        Text(
+                          'Batch: ${product.batchNumber ?? 'N/A'}',
+                          style: AppTypography.bodySmall().copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.space12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.space8,
+                            vertical: AppTheme.space4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: product.quantity > 10
+                                ? AppColors.success.withValues(alpha: 0.1)
+                                : product.quantity > 0
+                                    ? AppColors.warning.withValues(alpha: 0.1)
+                                    : AppColors.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          ),
+                          child: Text(
+                            product.quantity > 10
+                                ? '${product.quantity} in stock'
+                                : product.quantity > 0
+                                    ? 'Low stock'
+                                    : 'Out of stock',
+                            style: AppTypography.labelSmall().copyWith(
+                              color: product.quantity > 10
+                                  ? AppColors.success
+                                  : product.quantity > 0
+                                      ? AppColors.warning
+                                      : AppColors.error,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space8),
+
+                    // Price
+                    Text(
+                      '\$${product.price.toStringAsFixed(2)}/kg',
+                      style: AppTypography.titleMedium().copyWith(
+                        color: AppColors.shopPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow Icon
+              Icon(
+                Icons.arrow_forward_ios,
+                color: AppColors.textSecondary,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -550,10 +938,10 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
         icon: Icons.inventory,
         label: 'Inventory',
         color: AppColors.shopPrimary,
-        route: '/product-inventory',
+        onTap: () => setState(() => _selectedIndex = 1), // Switch to inventory tab
       ),
       _QuickAction(
-        icon: Icons.qr_code,
+        icon: CustomIcons.MEATTRACE_ICON,
         label: 'Generate',
         color: AppColors.success,
         onTap: _showQRGenerationDialog,
@@ -708,7 +1096,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
               ),
               child: const Icon(
-                Icons.qr_code,
+                CustomIcons.MEATTRACE_ICON,
                 color: AppColors.shopPrimary,
               ),
             ),

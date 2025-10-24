@@ -40,7 +40,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     'Sheep': 'sheep',
     'Goat': 'goat',
   };
-  final List<String> _statusOptions = ['All', 'Healthy', 'Sick', 'Under Treatment', 'Slaughtered', 'Transferred'];
+  final List<String> _statusOptions = ['All', 'Healthy', 'Slaughtered', 'Transferred', 'Semi-Transferred'];
 
   @override
   void initState() {
@@ -141,13 +141,13 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
         }
       }
 
-      // Status filter
+      // Status filter - using lifecycle status
       if (_selectedStatus != 'All') {
-        if (_selectedStatus == 'Healthy' && animal.healthStatus != 'healthy') return false;
-        if (_selectedStatus == 'Sick' && animal.healthStatus != 'sick') return false;
-        if (_selectedStatus == 'Under Treatment' && animal.healthStatus != 'under_treatment') return false;
-        if (_selectedStatus == 'Slaughtered' && !animal.slaughtered) return false;
-        if (_selectedStatus == 'Transferred' && animal.transferredTo == null) return false;
+        final lifecycleStatus = animal.computedLifecycleStatus;
+        if (_selectedStatus == 'Healthy' && lifecycleStatus != AnimalLifecycleStatus.healthy) return false;
+        if (_selectedStatus == 'Slaughtered' && lifecycleStatus != AnimalLifecycleStatus.slaughtered) return false;
+        if (_selectedStatus == 'Transferred' && lifecycleStatus != AnimalLifecycleStatus.transferred) return false;
+        if (_selectedStatus == 'Semi-Transferred' && lifecycleStatus != AnimalLifecycleStatus.semiTransferred) return false;
       }
 
       return true;
@@ -655,18 +655,30 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
   }
 
   String _getStatusLabel(Animal animal) {
-    if (animal.slaughtered) return 'Slaughtered';
-    if (animal.transferredTo != null) return 'Transferred';
-    if (animal.healthStatus == 'sick') return 'Sick';
-    if (animal.healthStatus == 'under_treatment') return 'Treatment';
-    return 'Healthy';
+    final status = animal.computedLifecycleStatus;
+    switch (status) {
+      case AnimalLifecycleStatus.healthy:
+        return 'Healthy';
+      case AnimalLifecycleStatus.slaughtered:
+        return 'Slaughtered';
+      case AnimalLifecycleStatus.transferred:
+        return 'Transferred';
+      case AnimalLifecycleStatus.semiTransferred:
+        return 'Semi-Transferred';
+    }
   }
 
   Color _getStatusColor(Animal animal) {
-    if (animal.slaughtered) return Colors.grey;
-    if (animal.transferredTo != null) return Colors.blue;
-    if (animal.healthStatus == 'sick') return Colors.red;
-    if (animal.healthStatus == 'under_treatment') return Colors.orange;
-    return Colors.green;
+    final status = animal.computedLifecycleStatus;
+    switch (status) {
+      case AnimalLifecycleStatus.healthy:
+        return Colors.green;
+      case AnimalLifecycleStatus.slaughtered:
+        return Colors.grey;
+      case AnimalLifecycleStatus.transferred:
+        return Colors.blue;
+      case AnimalLifecycleStatus.semiTransferred:
+        return Colors.purple;
+    }
   }
 }

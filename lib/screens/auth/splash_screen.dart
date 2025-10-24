@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/custom_icons.dart';
 
 /// Splash Screen with Session-Based Authentication Check
 /// 
@@ -128,14 +129,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   void _navigateToRoleBasedHome(String role) {
-    switch (role) {
-      case 'Farmer':
+    switch (role.toLowerCase()) {
+      case 'farmer':
         context.go('/farmer-home');
         break;
-      case 'ProcessingUnit':
+      case 'processingunit':
+      case 'processing_unit':
         context.go('/processor-home');
         break;
-      case 'Shop':
+      case 'shop':
         context.go('/shop-home');
         break;
       default:
@@ -289,13 +291,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.farmerPrimary,
-            AppColors.processorPrimary,
-          ],
-        ),
         shape: BoxShape.circle,
+        border: Border.all(
+          color: AppColors.farmerPrimary,
+          width: 4,
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.farmerPrimary.withValues(alpha: 0.4),
@@ -304,10 +304,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           ),
         ],
       ),
-      child: const Icon(
-        Icons.qr_code_scanner,
-        size: 60,
-        color: Colors.white,
+      child: ClipOval(
+        child: Image.asset(
+          'assets/icons/MEATTRACE_ICON.png',
+          width: 112,
+          height: 112,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

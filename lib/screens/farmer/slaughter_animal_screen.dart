@@ -78,6 +78,14 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh animals when returning to this screen
+    print('🔵 [SlaughterScreen] didChangeDependencies - Refreshing animals');
+    _loadAvailableAnimals();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _headWeightController.dispose();
@@ -91,52 +99,32 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   Future<void> _loadAvailableAnimals() async {
-    print('🔵 [SlaughterScreen] _loadAvailableAnimals started');
     setState(() => _isLoading = true);
     try {
-      print('🔵 [SlaughterScreen] Getting AnimalProvider from context');
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-      print('🔵 [SlaughterScreen] AnimalProvider obtained, clearing cache...');
-      
-      // Clear cache to ensure fresh data
-      await animalProvider.clearAnimals();
-      
-      print('🔵 [SlaughterScreen] Fetching animals with slaughtered=false filter...');
-      // Fetch only unslaughtered animals (animals available for slaughter)
       await animalProvider.fetchAnimals(slaughtered: false);
-      print('🔵 [SlaughterScreen] Animals fetched, total count: ${animalProvider.animals.length}');
       
-      // Filter for active/healthy animals only (not slaughtered, not transferred)
       final animals = animalProvider.animals.where((animal) {
-        print('🔍 [SlaughterScreen] Checking animal ${animal.animalId}: slaughtered=${animal.slaughtered}, transferredTo=${animal.transferredTo}, healthStatus=${animal.healthStatus}');
         return !animal.slaughtered &&
           animal.transferredTo == null &&
-          (animal.healthStatus == null || 
+          (animal.healthStatus == null ||
            animal.healthStatus!.toLowerCase() == 'healthy' ||
            animal.healthStatus!.toLowerCase() == 'active');
       }).toList();
-      
-      print('✅ [SlaughterScreen] Filtered animals count: ${animals.length}');
-      
+
       setState(() {
         _availableAnimals = animals;
         _filteredAnimals = animals;
         _isLoading = false;
       });
 
-      // Auto-select animal if animalId was provided
       if (widget.animalId != null) {
-        print('🔵 [SlaughterScreen] Auto-selecting animal with ID: ${widget.animalId}');
         final targetAnimal = animals.where((animal) => animal.id.toString() == widget.animalId).toList();
         if (targetAnimal.isNotEmpty) {
           _selectAnimal(targetAnimal.first);
-        } else {
-          print('⚠️ [SlaughterScreen] Animal with ID ${widget.animalId} not found in available animals');
         }
       }
-    } catch (e, stackTrace) {
-      print('❌ [SlaughterScreen] Error in _loadAvailableAnimals: $e');
-      print('❌ [SlaughterScreen] Stack trace: $stackTrace');
+    } catch (e) {
       setState(() => _isLoading = false);
       _showError('Failed to load animals: ${e.toString()}');
     }
@@ -261,69 +249,6 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     print('✅ [SlaughterScreen] Showing confirmation dialog');
     
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 28),
-            const SizedBox(width: 12),
-            const Text('Confirm Slaughter'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Animal: ${_selectedAnimal!.species} ${_selectedAnimal!.animalId}',
-              style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Type: ${_carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass'}',
-              style: AppTypography.bodyMedium(),
-            ),
-            Text(
-              'Total Weight: ${totalWeight.toStringAsFixed(1)} kg',
-              style: AppTypography.bodyMedium(),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-              ),
-              child: Text(
-                'This action is permanent and cannot be undone. The animal will be marked as slaughtered and measurements recorded.',
-                style: AppTypography.bodySmall(color: AppColors.warning),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          CustomButton(
-            label: 'Confirm',
-            onPressed: () => Navigator.of(context).pop(true),
-            customColor: AppColors.farmerPrimary,
-            fullWidth: false,
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) {
-      print('⚠️ [SlaughterScreen] User cancelled slaughter confirmation');
-      return;
-    }
-
     print('✅ [SlaughterScreen] User confirmed slaughter, proceeding...');
     await _performSlaughter();
   }
@@ -345,7 +270,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       
       print('🔵 [SlaughterScreen] Creating carcass measurements FIRST (before marking as slaughtered)');
       // STEP 1: Create carcass measurements FIRST
-      Map<String, dynamic> measurements = {};
+      Map<String, Map<String, dynamic>> measurements = {};
       
       if (_carcassType == 'split') {
         // Add split carcass measurements
@@ -399,173 +324,35 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         };
       }
 
-      // Add metadata
-      measurements['carcass_type'] = _carcassType;
-      if (_notesController.text.isNotEmpty) {
-        measurements['notes'] = _notesController.text;
-      }
 
       print('🔵 [SlaughterScreen] Measurements prepared: $measurements');
       print('🔵 [SlaughterScreen] Carcass type before API call: $_carcassType');
-      print('🔵 [SlaughterScreen] Creating carcass measurement record');
       
       // Create carcass measurement record
-      // IMPORTANT: Backend expects 'animal' (not 'animal_id') which is the database ID
-      // NOTE: The backend automatically marks the animal as slaughtered when carcass measurements are created
-      try {
-        final measurementData = {
-          'animal': _selectedAnimal!.id,  // Backend expects 'animal' field with the ID
-          'carcass_type': _carcassType,
-          'measurements': measurements,
-        };
-        print('🔵 [SlaughterScreen] Measurement data: $measurementData');
-        
-        final measurementResponse = await dioClient.dio.post(
-          '/carcass-measurements/',
-          data: measurementData,
-        );
-        print('✅ [SlaughterScreen] Carcass measurements created - Response: ${measurementResponse.statusCode}');
-        print('✅ [SlaughterScreen] Animal automatically marked as slaughtered by backend');
-        
-        // STEP 2: For split carcass, create individual slaughter parts from measurements
-        print('🔍 [SlaughterScreen] Checking carcass type: $_carcassType');
-        if (_carcassType == 'split') {
-          print('🔵 [SlaughterScreen] ✓ Carcass type is SPLIT - Creating slaughter parts...');
-          print('🔍 [SlaughterScreen] Measurements object: $measurements');
-          print('🔍 [SlaughterScreen] Measurements type: ${measurements.runtimeType}');
-          print('🔍 [SlaughterScreen] Measurements length: ${measurements.length} entries');
-          
-          // Map of part names to standardized part types
-          final partTypeMap = {
-            'head_weight': 'Head',
-            'torso_weight': 'Torso',
-            'front_legs_weight': 'Front Legs',
-            'hind_legs_weight': 'Hind Legs',
-            'organs_weight': 'Organs',
-          };
-          
-          int partsCreated = 0;
-          int entriesProcessed = 0;
-          
-          for (var entry in measurements.entries) {
-            entriesProcessed++;
-            final measurementKey = entry.key;
-            final measurementValue = entry.value;
-            
-            print('🔍 [SlaughterScreen] Processing entry #$entriesProcessed: key="$measurementKey", value=$measurementValue, type=${measurementValue.runtimeType}');
-            
-            // Skip metadata fields
-            if (measurementKey == 'carcass_type' || measurementKey == 'notes') {
-              print('  ⏭️  Skipping metadata field: $measurementKey');
-              continue;
-            }
-            
-            // Check if it's a weight measurement (has 'value' and 'unit')
-            print('  🔍 Checking if value is Map: ${measurementValue is Map}');
-            if (measurementValue is Map) {
-              print('  🔍 Contains "value" key: ${measurementValue.containsKey('value')}');
-              print('  🔍 Map contents: $measurementValue');
-            }
-            
-            if (measurementValue is Map && measurementValue.containsKey('value')) {
-              final partType = partTypeMap[measurementKey] ?? 
-                  measurementKey.split('_').map((word) => word[0].toUpperCase() + word.substring(1)).join(' ');
-              
-              final weight = measurementValue['value'];
-              final unit = measurementValue['unit'] ?? 'kg';
-              
-              print('  📦 Preparing to create part: $partType');
-              print('     - Weight: $weight (${weight.runtimeType})');
-              print('     - Unit: $unit');
-              print('     - Animal ID: ${_selectedAnimal!.id}');
-              
-              final partData = {
-                'animal': _selectedAnimal!.id,
-                'part_type': partType,
-                'weight': weight,
-                'weight_unit': unit,
-                'description': 'Created from slaughter measurements',
-              };
-              print('     - POST data: $partData');
-              
-              try {
-                print('  🚀 Sending POST request to /slaughter-parts/...');
-                final partResponse = await dioClient.dio.post(
-                  '/slaughter-parts/',
-                  data: partData,
-                );
-                partsCreated++;
-                print('  ✅ SUCCESS! Part created: $partType ($weight $unit)');
-                print('     - Response status: ${partResponse.statusCode}');
-                print('     - Response data: ${partResponse.data}');
-              } catch (partError) {
-                print('  ❌ FAILED to create slaughter part: $partType');
-                print('     - Error: $partError');
-                print('     - Error type: ${partError.runtimeType}');
-                if (partError.toString().contains('DioException')) {
-                  print('     - DioException details: $partError');
-                }
-                // Continue creating other parts even if one fails
-              }
-            } else {
-              print('  ⏭️  Skipping entry (not a valid weight measurement): $measurementKey');
-            }
-          }
-          
-          print('🎯 [SlaughterScreen] SUMMARY:');
-          print('   - Total entries in measurements: ${measurements.length}');
-          print('   - Entries processed: $entriesProcessed');
-          print('   - Parts successfully created: $partsCreated');
-          
-          if (partsCreated == 0) {
-            print('⚠️ [SlaughterScreen] WARNING: NO slaughter parts were created!');
-          } else {
-            print('✅ [SlaughterScreen] Created $partsCreated slaughter parts');
-          }
-        } else {
-          print('⏭️ [SlaughterScreen] Carcass type is WHOLE - skipping slaughter parts creation');
-        }
-      } catch (measurementError) {
-        print('❌ [SlaughterScreen] Error creating carcass measurements: $measurementError');
-        print('❌ [SlaughterScreen] Error type: ${measurementError.runtimeType}');
-        throw Exception('Failed to create carcass measurements: $measurementError');
-      }
+      final measurement = CarcassMeasurement(
+        animalId: _selectedAnimal!.id!,
+        carcassType: _carcassType == 'split' ? CarcassType.split : CarcassType.whole,
+        measurements: Map<String, Map<String, dynamic>>.from(measurements),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
 
-      // Refresh animal list - FORCE FULL REFRESH (no cache)
-      if (mounted) {
-        print('🔵 [SlaughterScreen] Refreshing animal list - FULL REFRESH');
-        final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-        // Clear local cache to force fresh data from server
-        animalProvider.clearAnimals();
-        // Fetch ALL animals (slaughtered + active)
-        await animalProvider.fetchAnimals(slaughtered: null);
-        print('✅ [SlaughterScreen] Animal list refreshed with ALL animals (slaughtered + active)');
-        
-        // Log slaughter activity
-        print('🔵 [SlaughterScreen] Logging slaughter activity');
-        try {
-          final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
-          await activityProvider.logSlaughter(
-            animalId: _selectedAnimal!.id.toString(),
-            animalTag: _selectedAnimal!.animalId,
-          );
-          print('✅ [SlaughterScreen] Slaughter activity logged');
-        } catch (activityError) {
-          print('⚠️ [SlaughterScreen] Failed to log activity: $activityError');
-          // Non-critical error, continue
-        }
-      }
+      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      await animalProvider.createCarcassMeasurement(measurement);
+
+      // Log activity
+      final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+      await activityProvider.logSlaughter(
+        animalId: _selectedAnimal!.id.toString(),
+        animalTag: _selectedAnimal!.animalId,
+      );
 
       setState(() => _isSubmitting = false);
 
-      // Show success dialog
       if (mounted) {
-        print('✅ [SlaughterScreen] Showing success dialog');
         _showSuccessDialog();
       }
-    } catch (e, stackTrace) {
-      print('❌ [SlaughterScreen] Error in _performSlaughter: $e');
-      print('❌ [SlaughterScreen] Stack trace: $stackTrace');
+    } catch (e) {
       setState(() => _isSubmitting = false);
       _showError('Failed to record slaughter: ${e.toString()}');
     }

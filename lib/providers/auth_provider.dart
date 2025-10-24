@@ -26,6 +26,8 @@ class AuthProvider with ChangeNotifier {
     _authInitializer = LazyInitializer(() => _checkLoginStatus());
     // Start initialization in background immediately
     _startBackgroundAuthCheck();
+    // Set up automatic logout on unauthorized responses
+    _setupAutoLogout();
   }
 
   Future<void> _startBackgroundAuthCheck() async {
@@ -86,20 +88,46 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> login(String username, String password) async {
+    debugPrint('🔐 [AUTH_PROVIDER] Starting login process for user: $username');
+    
+    // Set loading state
     _isLoading = true;
     _error = null;
     notifyListeners();
 
+    final startTime = DateTime.now();
+
     try {
-      _user = await _authService.login(username, password);
+      debugPrint('🔄 [AUTH_PROVIDER] Calling _authService.login() with 30s timeout...');
+
+      // Add timeout to prevent infinite hanging
+      _user = await _authService.login(username, password).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          debugPrint('⏱️ [AUTH_PROVIDER] Login request timed out after 30 seconds');
+          throw Exception('Login request timed out. Please check your connection and try again.');
+        },
+      );
+
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('✅ [AUTH_PROVIDER] _authService.login() completed in ${duration.inMilliseconds}ms');
+
       if (_user != null) {
+        debugPrint('👤 [AUTH_PROVIDER] Setting current user: ${_user!.username} (${_user!.role})');
         _userContextProvider.setCurrentUser(_user!);
+        _error = null;
+      } else {
+        debugPrint('⚠️ [AUTH_PROVIDER] Login returned null user');
+        _error = 'Login failed: No user data received';
       }
-      _error = null;
+
+      debugPrint('🎉 [AUTH_PROVIDER] Login successful, clearing loading state');
       _isLoading = false;
       notifyListeners();
-      return true;
+      return _user != null;
     } catch (e) {
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('❌ [AUTH_PROVIDER] Login failed after ${duration.inMilliseconds}ms: $e');
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -107,13 +135,25 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> register(String username, String email, String password, String role) async {
+  Future<bool> register(
+    String username, 
+    String email, 
+    String password, 
+    String role, {
+    Map<String, dynamic>? additionalData,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _user = await _authService.register(username, email, password, role);
+      _user = await _authService.register(
+        username, 
+        email, 
+        password, 
+        role,
+        additionalData: additionalData,
+      );
       if (_user != null) {
         _userContextProvider.setCurrentUser(_user!);
       }
@@ -148,6 +188,20 @@ class AuthProvider with ChangeNotifier {
 
   void clearError() {
     _error = null;
+    _isLoading = false; // Also clear loading state
+    notifyListeners();
+  }
+
+  void _setupAutoLogout() {
+    _authService.dioClient.setOnUnauthorizedCallback(_handleUnauthorized);
+  }
+
+  void _handleUnauthorized() {
+    debugPrint('🚪 Automatic logout triggered due to token expiration');
+    // Clear user state
+    _user = null;
+    _userContextProvider.clearCurrentUser();
+    _error = 'Session expired. Please login again.';
     notifyListeners();
   }
 }

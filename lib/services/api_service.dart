@@ -4,6 +4,8 @@ import '../models/product.dart';
 import '../models/animal.dart';
 import '../models/production_stats.dart';
 import '../models/order.dart';
+import '../models/product_category.dart';
+import '../utils/constants.dart';
 import 'dio_client.dart';
 
 class ApiService {
@@ -160,12 +162,83 @@ class ApiService {
       throw Exception('Failed to fetch orders: $e');
     }
   }
+
+  Future<Map<String, dynamic>> fetchDashboard() async {
+    try {
+      final response = await _dioClient.dio.get('/dashboard/');
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch dashboard: ${e.message}');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchActivities() async {
+    try {
+      final response = await _dioClient.dio.get(Constants.activitiesEndpoint);
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch activities: ${e.message}');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchProfile() async {
+    try {
+      final response = await _dioClient.dio.get('/profile/me/');
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch profile: ${e.message}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
+    try {
+      final response = await _dioClient.dio.patch('/profile/me/', data: data);
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Failed to update profile: ${e.message}');
+    }
+  }
+
+  Future<ProductCategory> addProductCategory(ProductCategory category) async {
+    try {
+      final response = await post(
+        '/product-categories/',
+        data: category.toJson(),
+      );
+      return ProductCategory.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception('Failed to add product category: ${e.message}');
+    }
+  }
+
+  Future<ProductCategory> updateProductCategory(ProductCategory category) async {
+    try {
+      if (category.id == null) throw Exception('Category id is required for update');
+      final response = await put(
+        '/product-categories/${category.id}/',
+        data: category.toJson(),
+      );
+      return ProductCategory.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception('Failed to update product category: ${e.message}');
+    }
+  }
+
+  Future<void> deleteProductCategory(int id) async {
+    try {
+      await delete('/product-categories/$id/');
+    } on DioException catch (e) {
+      throw Exception('Failed to delete product category: ${e.message}');
+    }
+  }
+
+  Future<List<ProductCategory>> fetchProductCategories() async {
+    try {
+      final response = await get('/product-categories/');
+      final data = response.data as List;
+      return data.map((json) => ProductCategory.fromJson(json)).toList();
+    } on DioException catch (e) {
+      throw Exception('Failed to fetch product categories: ${e.message}');
+    }
+  }
 }
-
-
-
-
-
-
-
-

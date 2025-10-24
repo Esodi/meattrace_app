@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
+import '../animations/skeleton_loader.dart';
 
 /// MeatTrace Pro - Custom Card Components
 /// Reusable card widgets with consistent styling
@@ -63,16 +64,16 @@ class CustomCard extends StatelessWidget {
             ? Border.all(
                 color: selected
                     ? theme.colorScheme.primary
-                    : borderColor ?? (isDark ? AppColors.darkDivider : AppColors.divider),
+                    : borderColor ?? AppColors.textSecondary.withValues(alpha: 0.2),
                 width: selected ? 2 : (borderWidth ?? 1),
               )
             : null,
         boxShadow: cardElevation > 0
             ? [
                 BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: cardElevation * 2,
-                  offset: Offset(0, cardElevation),
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ]
             : null,
@@ -177,6 +178,7 @@ class StatsCard extends StatelessWidget {
   final String? subtitle;
   final Widget? trend;
   final VoidCallback? onTap;
+  final bool isLoading;
 
   const StatsCard({
     Key? key,
@@ -187,12 +189,16 @@ class StatsCard extends StatelessWidget {
     this.subtitle,
     this.trend,
     this.onTap,
+    this.isLoading = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final statColor = color ?? theme.colorScheme.primary;
+    if (isLoading) {
+      return const StatsCardSkeleton();
+    }
 
     return CustomCard(
       onTap: onTap,

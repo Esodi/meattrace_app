@@ -113,7 +113,8 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
     });
 
     try {
-      final units = await _processingUnitService.getProcessingUnits();
+      // Use public endpoint that doesn't require authentication
+      final units = await _processingUnitService.getPublicProcessingUnits();
       setState(() {
         _availableUnits = units;
       });
@@ -168,44 +169,58 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // Step 1: Register the user account
-      final success = await authProvider.register(
-        _usernameController.text.trim(),
-        _emailController.text.trim(),
-        _passwordController.text,
-        'ProcessingUnit',
-      );
-
-      if (!success) {
-        throw Exception(authProvider.error ?? 'Registration failed');
-      }
-
-      // Step 2: Create processing unit or submit join request
       if (_signupMode == 'create') {
-        // Create new processing unit
-        await _processingUnitService.createProcessingUnit(
-          ProcessingUnit(
-            name: _facilityNameController.text.trim(),
-            description: _descriptionController.text.trim(),
-            location: '${_cityController.text}, ${_stateController.text} ${_zipController.text}',
-            contactEmail: _emailController.text.trim(),
-            contactPhone: _phoneController.text.trim(),
-            licenseNumber: _licenseController.text.trim(),
-          ),
+        // For creating a new processing unit:
+        // The backend register endpoint will automatically create the processing unit
+        // We need to pass the facility details as part of the registration
+        
+        // For now, we'll use a modified approach:
+        // 1. Register with basic info (backend creates default processing unit)
+        // 2. Then update it with full facility details
+        
+        final success = await authProvider.register(
+          _usernameController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text,
+          'ProcessingUnit',
+          additionalData: {
+            'processing_unit_name': _facilityNameController.text.trim(),
+            'location': '${_addressController.text}, ${_cityController.text}, ${_stateController.text} ${_zipController.text}',
+            'phone': _phoneController.text.trim(),
+            'license_number': _licenseController.text.trim(),
+            'description': _descriptionController.text.trim(),
+          },
         );
 
+        if (!success) {
+          throw Exception(authProvider.error ?? 'Registration failed');
+        }
+
         if (mounted) {
-          _showSuccessSnackbar('Processing unit created successfully!');
-          context.go('/login');
+          _showSuccessSnackbar('Processing unit created successfully! Welcome to MeatTrace Pro.');
+          _navigateToRoleBasedHome('ProcessingUnit');
         }
       } else {
-        // Submit join request (would need a join request API)
+        // For joining an existing unit:
+        // Step 1: Register the user account first
+        final success = await authProvider.register(
+          _usernameController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text,
+          'ProcessingUnit',
+        );
+
+        if (!success) {
+          throw Exception(authProvider.error ?? 'Registration failed');
+        }
+
+        // Step 2: Submit join request (would need a join request API)
         // For now, just show success message
         if (mounted) {
           _showSuccessSnackbar(
             'Join request submitted! You will be notified when approved.',
           );
-          context.go('/login');
+          _navigateToRoleBasedHome('ProcessingUnit');
         }
       }
     } catch (e) {
@@ -239,6 +254,24 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  void _navigateToRoleBasedHome(String role) {
+    switch (role.toLowerCase()) {
+      case 'farmer':
+        context.go('/farmer-home');
+        break;
+      case 'processingunit':
+      case 'processing_unit':
+        context.go('/processor-home');
+        break;
+      case 'shop':
+        context.go('/shop-home');
+        break;
+      default:
+        // Fallback to login if role is unknown
+        context.go('/login');
+    }
   }
 
   @override

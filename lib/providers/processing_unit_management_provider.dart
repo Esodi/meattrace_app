@@ -54,8 +54,9 @@ class ProcessingUnitManagementProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Use standard DRF POST endpoint for processing units
       final response = await _apiService.post(
-        '/processing-units/create/',
+        '/processing-units/',
         data: unit.toJsonForCreate(),
       );
 

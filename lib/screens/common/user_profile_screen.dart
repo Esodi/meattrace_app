@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/dio_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../utils/app_colors.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -45,10 +46,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
     try {
-      final dio = DioClient().dio;
-      final response = await dio.get('/profile/');
-      
-      final userData = response.data;
+      final apiService = ApiService();
+      final userData = await apiService.fetchProfile();
+
       setState(() {
         _userId = userData['id'];
         _usernameController.text = userData['username'] ?? '';
@@ -75,17 +75,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final dio = DioClient().dio;
-      await dio.patch('/profile/', data: {
+      final apiService = ApiService();
+      await apiService.updateProfile({
         'first_name': _firstNameController.text.trim(),
         'last_name': _lastNameController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'organization': _organizationController.text.trim(),
       });
-      
+
       setState(() => _isEditing = false);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

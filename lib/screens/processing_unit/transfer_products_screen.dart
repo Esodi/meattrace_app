@@ -49,26 +49,59 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     try {
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       
-      // Fetch products
-      await productProvider.fetchProducts();
+      print('[TRANSFER_PRODUCTS] Starting data load...');
       
-      // Filter available products (not already transferred)
-      final availableProducts = productProvider.products
-          .where((product) => product.transferredTo == null)
-          .toList();
+      // Fetch products
+      try {
+        await productProvider.fetchProducts();
+        print('[TRANSFER_PRODUCTS] Total products fetched: ${productProvider.products.length}');
+        
+        // Filter available products (not already transferred)
+        final availableProducts = productProvider.products
+            .where((product) => product.transferredTo == null)
+            .toList();
+        
+        print('[TRANSFER_PRODUCTS] Available products (not transferred): ${availableProducts.length}');
+        for (var product in availableProducts) {
+          print('[TRANSFER_PRODUCTS] - ${product.name} (ID: ${product.id}, Batch: ${product.batchNumber})');
+        }
+        
+        setState(() {
+          _availableProducts = availableProducts;
+        });
+      } catch (e) {
+        print('[TRANSFER_PRODUCTS] Error fetching products: $e');
+        rethrow;
+      }
       
       // Fetch shops
-      final dio = DioClient().dio;
-      final shopsResponse = await dio.get('/users/?user_type=shop');
-      final shopsList = (shopsResponse.data['results'] as List)
-          .map((json) => json as Map<String, dynamic>)
-          .toList();
+      try {
+        final shopsList = await productProvider.getShops();
+        print('[TRANSFER_PRODUCTS] Shops fetched: ${shopsList.length}');
+        for (var shop in shopsList) {
+          print('[TRANSFER_PRODUCTS] - ${shop['name'] ?? 'No name'} (ID: ${shop['id']})');
+        }
+        
+        setState(() {
+          _shops = shopsList;
+        });
+      } catch (e) {
+        print('[TRANSFER_PRODUCTS] Error fetching shops: $e');
+        // Don't rethrow - allow products to still be shown even if shops fail
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Warning: Could not load shops. $e'),
+              backgroundColor: AppColors.warning,
+            ),
+          );
+        }
+      }
       
-      setState(() {
-        _availableProducts = availableProducts;
-        _shops = shopsList;
-      });
+      print('[TRANSFER_PRODUCTS] State updated - Available: ${_availableProducts.length}, Shops: ${_shops.length}');
     } catch (e) {
+      print('[TRANSFER_PRODUCTS] Error loading data: $e');
+      print('[TRANSFER_PRODUCTS] Error stack trace: ${StackTrace.current}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -331,11 +364,22 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Products list
+        // Products list - wrapped in SizedBox with constrained height for scrolling
         if (_filteredProducts.isEmpty)
           _buildEmptyState()
         else
-          ..._filteredProducts.map((product) => _buildProductCard(product)),
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5, // Constrain height to 50% of screen
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: _filteredProducts.length,
+              itemBuilder: (context, index) {
+                final product = _filteredProducts[index];
+                return _buildProductCard(product);
+              },
+            ),
+          ),
       ],
     );
   }
@@ -404,12 +448,25 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
         if (_shops.isEmpty)
           _buildNoShopsState()
         else
-          ..._shops.map((shop) => _buildShopCard(shop)),
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5, // Constrain height to 50% of screen
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: _shops.length,
+              itemBuilder: (context, index) {
+                final shop = _shops[index];
+                return _buildShopCard(shop);
+              },
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildShopCard(Map<String, dynamic> shop) {
+    final isSelected = _selectedShop?['id'] == shop['id'];
+    
     return CustomCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.zero,
@@ -421,24 +478,32 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
         },
         activeColor: AppTheme.primaryGreen,
         title: Text(
-          shop['username'] ?? 'Unknown Shop',
+          shop['name'] ?? shop['username'] ?? 'Unknown Shop',
           style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text(
-              shop['email'] ?? 'No email',
-              style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
-            ),
-            if (shop['organization_name'] != null) ...[
-              const SizedBox(height: 2),
+            if (shop['location'] != null) ...[
               Text(
-                shop['organization_name'],
-                style: AppTypography.bodySmall(),
+                '📍 ${shop['location']}',
+                style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
               ),
+              const SizedBox(height: 2),
             ],
+            if (shop['contact_phone'] != null) ...[
+              Text(
+                '📞 ${shop['contact_phone']}',
+                style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 2),
+            ],
+            if (shop['email'] != null)
+              Text(
+                shop['email'],
+                style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
+              ),
           ],
         ),
         secondary: Container(
@@ -491,15 +556,22 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _selectedShop?['username'] ?? 'Unknown',
+                _selectedShop?['name'] ?? _selectedShop?['username'] ?? 'Unknown',
                 style: AppTypography.bodyLarge().copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (_selectedShop?['organization_name'] != null) ...[
+              if (_selectedShop?['location'] != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  _selectedShop!['organization_name'],
+                  'Location: ${_selectedShop!['location']}',
+                  style: AppTypography.bodySmall(),
+                ),
+              ],
+              if (_selectedShop?['contact_phone'] != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Phone: ${_selectedShop!['contact_phone']}',
                   style: AppTypography.bodySmall(),
                 ),
               ],

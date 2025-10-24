@@ -7,6 +7,7 @@ import '../../providers/activity_provider.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/dio_client.dart';
+import '../../services/api_service.dart';
 import '../../utils/theme.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/core/custom_card.dart';
@@ -67,11 +68,10 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   Future<void> _loadProfileData() async {
     setState(() => _isLoading = true);
     try {
-      final dio = DioClient().dio;
-      final response = await dio.get('/profile/');
+      final apiService = ApiService();
+      final data = await apiService.fetchProfile();
 
       if (mounted) {
-        final data = response.data;
         setState(() {
           _firstNameController.text = data['first_name'] ?? '';
           _lastNameController.text = data['last_name'] ?? '';
@@ -132,8 +132,8 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
 
     setState(() => _isLoading = true);
     try {
-      final dio = DioClient().dio;
-      await dio.patch('/profile/', data: {
+      final apiService = ApiService();
+      await apiService.updateProfile({
         'first_name': _firstNameController.text.trim(),
         'last_name': _lastNameController.text.trim(),
         'email': _emailController.text.trim(),

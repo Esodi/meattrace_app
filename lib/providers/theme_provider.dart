@@ -2,24 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/theme.dart';
 
+enum ThemePreference { light, dark, system }
+
 class ThemeProvider with ChangeNotifier {
   static const String _darkModeKey = 'isDarkMode';
+  static const String _themePreferenceKey = 'themePreference';
   static const String _highContrastKey = 'isHighContrastEnabled';
   static const String _textScaleKey = 'textScale';
   static const String _reduceMotionKey = 'reduceMotion';
 
-  bool _isDarkMode = false;
+  ThemePreference _themePreference = ThemePreference.system;
+  bool _systemIsDark = false;
   bool _isHighContrastEnabled = false;
   bool _reduceMotion = false;
   double _textScale = 1.0;
   ThemeData _currentTheme = AppTheme.lightTheme;
 
-  bool get isDarkMode => _isDarkMode;
+  ThemePreference get themePreference => _themePreference;
+  bool get isDarkMode => _themePreference == ThemePreference.dark ||
+                        (_themePreference == ThemePreference.system && _systemIsDark);
   bool get isHighContrastEnabled => _isHighContrastEnabled;
   bool get reduceMotion => _reduceMotion;
   double get textScale => _textScale;
   ThemeData get currentTheme => _currentTheme;
-  ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  ThemeMode get themeMode {
+    if (_themePreference == ThemePreference.system) {
+      return ThemeMode.system;
+    }
+    return isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  }
 
   ThemeProvider() {
     _loadThemeFromPrefs();
@@ -27,7 +38,19 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> _loadThemeFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    _isDarkMode = prefs.getBool(_darkModeKey) ?? false;
+    // Migrate old preference if exists
+    final oldDarkMode = prefs.getBool(_darkModeKey);
+    if (oldDarkMode != null) {
+      _themePreference = oldDarkMode ? ThemePreference.dark : ThemePreference.light;
+      // Remove old key after migration
+      await prefs.remove(_darkModeKey);
+    } else {
+      final preferenceString = prefs.getString(_themePreferenceKey);
+      _themePreference = ThemePreference.values.firstWhere(
+        (e) => e.name == preferenceString,
+        orElse: () => ThemePreference.system,
+      );
+    }
     _isHighContrastEnabled = prefs.getBool(_highContrastKey) ?? false;
     _textScale = prefs.getDouble(_textScaleKey) ?? 1.0;
     _reduceMotion = prefs.getBool(_reduceMotionKey) ?? false;
@@ -37,15 +60,15 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> _saveThemeToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_darkModeKey, _isDarkMode);
+    await prefs.setString(_themePreferenceKey, _themePreference.name);
     await prefs.setBool(_highContrastKey, _isHighContrastEnabled);
     await prefs.setDouble(_textScaleKey, _textScale);
     await prefs.setBool(_reduceMotionKey, _reduceMotion);
   }
 
   void setLightMode() {
-    if (_isDarkMode) {
-      _isDarkMode = false;
+    if (_themePreference != ThemePreference.light) {
+      _themePreference = ThemePreference.light;
       _updateTheme();
       _saveThemeToPrefs();
       notifyListeners();
@@ -53,8 +76,17 @@ class ThemeProvider with ChangeNotifier {
   }
 
   void setDarkMode() {
-    if (!_isDarkMode) {
-      _isDarkMode = true;
+    if (_themePreference != ThemePreference.dark) {
+      _themePreference = ThemePreference.dark;
+      _updateTheme();
+      _saveThemeToPrefs();
+      notifyListeners();
+    }
+  }
+
+  void setSystemMode() {
+    if (_themePreference != ThemePreference.system) {
+      _themePreference = ThemePreference.system;
       _updateTheme();
       _saveThemeToPrefs();
       notifyListeners();
@@ -62,10 +94,27 @@ class ThemeProvider with ChangeNotifier {
   }
 
   void toggleTheme() {
-    _isDarkMode = !_isDarkMode;
+    if (_themePreference == ThemePreference.light) {
+      _themePreference = ThemePreference.dark;
+    } else if (_themePreference == ThemePreference.dark) {
+      _themePreference = ThemePreference.light;
+    } else {
+      // If system, toggle to opposite of current system state
+      _themePreference = _systemIsDark ? ThemePreference.light : ThemePreference.dark;
+    }
     _updateTheme();
     _saveThemeToPrefs();
     notifyListeners();
+  }
+
+  void updateSystemBrightness(bool isDark) {
+    if (_systemIsDark != isDark) {
+      _systemIsDark = isDark;
+      if (_themePreference == ThemePreference.system) {
+        _updateTheme();
+        notifyListeners();
+      }
+    }
   }
 
   void toggleHighContrast() {
@@ -112,7 +161,7 @@ class ThemeProvider with ChangeNotifier {
   }
 
   void _updateTheme() {
-    ThemeData baseTheme = _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme;
+    ThemeData baseTheme = isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme;
 
     if (_isHighContrastEnabled) {
       _currentTheme = _createHighContrastTheme(baseTheme);
@@ -135,28 +184,28 @@ class ThemeProvider with ChangeNotifier {
       titleSmall: baseTheme.textTheme.titleSmall?.copyWith(fontSize: (baseTheme.textTheme.titleSmall?.fontSize ?? 12) * _textScale),
       bodyLarge: baseTheme.textTheme.bodyLarge?.copyWith(
         fontSize: (baseTheme.textTheme.bodyLarge?.fontSize ?? 14) * _textScale,
-        color: _isDarkMode ? Colors.white : Colors.black,
+        color: isDarkMode ? Colors.white : Colors.black,
       ),
       bodyMedium: baseTheme.textTheme.bodyMedium?.copyWith(
         fontSize: (baseTheme.textTheme.bodyMedium?.fontSize ?? 12) * _textScale,
-        color: _isDarkMode ? Colors.white : Colors.black,
+        color: isDarkMode ? Colors.white : Colors.black,
       ),
       bodySmall: baseTheme.textTheme.bodySmall?.copyWith(
         fontSize: (baseTheme.textTheme.bodySmall?.fontSize ?? 12) * _textScale,
-        color: _isDarkMode ? Colors.white : Colors.black,
+        color: isDarkMode ? Colors.white : Colors.black,
       ),
     );
 
     return baseTheme.copyWith(
       textTheme: scaledTextTheme,
       cardTheme: baseTheme.cardTheme.copyWith(
-        color: _isDarkMode ? Colors.black : Colors.white,
-        shadowColor: _isDarkMode ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.3),
+        color: isDarkMode ? Colors.black : Colors.white,
+        shadowColor: isDarkMode ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.3),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _isDarkMode ? Colors.yellow : Colors.blue.shade900,
-          foregroundColor: _isDarkMode ? Colors.black : Colors.white,
+          backgroundColor: isDarkMode ? Colors.yellow : Colors.blue.shade900,
+          foregroundColor: isDarkMode ? Colors.black : Colors.white,
           elevation: 4,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -180,7 +229,7 @@ class ThemeProvider with ChangeNotifier {
           borderSide: BorderSide(color: Colors.blue, width: 3),
         ),
         labelStyle: baseTheme.inputDecorationTheme.labelStyle?.copyWith(
-          color: _isDarkMode ? Colors.white : Colors.black,
+          color: isDarkMode ? Colors.white : Colors.black,
         ),
       ),
     );

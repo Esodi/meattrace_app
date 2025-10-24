@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../models/production_stats.dart';
+import '../../services/api_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
@@ -31,6 +33,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   int _pendingAnimalsCount = 0;
   bool _isLoadingPending = false;
   int _selectedIndex = 0;
+  ProductionStats? _productionStats;
+  bool _isLoadingStats = false;
 
   @override
   void initState() {
@@ -59,11 +63,15 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   Future<void> _loadData() async {
     final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final apiService = ApiService();
 
     await Future.wait([
       animalProvider.fetchAnimals(slaughtered: null),
       productProvider.fetchProducts(),
       _loadPendingAnimalsCount(),
+      _loadProductionStats(),
+      apiService.fetchDashboard(), // Fetch dashboard data
+      apiService.fetchActivities(), // Fetch activity data
     ]);
   }
 
@@ -74,12 +82,15 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final currentUserId = authProvider.user?.id;
+      // The backend stores `transferred_to` as a ProcessingUnit id. The local
+      // user object contains `processingUnitId` (the id of the ProcessingUnit)
+      // so compare against that, not the user's numeric id.
+      final processingUnitId = authProvider.user?.processingUnitId;
 
-      if (currentUserId != null) {
+      if (processingUnitId != null) {
         // Count animals transferred to this processor but not yet received
         final pendingAnimals = animalProvider.animals.where((animal) {
-          return animal.transferredTo == currentUserId && animal.receivedBy == null;
+          return animal.transferredTo == processingUnitId && animal.receivedBy == null;
         }).length;
 
         if (mounted) {
@@ -91,6 +102,30 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     } finally {
       if (mounted) {
         setState(() => _isLoadingPending = false);
+      }
+    }
+  }
+
+  Future<void> _loadProductionStats() async {
+    if (!mounted) return;
+    setState(() => _isLoadingStats = true);
+
+    try {
+      final apiService = ApiService();
+      final stats = await apiService.fetchProductionStats();
+
+      if (mounted) {
+        setState(() => _productionStats = stats);
+      }
+    } catch (e) {
+      debugPrint('Error loading production stats: $e');
+      // Keep existing stats or set to null on error
+      if (mounted) {
+        setState(() => _productionStats = null);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingStats = false);
       }
     }
   }
@@ -489,21 +524,39 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   }
 
   Widget _buildStatsSection(AnimalProvider animalProvider, ProductProvider productProvider) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final currentUserId = authProvider.user?.id;
+  final authProvider = Provider.of<AuthProvider>(context);
+  final processingUnitId = authProvider.user?.processingUnitId;
 
-    final receivedAnimals = animalProvider.animals.where((a) => a.receivedBy == currentUserId).length;
-    final totalProducts = productProvider.products.length;
-    final activeProducts = productProvider.products.where((p) => p.transferredTo == null).length;
+    // Use ProductionStats API data if available, otherwise fall back to local calculations
+  final receivedAnimals = _productionStats?.totalAnimalsReceived ??
+    animalProvider.animals.where((a) => a.receivedBy == authProvider.user?.id).length;
+    final totalProducts = _productionStats?.totalProductsCreated ?? productProvider.products.length;
+    final activeProducts = _productionStats?.totalProductsTransferred != null
+        ? (totalProducts - (_productionStats!.totalProductsTransferred))
+        : productProvider.products.where((p) => p.transferredTo == null).length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Production Overview',
-            style: AppTypography.headlineMedium(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Production Overview',
+                style: AppTypography.headlineMedium(),
+              ),
+              if (_isLoadingStats)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.processorPrimary,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: AppTheme.space12),
           Row(
@@ -553,6 +606,33 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               ),
             ],
           ),
+          // Show additional stats from ProductionStats API if available
+          if (_productionStats != null) ...[
+            const SizedBox(height: AppTheme.space12),
+            Row(
+              children: [
+                Expanded(
+                  child: StatsCard(
+                    label: 'Today',
+                    value: _productionStats!.productsCreatedToday.toString(),
+                    subtitle: 'Products',
+                    icon: Icons.today,
+                    color: AppColors.accentOrange,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.space12),
+                Expanded(
+                  child: StatsCard(
+                    label: 'This Week',
+                    value: _productionStats!.productsCreatedThisWeek.toString(),
+                    subtitle: 'Products',
+                    icon: Icons.calendar_view_week,
+                    color: AppColors.secondaryBlue,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -574,16 +654,16 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         route: '/create-product',
       ),
       _QuickAction(
+        icon: Icons.category,
+        label: 'Categories',
+        color: AppColors.secondaryBlue,
+        route: '/processor/product-categories',
+      ),
+      _QuickAction(
         icon: Icons.send,
         label: 'Transfer',
         color: AppColors.warning,
         route: '/transfer-products',
-      ),
-      _QuickAction(
-        icon: Icons.qr_code,
-        label: 'Scan QR',
-        color: AppColors.farmerPrimary,
-        route: '/qr-scanner',
       ),
     ];
 
@@ -602,11 +682,19 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
             style: AppTypography.headlineMedium(),
           ),
           const SizedBox(height: AppTheme.space12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: actions.map((action) {
-              return _buildQuickActionButton(action);
-            }).toList(),
+          GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: AppTheme.space8,
+              mainAxisSpacing: AppTheme.space8,
+              childAspectRatio: 0.9,
+            ),
+            itemCount: actions.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemBuilder: (context, index) {
+              return _buildQuickActionButton(actions[index]);
+            },
           ),
         ],
       ),
@@ -614,81 +702,77 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   }
 
   Widget _buildQuickActionButton(_QuickAction action) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
-        child: InkWell(
-          onTap: () => context.push(action.route),
+    return InkWell(
+      onTap: () => context.push(action.route),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppTheme.space12),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: AppTheme.space16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-              border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+          border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Column(
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.space12),
-                      decoration: BoxDecoration(
-                        color: action.color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.space12),
+                  decoration: BoxDecoration(
+                    color: action.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: Icon(
+                    action.icon,
+                    color: action.color,
+                    size: 24,
+                  ),
+                ),
+                if (action.badge != null)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        action.icon,
-                        color: action.color,
-                        size: 24,
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
                       ),
-                    ),
-                    if (action.badge != null)
-                      Positioned(
-                        right: -6,
-                        top: -6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 20,
-                            minHeight: 20,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${action.badge}',
-                              style: AppTypography.labelSmall().copyWith(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
+                      child: Center(
+                        child: Text(
+                          '${action.badge}',
+                          style: AppTypography.labelSmall().copyWith(
+                            color: Colors.white,
+                            fontSize: 10,
                           ),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.space8),
-                Text(
-                  action.label,
-                  style: AppTypography.labelMedium().copyWith(
-                    color: AppColors.textPrimary,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
               ],
             ),
-          ),
+            const SizedBox(height: AppTheme.space8),
+            Text(
+              action.label,
+              style: AppTypography.labelMedium().copyWith(
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
@@ -1163,6 +1247,15 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                         onTap: () {
                           Navigator.pop(context);
                           context.push('/transfer-products');
+                        },
+                      ),
+                      _buildSpeedDialAction(
+                        icon: Icons.category,
+                        label: 'Product Categories',
+                        color: AppColors.info,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/processor/product-categories');
                         },
                       ),
                       const SizedBox(height: AppTheme.space8),

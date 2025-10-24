@@ -70,6 +70,74 @@ class ShopService {
     }
   }
 
+  /// Fetch shops for registration (public endpoint, no auth required)
+  Future<List<Shop>> getPublicShops() async {
+    try {
+      final url = '${Constants.baseUrl}/api/v2/public/shops/';
+      developer.log('[SHOP_SERVICE] Fetching public shops from: $url');
+      
+      // Create a temporary Dio instance without authentication
+      // Don't set baseUrl to avoid double path issue
+      final publicDio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',  // Force JSON response, not HTML
+          },
+        ),
+      );
+
+      final response = await publicDio.get(url);
+
+      developer.log('[SHOP_SERVICE] Public response status: ${response.statusCode}');
+      developer.log('[SHOP_SERVICE] Public response data type: ${response.data.runtimeType}');
+      
+      // Check if we got HTML instead of JSON
+      if (response.data is String) {
+        developer.log('[SHOP_SERVICE] ERROR: Received HTML response instead of JSON');
+        developer.log('[SHOP_SERVICE] Response preview: ${(response.data as String).substring(0, 200)}...');
+        throw Exception('Server returned HTML instead of JSON. The endpoint may not exist.');
+      }
+      
+      developer.log('[SHOP_SERVICE] Public response data: ${response.data}');
+
+      final data = response.data;
+      List<Shop> shops = [];
+
+      if (data is Map && data.containsKey('results')) {
+        shops = List<Shop>.from(
+          data['results'].map((json) => Shop.fromJson(json))
+        );
+      } else if (data is List) {
+        shops = List<Shop>.from(
+          data.map((json) => Shop.fromJson(json))
+        );
+      } else {
+        throw Exception('Unexpected response format: ${data.runtimeType}');
+      }
+
+      developer.log('[SHOP_SERVICE] Successfully fetched ${shops.length} public shops');
+      return shops;
+    } on DioException catch (e) {
+      developer.log('[SHOP_SERVICE] Public fetch failed: ${e.type} - ${e.message}');
+      if (e.response != null) {
+        developer.log('[SHOP_SERVICE] Response status: ${e.response?.statusCode}');
+        developer.log('[SHOP_SERVICE] Response data type: ${e.response?.data.runtimeType}');
+        if (e.response?.data is String) {
+          developer.log('[SHOP_SERVICE] HTML Response (first 500 chars): ${(e.response?.data as String).substring(0, 500)}');
+        } else {
+          developer.log('[SHOP_SERVICE] Response data: ${e.response?.data}');
+        }
+      }
+      throw Exception('Failed to fetch public shops: ${e.message}');
+    } catch (e) {
+      developer.log('[SHOP_SERVICE] Unexpected error: $e');
+      rethrow;
+    }
+  }
+
   Future<Shop> getShop(int id) async {
     try {
       final response = await _dioClient.dio.get('${Constants.shopsEndpoint}$id/');

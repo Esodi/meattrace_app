@@ -23,41 +23,89 @@ class ActivityProvider with ChangeNotifier {
 
   /// Fetch activities from backend
   Future<void> fetchActivities({bool forceRefresh = false}) async {
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('📅 ACTIVITY_PROVIDER - FETCH_ACTIVITIES START');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('📋 Parameters:');
+    print('   - forceRefresh: $forceRefresh');
+    print('📊 Current state:');
+    print('   - _activities.length: ${_activities.length}');
+    print('   - _isLoading: $_isLoading');
+    print('   - _lastFetchTime: $_lastFetchTime');
+    
     // Don't fetch if already loading
-    if (_isLoading) return;
+    if (_isLoading) {
+      print('⏭️ Already loading, skipping fetch');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      return;
+    }
 
     // Don't fetch if we have recent data (less than 5 minutes old) and not forcing refresh
     if (!forceRefresh &&
         _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!).inMinutes < 5 &&
         _activities.isNotEmpty) {
+      final minutesAgo = DateTime.now().difference(_lastFetchTime!).inMinutes;
+      print('⏭️ Using cached data (fetched $minutesAgo minutes ago)');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       return;
     }
 
     _isLoading = true;
     _error = null;
     notifyListeners();
+    print('🔔 notifyListeners() called - isLoading set to true');
 
     try {
-      final response = await _apiService.get('/api/v2/activities/recent/');
+      print('📡 Calling API: /activities/recent/');
+      final data = await _apiService.fetchActivities();
 
-      final data = response.data;
+      print('✅ API Response received');
+      print('📦 Response data type: ${data.runtimeType}');
       final List<dynamic> activitiesList = data['activities'] ?? data ?? [];
+      
+      print('📦 Activities list length: ${activitiesList.length}');
 
       _activities = activitiesList
           .map((json) => Activity.fromJson(json as Map<String, dynamic>))
           .toList();
 
+      print('✅ Activities parsed and assigned. Count: ${_activities.length}');
+      
+      // Log first few activities
+      for (var i = 0; i < _activities.length && i < 3; i++) {
+        final activity = _activities[i];
+        print('  [$i] ${activity.type} - ${activity.title}');
+      }
+
       _lastFetchTime = DateTime.now();
       await _saveActivitiesToCache();
-    } catch (e) {
+      print('💾 Activities saved to cache');
+    } catch (e, stackTrace) {
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('❌ ACTIVITY_PROVIDER ERROR');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('❌ Error: $e');
+      print('❌ Stack trace: $stackTrace');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       debugPrint('Error fetching activities: $e');
       _error = 'Network error: $e';
       // Load from cache on error
+      print('🔄 Loading from cache...');
       await _loadActivitiesFromCache();
+      print('💾 Loaded ${_activities.length} activities from cache');
     } finally {
       _isLoading = false;
       notifyListeners();
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🏁 ACTIVITY_PROVIDER - FETCH_ACTIVITIES COMPLETE');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📊 Final state:');
+      print('   - _activities.length: ${_activities.length}');
+      print('   - _isLoading: $_isLoading');
+      print('   - _error: $_error');
+      print('🔔 notifyListeners() called - UI will rebuild');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
   }
 
@@ -216,11 +264,18 @@ class ActivityProvider with ChangeNotifier {
     required String processorName,
     String? batchId,
   }) async {
-    final activity = ActivityFactory.transfer(
-      count: count,
-      processorName: processorName,
+    final activity = Activity(
+      type: ActivityType.transfer,
+      title: 'Transferred $count animal${count > 1 ? 's' : ''} to $processorName',
       timestamp: DateTime.now(),
-      batchId: batchId,
+      entityId: batchId,
+      entityType: 'transfer',
+      metadata: {
+        'count': count,
+        'processor': processorName,
+        'batch_id': batchId,
+      },
+      targetRoute: '/farmer/livestock-history',
     );
     await addActivity(activity);
   }
@@ -354,10 +409,15 @@ class ActivityProvider with ChangeNotifier {
     required String animalId,
     required String animalTag,
   }) async {
-    final activity = ActivityFactory.slaughter(
-      animalId: animalId,
-      animalTag: animalTag,
+    final activity = Activity(
+      type: ActivityType.slaughter,
+      title: 'Animal $animalTag Slaughtered',
+      description: 'Animal with tag $animalTag has been marked as slaughtered.',
       timestamp: DateTime.now(),
+      entityId: animalId,
+      entityType: 'animal',
+      metadata: {'animal_tag': animalTag},
+      targetRoute: '/animals/$animalId',
     );
     await addActivity(activity);
   }

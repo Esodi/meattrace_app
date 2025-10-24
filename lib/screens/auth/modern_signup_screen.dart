@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/auth_notification_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
@@ -162,11 +163,25 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
   }
 
   Future<void> _submitForm() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      AuthNotificationService.showWarning(
+        context,
+        'Please fill in all required fields correctly',
+        title: 'Validation Error',
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
     });
+
+    // Show loading notification
+    AuthNotificationService.showLoading(
+      context,
+      'Creating your account...',
+      title: 'Please Wait',
+    );
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -218,44 +233,43 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
         backendRole,
       );
 
+      // Dismiss loading notification
+      if (mounted) {
+        AuthNotificationService.dismissAll(context);
+      }
+
       if (mounted) {
         if (success) {
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Registration successful! Please login.',
-                style: AppTypography.bodyMedium(),
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-              ),
-            ),
+          // Show success notification
+          AuthNotificationService.showAuthSuccess(
+            context,
+            'register',
+            customMessage: 'Your account has been created successfully! Welcome to MeatTrace Pro.',
           );
 
-          // Navigate to login
-          context.go('/login');
+          // Small delay to show success message before navigation
+          await Future.delayed(const Duration(milliseconds: 800));
+
+          if (mounted) {
+            // Navigate to role-based dashboard
+            _navigateToRoleBasedHome(backendRole);
+          }
         } else {
-          // Show error from backend
-          _showErrorSnackbar(authProvider.error ?? 'Registration failed');
+          // Show detailed error notification
+          final errorMessage = authProvider.error ?? 'Registration failed. Please try again.';
+          AuthNotificationService.showAuthError(context, errorMessage);
         }
       }
     } catch (e) {
+      // Dismiss loading notification
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Registration failed: ${e.toString()}',
-              style: AppTypography.bodyMedium(),
-            ),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-            ),
-          ),
+        AuthNotificationService.dismissAll(context);
+        
+        // Show error notification
+        AuthNotificationService.showError(
+          context,
+          'An unexpected error occurred during registration. Please try again.',
+          title: 'Registration Error',
         );
       }
     } finally {
@@ -267,20 +281,21 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
     }
   }
 
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: AppTypography.bodyMedium().copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        ),
-      ),
-    );
+  void _navigateToRoleBasedHome(String role) {
+    switch (role.toLowerCase()) {
+      case 'farmer':
+        context.go('/farmer-home');
+        break;
+      case 'processingunit':
+        context.go('/processor-home');
+        break;
+      case 'shop':
+        context.go('/shop-home');
+        break;
+      default:
+        // Fallback to login if role is unknown
+        context.go('/login');
+    }
   }
 
   @override

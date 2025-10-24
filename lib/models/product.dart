@@ -33,8 +33,14 @@ class ProductTimelineEvent {
 
 class Product {
   final int? id;
-  final String processingUnit;
+  // processingUnit holds the ProcessingUnit.id (as string or int).
+  // Some parts of the app set this as a String (e.g. auth provider),
+  // so we accept either and coerce when building the API payload.
+  final dynamic processingUnit;
+  final String? processingUnitName;
   final int animal;
+  final String? animalAnimalId;
+  final String? animalSpecies;
   final int? slaughterPartId; // Reference to the specific slaughter part
   final String? slaughterPartName; // Display name of the slaughter part
   final String? slaughterPartType; // Type code of the slaughter part
@@ -55,15 +61,18 @@ class Product {
   // Transfer fields
   final int? transferredTo;
   final DateTime? transferredAt;
-  final String? transferredToUsername;
+  final String? transferredToName;
   final int? receivedBy;
   final DateTime? receivedAt;
-  final String? receivedByUsername;
+  final String? receivedByName;
 
   Product({
     this.id,
     required this.processingUnit,
+    this.processingUnitName,
     required this.animal,
+    this.animalAnimalId,
+    this.animalSpecies,
     this.slaughterPartId,
     this.slaughterPartName,
     this.slaughterPartType,
@@ -82,17 +91,26 @@ class Product {
     required this.timeline,
     this.transferredTo,
     this.transferredAt,
-    this.transferredToUsername,
+    this.transferredToName,
     this.receivedBy,
     this.receivedAt,
-    this.receivedByUsername,
+    this.receivedByName,
   });
 
   factory Product.fromMap(Map<String, dynamic> json) {
+    print('Product.fromMap: Raw JSON keys: ${json.keys.toList()}');
+    print('Product.fromMap: processing_unit_name: ${json['processing_unit_name']}');
+    print('Product.fromMap: animal_animal_id: ${json['animal_animal_id']}');
+    print('Product.fromMap: animal_species: ${json['animal_species']}');
+    print('Product.fromMap: received_by_shop_name: ${json['received_by_shop_name']}');
+
     return Product(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       processingUnit: json['processing_unit'].toString(),
+      processingUnitName: json['processing_unit_name'],
       animal: json['animal'] is Map ? json['animal']['id'] : int.parse(json['animal'].toString()),
+      animalAnimalId: json['animal_animal_id'],
+      animalSpecies: json['animal_species'],
       slaughterPartId: json['slaughter_part'] != null ? (json['slaughter_part'] is Map ? json['slaughter_part']['id'] : int.parse(json['slaughter_part'].toString())) : null,
       slaughterPartName: json['slaughter_part_name'],
       slaughterPartType: json['slaughter_part_type'],
@@ -113,10 +131,10 @@ class Product {
           .toList() ?? [],
       transferredTo: json['transferred_to'] != null ? int.parse(json['transferred_to'].toString()) : null,
       transferredAt: json['transferred_at'] != null ? DateTime.parse(json['transferred_at']) : null,
-      transferredToUsername: json['transferred_to_username'],
-      receivedBy: json['received_by'] != null ? int.parse(json['received_by'].toString()) : null,
+      transferredToName: json['transferred_to_name'],
+      receivedBy: json['received_by_shop'] != null ? int.parse(json['received_by_shop'].toString()) : null,
       receivedAt: json['received_at'] != null ? DateTime.parse(json['received_at']) : null,
-      receivedByUsername: json['received_by_username'],
+      receivedByName: json['received_by_shop_name'],
     );
   }
 
@@ -124,8 +142,13 @@ class Product {
     return {
       'id': id,
       'processing_unit': processingUnit,
+      'processing_unit_name': processingUnitName,
       'animal': animal,
+      'animal_animal_id': animalAnimalId,
+      'animal_species': animalSpecies,
       'slaughter_part': slaughterPartId,
+      'slaughter_part_name': slaughterPartName,
+      'slaughter_part_type': slaughterPartType,
       'product_type': productType,
       'quantity': quantity,
       'created_at': createdAt.toIso8601String(),
@@ -139,6 +162,12 @@ class Product {
       'category': category,
       'qr_code': qrCode,
       'timeline': timeline.map((e) => e.toMap()).toList(),
+      'transferred_to': transferredTo,
+      'transferred_at': transferredAt?.toIso8601String(),
+      'transferred_to_name': transferredToName,
+      'received_by_shop': receivedBy,
+      'received_at': receivedAt?.toIso8601String(),
+      'received_by_shop_name': receivedByName,
     };
   }
 
@@ -156,10 +185,23 @@ class Product {
   }
 
   Map<String, dynamic> toMapForCreate() {
+    // Ensure processing_unit is sent as an integer id (backend expects FK id)
+    int? processingUnitId;
+    if (processingUnit is int) {
+      processingUnitId = processingUnit as int;
+    } else if (processingUnit is String) {
+      processingUnitId = int.tryParse(processingUnit as String);
+    }
+
+    // Map frontend product types to backend allowed choices (simplified)
+    String backendProductType = _mapToBackendProductType(productType);
+
     return {
-      'animal_id': animal,
-      'slaughter_part_id': slaughterPartId,
-      'product_type': productType,
+      // Align with backend serializer which expects 'processing_unit', 'animal' and 'slaughter_part'
+      'processing_unit': processingUnitId,
+      'animal': animal,
+      'slaughter_part': slaughterPartId,
+      'product_type': backendProductType,
       'quantity': quantity,
       'name': name,
       'batch_number': batchNumber,
@@ -172,10 +214,24 @@ class Product {
     };
   }
 
+  // Convert UI-level product type labels into backend category choices.
+  // Backend Product model uses coarse choices: 'meat', 'milk', 'eggs', 'wool'.
+  static String _mapToBackendProductType(String selected) {
+    final s = selected.toLowerCase();
+    if (s.contains('milk')) return 'milk';
+    if (s.contains('egg')) return 'eggs';
+    if (s.contains('wool')) return 'wool';
+    // Default to 'meat' for all meat related UI labels
+    return 'meat';
+  }
+
   Product copyWith({
     int? id,
-    String? processingUnit,
+    dynamic processingUnit,
+    String? processingUnitName,
     int? animal,
+    String? animalAnimalId,
+    String? animalSpecies,
     int? slaughterPartId,
     String? slaughterPartName,
     String? slaughterPartType,
@@ -194,15 +250,18 @@ class Product {
     List<ProductTimelineEvent>? timeline,
     int? transferredTo,
     DateTime? transferredAt,
-    String? transferredToUsername,
+    String? transferredToName,
     int? receivedBy,
     DateTime? receivedAt,
-    String? receivedByUsername,
+    String? receivedByName,
   }) {
     return Product(
       id: id ?? this.id,
       processingUnit: processingUnit ?? this.processingUnit,
+      processingUnitName: processingUnitName ?? this.processingUnitName,
       animal: animal ?? this.animal,
+      animalAnimalId: animalAnimalId ?? this.animalAnimalId,
+      animalSpecies: animalSpecies ?? this.animalSpecies,
       slaughterPartId: slaughterPartId ?? this.slaughterPartId,
       slaughterPartName: slaughterPartName ?? this.slaughterPartName,
       slaughterPartType: slaughterPartType ?? this.slaughterPartType,
@@ -221,10 +280,10 @@ class Product {
       timeline: timeline ?? this.timeline,
       transferredTo: transferredTo ?? this.transferredTo,
       transferredAt: transferredAt ?? this.transferredAt,
-      transferredToUsername: transferredToUsername ?? this.transferredToUsername,
+      transferredToName: transferredToName ?? this.transferredToName,
       receivedBy: receivedBy ?? this.receivedBy,
       receivedAt: receivedAt ?? this.receivedAt,
-      receivedByUsername: receivedByUsername ?? this.receivedByUsername,
+      receivedByName: receivedByName ?? this.receivedByName,
     );
   }
 }

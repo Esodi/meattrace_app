@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:developer' as developer;
+import 'dart:ui';
 import '../utils/constants.dart';
+import 'api_exception.dart';
 
 class DioClient {
   static String get baseUrl => Constants.baseUrl;
@@ -10,14 +12,15 @@ class DioClient {
   static const String refreshTokenKey = 'refresh_token';
 
   late Dio _dio;
+  VoidCallback? _onUnauthorized;
 
   DioClient() {
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 60),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -28,7 +31,7 @@ class DioClient {
     _dio.interceptors.addAll([
       _AuthInterceptor(),
       _LoggingInterceptor(),
-      _ErrorInterceptor(),
+      _ErrorInterceptor(this),
     ]);
   }
 
@@ -54,6 +57,10 @@ class DioClient {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(accessTokenKey);
     await prefs.remove(refreshTokenKey);
+  }
+
+  void setOnUnauthorizedCallback(VoidCallback callback) {
+    _onUnauthorized = callback;
   }
 }
 
@@ -85,6 +92,16 @@ class _AuthInterceptor extends Interceptor {
 class _LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    print('╔════════════════════════════════════════════════════════════════════════════');
+    print('║ 📤 HTTP REQUEST');
+    print('╠════════════════════════════════════════════════════════════════════════════');
+    print('║ Method: ${options.method}');
+    print('║ URL: ${options.uri}');
+    print('║ Headers: ${options.headers}');
+    print('║ Data Type: ${options.data.runtimeType}');
+    print('║ Data: ${options.data}');
+    print('╚════════════════════════════════════════════════════════════════════════════');
+    
     developer.log('REQUEST[${options.method}] => PATH: ${options.path}');
     developer.log('REQUEST DATA: ${options.data}');
     super.onRequest(options, handler);
@@ -92,6 +109,15 @@ class _LoggingInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
+    print('╔════════════════════════════════════════════════════════════════════════════');
+    print('║ 📥 HTTP RESPONSE');
+    print('╠════════════════════════════════════════════════════════════════════════════');
+    print('║ Status: ${response.statusCode}');
+    print('║ URL: ${response.requestOptions.uri}');
+    print('║ Data Type: ${response.data.runtimeType}');
+    print('║ Data: ${response.data}');
+    print('╚════════════════════════════════════════════════════════════════════════════');
+    
     developer.log(
       'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}',
     );
@@ -110,6 +136,9 @@ class _LoggingInterceptor extends Interceptor {
 }
 
 class _ErrorInterceptor extends Interceptor {
+  final DioClient _dioClient;
+
+  _ErrorInterceptor(this._dioClient);
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     // Enhanced logging for debugging
@@ -122,6 +151,20 @@ class _ErrorInterceptor extends Interceptor {
     developer.log('Response Headers: ${err.response?.headers}');
     developer.log('Response Data: ${err.response?.data}');
     developer.log('Response Data Type: ${err.response?.data?.runtimeType}');
+    developer.log('Error Type: ${err.type}');
+    developer.log('Error Message: ${err.message}');
+
+    // Additional debug for connection errors
+    if (err.type == DioExceptionType.unknown ||
+        err.type == DioExceptionType.connectionError ||
+        err.type == DioExceptionType.badResponse) {
+      developer.log('🔴 CONNECTION ERROR DETAILS:');
+      developer.log('   - Base URL: ${err.requestOptions.baseUrl}');
+      developer.log('   - Full URL: ${err.requestOptions.uri}');
+      developer.log('   - Error: ${err.error}');
+      developer.log('   - Stack Trace: ${err.stackTrace}');
+    }
+
     if (err.response?.data is List) {
       developer.log('Data is List with length: ${(err.response?.data as List).length}');
       developer.log('List contents: ${err.response?.data}');
@@ -131,62 +174,20 @@ class _ErrorInterceptor extends Interceptor {
     } else {
       developer.log('Data is neither List nor Map: ${err.response?.data}');
     }
-    developer.log('Error Type: ${err.type}');
-    developer.log('Error Message: ${err.message}');
     developer.log('================================');
 
-    switch (err.response?.statusCode) {
-      case 400:
-        // Enhanced error message with full response data
-        String errorMessage = 'Bad request';
-        if (err.response?.data != null) {
-          if (err.response?.data is Map) {
-            final data = err.response?.data as Map;
-            errorMessage = data['error'] ?? data['message'] ?? data.toString();
-          } else {
-            errorMessage = err.response?.data.toString() ?? 'Bad request';
-          }
-        }
-        developer.log('BadRequestException: $errorMessage');
-        throw BadRequestException(errorMessage);
-      case 401:
-        // Session expired or invalid token
-        developer.log('🔒 Unauthorized: Session expired or invalid token');
-        // Clear tokens on 401 (unless it's a refresh token request)
-        if (!err.requestOptions.path.contains('/token/refresh/')) {
-          _clearTokensAsync();
-        }
-        throw UnauthorizedException('Your session has expired. Please login again.');
-      case 403:
-        throw ForbiddenException('Forbidden');
-      case 404:
-        throw NotFoundException('Not found');
-      case 500:
-        String errorMessage = 'Internal server error';
-        if (err.response?.data != null) {
-          final data = err.response!.data;
-          if (data is Map) {
-            errorMessage = data['error'] ?? data.toString();
-          } else if (data is List) {
-            errorMessage = data.join(', ');
-          } else {
-            errorMessage = data.toString();
-          }
-        }
-        throw ServerException(errorMessage);
-      default:
-        if (err.type == DioExceptionType.connectionTimeout ||
-            err.type == DioExceptionType.receiveTimeout ||
-            err.type == DioExceptionType.sendTimeout) {
-          throw NetworkException('Connection timeout. Please try again.');
-        } else if (err.type == DioExceptionType.connectionError) {
-          throw NetworkException(
-            'Connection error. Please check your internet connection.',
-          );
-        } else {
-          throw NetworkException('Network error: ${err.message}');
-        }
+    // Handle 401 Unauthorized responses by triggering logout
+    if (err.response?.statusCode == 401) {
+      developer.log('🚪 401 Unauthorized detected - triggering automatic logout');
+      _clearTokensAsync();
+      if (_dioClient._onUnauthorized != null) {
+        _dioClient._onUnauthorized!();
+      }
     }
+
+    // Instead of switching on status code, just throw a unified ApiException
+    // and let the consumer of the service handle the different status codes.
+    throw ApiException.fromDioException(err);
   }
 
   // Helper method to clear tokens asynchronously

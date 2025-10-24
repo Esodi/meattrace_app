@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/processing_unit_management_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
@@ -24,20 +25,23 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final user = authProvider.user;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: themeProvider.isDarkMode ? const Color(0xFF1A1A1A) : AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Settings',
-          style: AppTypography.headlineMedium(),
+          style: AppTypography.headlineMedium().copyWith(
+            color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary,
+          ),
         ),
       ),
       body: ListView(
@@ -97,7 +101,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
           ),
 
           // Notifications Section
-          _buildSectionHeader('Notifications'),
+          _buildSectionHeader('Notifications', themeProvider),
           _buildSettingsCard([
             _buildSwitchTile(
               title: 'Push Notifications',
@@ -107,6 +111,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                 setState(() => _notificationsEnabled = value);
               },
               icon: Icons.notifications,
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildSwitchTile(
@@ -117,11 +122,12 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                 setState(() => _emailNotifications = value);
               },
               icon: Icons.email,
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           // Processing Preferences
-          _buildSectionHeader('Processing Preferences'),
+          _buildSectionHeader('Processing Preferences', themeProvider),
           _buildSettingsCard([
             _buildSwitchTile(
               title: 'Auto-Receive Animals',
@@ -131,6 +137,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                 setState(() => _autoReceiveAnimals = value);
               },
               icon: Icons.auto_mode,
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
@@ -139,18 +146,59 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               icon: Icons.grade,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showQualityGradeDialog(),
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
+
+          // Appearance Section
+          _buildSectionHeader('Appearance', themeProvider),
+          _buildSettingsCard([
+            _buildListTile(
+              title: 'Theme',
+              subtitle: _getThemeLabel(themeProvider.themePreference.name),
+              icon: Icons.palette,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showThemeDialog(themeProvider),
+              themeProvider: themeProvider,
+            ),
+            const Divider(height: 1),
+            _buildSwitchTile(
+              title: 'High Contrast',
+              subtitle: 'Improve text readability',
+              value: themeProvider.isHighContrastEnabled,
+              onChanged: (value) => themeProvider.toggleHighContrast(),
+              icon: Icons.contrast,
+              themeProvider: themeProvider,
+            ),
+            const Divider(height: 1),
+            _buildListTile(
+              title: 'Text Size',
+              subtitle: '${(themeProvider.textScale * 100).toInt()}%',
+              icon: Icons.text_fields,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showTextSizeDialog(themeProvider),
+              themeProvider: themeProvider,
+            ),
+            const Divider(height: 1),
+            _buildSwitchTile(
+              title: 'Reduce Motion',
+              subtitle: 'Minimize animations and transitions',
+              value: themeProvider.reduceMotion,
+              onChanged: (value) => themeProvider.setReduceMotion(value),
+              icon: Icons.reduce_capacity,
+              themeProvider: themeProvider,
+            ),
+          ], themeProvider),
 
           // User Management
-          _buildSectionHeader('User Management'),
+          _buildSectionHeader('User Management', themeProvider),
           _buildSettingsCard([
             Consumer<ProcessingUnitManagementProvider>(
               builder: (context, provider, _) {
                 final pendingCount = provider.pendingJoinRequests.length;
                 return _buildListTile(
                   title: 'Manage Users',
-                  subtitle: pendingCount > 0 
+                  subtitle: pendingCount > 0
                       ? '$pendingCount pending request${pendingCount > 1 ? 's' : ''}'
                       : 'Invite and manage team members',
                   icon: Icons.people,
@@ -182,7 +230,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                     // Get current processing unit ID from auth provider
                     final authProvider = Provider.of<AuthProvider>(context, listen: false);
                     final processingUnitId = authProvider.user?.processingUnitId;
-                    
+
                     if (processingUnitId != null) {
                       context.goNamed(
                         'processing-unit-users',
@@ -197,13 +245,14 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                       );
                     }
                   },
+                  themeProvider: themeProvider,
                 );
               },
             ),
-          ]),
+          ], themeProvider),
 
           // Data & Privacy
-          _buildSectionHeader('Data & Privacy'),
+          _buildSectionHeader('Data & Privacy', themeProvider),
           _buildSettingsCard([
             _buildListTile(
               title: 'Backup Data',
@@ -215,6 +264,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                   const SnackBar(content: Text('Backup feature coming soon')),
                 );
               },
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
@@ -225,11 +275,12 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               onTap: () {
                 // Navigate to privacy policy
               },
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           // Support
-          _buildSectionHeader('Support'),
+          _buildSectionHeader('Support', themeProvider),
           _buildSettingsCard([
             _buildListTile(
               title: 'Help Center',
@@ -237,6 +288,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               icon: Icons.help_outline,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/help'),
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
@@ -249,6 +301,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                   const SnackBar(content: Text('Feedback form coming soon')),
                 );
               },
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
@@ -257,11 +310,12 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               icon: Icons.info_outline,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showAboutDialog(),
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           // Danger Zone
-          _buildSectionHeader('Account'),
+          _buildSectionHeader('Account', themeProvider),
           _buildSettingsCard([
             _buildListTile(
               title: 'Logout',
@@ -270,8 +324,9 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               iconColor: AppColors.error,
               textColor: AppColors.error,
               onTap: () => _showLogoutDialog(),
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           const SizedBox(height: AppTheme.space32),
         ],
@@ -279,7 +334,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, ThemeProvider themeProvider) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppTheme.space16,
@@ -290,20 +345,21 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
       child: Text(
         title,
         style: AppTypography.labelLarge().copyWith(
-          color: AppColors.textSecondary,
+          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
           fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
-  Widget _buildSettingsCard(List<Widget> children) {
+  Widget _buildSettingsCard(List<Widget> children, ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeProvider.isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow: [
+        border: themeProvider.isDarkMode ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
+        boxShadow: themeProvider.isDarkMode ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
@@ -321,6 +377,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
     required IconData icon,
+    required ThemeProvider themeProvider,
   }) {
     return ListTile(
       leading: Container(
@@ -335,12 +392,13 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         title,
         style: AppTypography.bodyLarge().copyWith(
           fontWeight: FontWeight.w500,
+          color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium().copyWith(
-          color: AppColors.textSecondary,
+          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
         ),
       ),
       trailing: Switch(
@@ -363,6 +421,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
     VoidCallback? onTap,
     Color? iconColor,
     Color? textColor,
+    required ThemeProvider themeProvider,
   }) {
     return ListTile(
       leading: Container(
@@ -381,13 +440,13 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         title,
         style: AppTypography.bodyLarge().copyWith(
           fontWeight: FontWeight.w500,
-          color: textColor,
+          color: textColor ?? (themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium().copyWith(
-          color: AppColors.textSecondary,
+          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
         ),
       ),
       trailing: trailing,
@@ -466,16 +525,190 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
     );
   }
 
-  void _showLogoutDialog() {
+  String _getThemeLabel(String theme) {
+    switch (theme) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      case 'system':
+        return 'System Default';
+      default:
+        return theme;
+    }
+  }
+
+  void _showThemeDialog(ThemeProvider themeProvider) {
+    final isDark = themeProvider.isDarkMode;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        backgroundColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Select Theme',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'Light',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.light,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setLightMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'Dark',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.dark,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setDarkMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'System Default',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.system,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setSystemMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTextSizeDialog(ThemeProvider themeProvider) {
+    final isDark = themeProvider.isDarkMode;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Text Size',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Adjust the text size for better readability',
+              style: AppTypography.bodyMedium().copyWith(
+                color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'A',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: themeProvider.textScale,
+                    min: 0.8,
+                    max: 1.4,
+                    divisions: 6,
+                    label: '${(themeProvider.textScale * 100).toInt()}%',
+                    activeColor: AppColors.processorPrimary,
+                    onChanged: (value) => themeProvider.setTextScale(value),
+                  ),
+                ),
+                Text(
+                  'A',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Current: ${(themeProvider.textScale * 100).toInt()}%',
+              style: AppTypography.titleMedium().copyWith(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(
+              'Done',
+              style: TextStyle(color: AppColors.processorPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDark = themeProvider.isDarkMode;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Logout',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(
+            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -483,7 +716,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               Provider.of<AuthProvider>(context, listen: false).logout();
               context.go('/login');
             },
-            child: const Text(
+            child: Text(
               'Logout',
               style: TextStyle(color: AppColors.error),
             ),

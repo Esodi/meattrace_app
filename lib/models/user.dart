@@ -36,33 +36,41 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    List<ProcessingUnitMembership>? memberships;
-    if (json['processing_unit_memberships'] != null) {
-      memberships = (json['processing_unit_memberships'] as List)
-          .map((m) => ProcessingUnitMembership.fromJson(m))
-          .toList();
-    }
+      List<ProcessingUnitMembership>? memberships;
+      if (json['processing_unit_memberships'] != null) {
+          memberships = (json['processing_unit_memberships'] as List)
+              .map((m) => ProcessingUnitMembership.fromJson(m))
+              .toList();
+      }
 
-    // Handle nested structure returned by backend (user/profile keys)
-    final userData = json['user'] ?? json;
-    final profileData = json['profile'] ?? json;
-
-    return User(
-      id: int.parse(userData['id'].toString()),
-      username: userData['username'],
-      email: userData['email'],
-      firstName: userData['first_name'],
-      lastName: userData['last_name'],
-      isActive: userData['is_active'] ?? true,
-      dateJoined: userData['date_joined'] != null ? DateTime.parse(userData['date_joined']) : null,
-      lastLogin: userData['last_login'] != null ? DateTime.parse(userData['last_login']) : null,
-      role: profileData['role'] ?? 'Farmer',
-      processingUnitId: profileData['processing_unit'] is int ? profileData['processing_unit'] : null,
-      processingUnitName: profileData['processing_unit'] is String ? profileData['processing_unit'] : null,
-      shopId: profileData['shop'] is int ? profileData['shop'] : null,
-      shopName: profileData['shop'] is String ? profileData['shop'] : null,
-      processingUnitMemberships: memberships,
-    );
+      // Handle nested structure returned by backend (user/profile keys)
+      final userData = json['user'] ?? json['profile'] ?? json;
+      final profileData = json['profile'] ?? json['user'] ?? json;
+      
+      return User(
+          id: int.parse(userData['id'].toString()),
+          username: userData['username'],
+          email: userData['email'],
+          firstName: userData['first_name'],
+          lastName: userData['last_name'],
+          isActive: userData['is_active'] ?? true,
+          dateJoined: userData['date_joined'] != null ? DateTime.parse(userData['date_joined']) : null,
+          lastLogin: userData['last_login'] != null ? DateTime.parse(userData['last_login']) : null,
+          role: profileData['role'] ?? 'Farmer',
+          processingUnitId: profileData['processing_unit'] != null && profileData['processing_unit'] is Map
+              ? int.tryParse(profileData['processing_unit']['id'].toString())
+              : null,
+          processingUnitName: profileData['processing_unit'] != null && profileData['processing_unit'] is Map
+              ? profileData['processing_unit']['name'].toString()
+              : null,
+          shopId: profileData['shop'] != null && profileData['shop'] is Map
+              ? int.tryParse(profileData['shop']['id'].toString())
+              : null,
+          shopName: profileData['shop'] != null && profileData['shop'] is Map
+              ? profileData['shop']['name'].toString()
+              : null,
+          processingUnitMemberships: memberships,
+      );
   }
 
   Map<String, dynamic> toJson() {

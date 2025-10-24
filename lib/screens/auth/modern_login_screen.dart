@@ -1,10 +1,13 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/auth_notification_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_text_field.dart';
 
@@ -29,7 +32,20 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
+    debugPrint('🚀 [LOGIN_SCREEN] Screen initialized');
     _initAnimations();
+    
+    // Ensure auth provider is in a clean state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      debugPrint('📊 [LOGIN_SCREEN] Initial auth state - isLoading: ${authProvider.isLoading}, isLoggedIn: ${authProvider.isLoggedIn}');
+      
+      // Clear any stale loading state
+      if (authProvider.isLoading) {
+        debugPrint('⚠️ [LOGIN_SCREEN] Clearing stale loading state');
+        authProvider.clearError(); // This will trigger notifyListeners with clean state
+      }
+    });
   }
 
   void _initAnimations() {
@@ -61,14 +77,15 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
   }
 
   void _navigateToRoleBasedHome(String role) {
-    switch (role) {
-      case 'Farmer':
+    switch (role.toLowerCase()) {
+      case 'farmer':
         context.go('/farmer-home');
         break;
-      case 'ProcessingUnit':
+      case 'processingunit':
+      case 'processing_unit':
         context.go('/processor-home');
         break;
-      case 'Shop':
+      case 'shop':
         context.go('/shop-home');
         break;
       default:
@@ -77,38 +94,101 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    debugPrint('🔐 [LOGIN_SCREEN] Starting login process...');
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.login(
-      _usernameController.text.trim(),
-      _passwordController.text.trim(),
-    );
-
-    if (success && mounted) {
-      _navigateToRoleBasedHome(authProvider.user!.role);
-    } else if (mounted) {
-      _showErrorSnackbar(authProvider.error ?? 'Login failed');
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('❌ [LOGIN_SCREEN] Form validation failed');
+      AuthNotificationService.showWarning(
+        context,
+        'Please fill in all required fields',
+        title: 'Validation Error',
+      );
+      return;
     }
-  }
 
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    debugPrint('✅ [LOGIN_SCREEN] Form validation passed');
+
+    // Capture the context before async operations
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Show loading notification using captured ScaffoldMessenger
+    debugPrint('⏳ [LOGIN_SCREEN] Showing loading notification');
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: AppTheme.space12),
-            Expanded(child: Text(message)),
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Please wait, signing you in...'),
+            ),
           ],
         ),
-        backgroundColor: AppColors.error,
+        backgroundColor: AppColors.textSecondary,
+        duration: const Duration(seconds: 30),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        ),
       ),
     );
+
+    debugPrint('🔄 [LOGIN_SCREEN] Calling authProvider.login()...');
+    final startTime = DateTime.now();
+
+    try {
+      final success = await authProvider.login(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('✅ [LOGIN_SCREEN] authProvider.login() completed in ${duration.inMilliseconds}ms, success: $success');
+
+      // Dismiss loading notification
+      scaffoldMessenger.hideCurrentSnackBar();
+      debugPrint('🗑️ [LOGIN_SCREEN] Loading notification dismissed');
+
+      if (success && mounted) {
+        debugPrint('🎉 [LOGIN_SCREEN] Login successful, showing success notification');
+        
+        // Show success notification
+        AuthNotificationService.showAuthSuccess(context, 'login');
+        debugPrint('✅ [LOGIN_SCREEN] Success notification shown');
+
+        // Small delay to show success message before navigation
+        debugPrint('⏱️ [LOGIN_SCREEN] Waiting 500ms before navigation...');
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (mounted) {
+          debugPrint('🏠 [LOGIN_SCREEN] Navigating to role-based home: ${authProvider.user!.role}');
+          _navigateToRoleBasedHome(authProvider.user!.role);
+          debugPrint('✅ [LOGIN_SCREEN] Navigation completed');
+        }
+      } else if (mounted) {
+        debugPrint('❌ [LOGIN_SCREEN] Login failed, showing error notification');
+        // Show detailed error notification
+        final errorMessage = authProvider.error ?? 'Login failed. Please try again.';
+        AuthNotificationService.showAuthError(context, errorMessage);
+      }
+    } catch (e) {
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('💥 [LOGIN_SCREEN] Exception during login after ${duration.inMilliseconds}ms: $e');
+
+      // Dismiss loading notification
+      scaffoldMessenger.hideCurrentSnackBar();
+
+      if (mounted) {
+        debugPrint('❌ [LOGIN_SCREEN] Showing error notification for exception');
+        AuthNotificationService.showAuthError(context, 'Login failed: $e');
+      }
+    }
   }
 
   @override
@@ -231,9 +311,13 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
                                         // Login Button
                                         Consumer<AuthProvider>(
                                           builder: (context, authProvider, child) {
+                                            debugPrint('🔄 [LOGIN_SCREEN] Button rebuild - isLoading: ${authProvider.isLoading}');
                                             return PrimaryButton(
                                               label: 'Sign In',
-                                              onPressed: authProvider.isLoading ? null : _login,
+                                              onPressed: authProvider.isLoading ? null : () {
+                                                debugPrint('🖱️ [LOGIN_SCREEN] Sign In button pressed');
+                                                _login();
+                                              },
                                               loading: authProvider.isLoading,
                                               size: ButtonSize.large,
                                             );
@@ -299,18 +383,16 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
     
     return Column(
       children: [
-        // Logo with gradient background
+        // Logo with custom image
         Container(
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.farmerPrimary,
-                AppColors.processorPrimary,
-              ],
-            ),
             shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.farmerPrimary,
+              width: 3,
+            ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.farmerPrimary.withValues(alpha: 0.3),
@@ -319,10 +401,13 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
               ),
             ],
           ),
-          child: const Icon(
-            Icons.qr_code_scanner,
-            size: 50,
-            color: Colors.white,
+          child: ClipOval(
+            child: Image.asset(
+              'assets/icons/MEATTRACE_ICON.png',
+              width: 94,
+              height: 94,
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         

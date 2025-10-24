@@ -25,10 +25,20 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'meattrace.db');
     return await openDatabase(
       path,
-      version: 10, // Increment version to trigger migration
+      version: 12, // Increment version to trigger migration for weight column
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+  }
+
+  // Debug method to check table schema
+  Future<void> debugTableSchema(String tableName) async {
+    final db = await database;
+    final result = await db.rawQuery("PRAGMA table_info($tableName)");
+    print("🔍 [DatabaseHelper] Schema for table '$tableName':");
+    for (final column in result) {
+      print("   Column: ${column['name']} - Type: ${column['type']} - NotNull: ${column['notnull']} - Default: ${column['dflt_value']}");
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -293,6 +303,22 @@ class DatabaseHelper {
         // Migration might fail, ignore for now
       }
     }
+    if (oldVersion < 11) {
+      // Add weight column to animals table for backward compatibility
+      try {
+        await db.execute('ALTER TABLE animals ADD COLUMN weight REAL');
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
+    if (oldVersion < 12) {
+      // Ensure weight column exists in animals table (fix for schema mismatch)
+      try {
+        await db.execute('ALTER TABLE animals ADD COLUMN weight REAL');
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
   }
 
   // ProductCategory operations
@@ -330,7 +356,6 @@ class DatabaseHelper {
         'name': product.name,
         'batch_number': product.batchNumber,
         'live_weight': product.weight, // Use live_weight instead of weight
-        'weight': product.weight, // Keep old column for backward compatibility
         'weight_unit': product.weightUnit,
         'price': product.price,
         'description': product.description,
@@ -488,6 +513,7 @@ class DatabaseHelper {
     return maps.map((map) => Order.fromJson(map)).toList();
   }
 }
+
 
 
 

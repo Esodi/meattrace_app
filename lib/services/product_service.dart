@@ -14,17 +14,21 @@ class ProductService {
   ProductService._internal();
 
   Future<List<Product>> getProducts({
-    String? productType,
-    int? animal,
-    String? search,
-    String? ordering,
+      String? productType,
+      int? animal,
+      int? processingUnit,
+      String? search,
+      String? ordering,
+      bool? pendingReceipt,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (productType != null) queryParams['product_type'] = productType;
       if (animal != null) queryParams['animal'] = animal;
+      if (processingUnit != null) queryParams['processing_unit'] = processingUnit;
       if (search != null) queryParams['search'] = search;
       if (ordering != null) queryParams['ordering'] = ordering;
+      if (pendingReceipt != null && pendingReceipt) queryParams['pending_receipt'] = 'true';
 
       final response = await _dioClient.dio.get(
         Constants.productsEndpoint,
@@ -194,12 +198,23 @@ class ProductService {
     try {
       final response = await _dioClient.dio.get(Constants.shopsEndpoint);
       final data = response.data;
-      if (data is Map && data.containsKey('results')) {
+      
+      print('[PRODUCT_SERVICE] getShops response type: ${data.runtimeType}');
+      print('[PRODUCT_SERVICE] getShops response data: $data');
+      
+      // Handle both List and Map with 'results' key
+      if (data is List) {
+        print('[PRODUCT_SERVICE] Response is List, converting to List<Map>');
+        return List<Map<String, dynamic>>.from(data);
+      } else if (data is Map && data.containsKey('results')) {
+        print('[PRODUCT_SERVICE] Response is Map with results key');
         return List<Map<String, dynamic>>.from(data['results']);
       } else {
+        print('[PRODUCT_SERVICE] Unexpected response format: $data');
         throw Exception('Unexpected response format');
       }
     } on DioException catch (e) {
+      print('[PRODUCT_SERVICE] Error fetching shops: ${e.message}');
       throw Exception('Failed to fetch shops: ${e.message}');
     }
   }

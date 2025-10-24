@@ -49,13 +49,14 @@ class _AdvancedSearchState extends State<AdvancedSearch> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: theme.shadowColor.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -92,7 +93,7 @@ class _AdvancedSearchState extends State<AdvancedSearch> {
                             )
                           : null,
                       filled: true,
-                      fillColor: AppColors.backgroundLight,
+                      fillColor: theme.colorScheme.surfaceContainerHighest,
                       border: OutlineInputBorder(
                         borderRadius:
                             BorderRadius.circular(AppTheme.radiusMedium),
@@ -113,11 +114,11 @@ class _AdvancedSearchState extends State<AdvancedSearch> {
                 Container(
                   decoration: BoxDecoration(
                     color: _showFilters || _selectedFilters.isNotEmpty
-                        ? AppColors.info.withValues(alpha: 0.1)
-                        : AppColors.backgroundLight,
+                        ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                        : theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                     border: _showFilters || _selectedFilters.isNotEmpty
-                        ? Border.all(color: AppColors.info)
+                        ? Border.all(color: theme.colorScheme.primary)
                         : null,
                   ),
                   child: Stack(
@@ -126,8 +127,8 @@ class _AdvancedSearchState extends State<AdvancedSearch> {
                         icon: Icon(
                           _showFilters ? Icons.filter_list_off : Icons.filter_list,
                           color: _showFilters || _selectedFilters.isNotEmpty
-                              ? AppColors.info
-                              : AppColors.textSecondary,
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
                         ),
                         onPressed: () {
                           setState(() {
@@ -141,8 +142,8 @@ class _AdvancedSearchState extends State<AdvancedSearch> {
                           top: 8,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.info,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
                               shape: BoxShape.circle,
                             ),
                             constraints: const BoxConstraints(
@@ -178,12 +179,13 @@ class _AdvancedSearchState extends State<AdvancedSearch> {
   }
 
   Widget _buildFiltersPanel() {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(AppTheme.space16),
       decoration: BoxDecoration(
-        color: AppColors.backgroundLight,
+        color: theme.colorScheme.surfaceContainerHighest,
         border: Border(
-          top: BorderSide(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+          top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
         ),
       ),
       child: Column(
@@ -431,12 +433,13 @@ class _AdvancedSearchState extends State<AdvancedSearch> {
   }
 
   Widget _buildActiveFilters() {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(AppTheme.space12),
       decoration: BoxDecoration(
-        color: AppColors.backgroundLight,
+        color: theme.colorScheme.surfaceContainerHighest,
         border: Border(
-          top: BorderSide(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+          top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
         ),
       ),
       child: Wrap(

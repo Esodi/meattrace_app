@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
+import '../../providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -15,7 +17,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
   bool _autoSync = true;
-  String _selectedTheme = 'system';
   String _selectedLanguage = 'en';
 
   @override
@@ -31,7 +32,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _soundEnabled = prefs.getBool('sound_enabled') ?? true;
       _vibrationEnabled = prefs.getBool('vibration_enabled') ?? true;
       _autoSync = prefs.getBool('auto_sync') ?? true;
-      _selectedTheme = prefs.getString('theme') ?? 'system';
       _selectedLanguage = prefs.getString('language') ?? 'en';
     });
   }
@@ -47,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -98,9 +100,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               ListTile(
                 title: const Text('Theme'),
-                subtitle: Text(_getThemeLabel(_selectedTheme)),
+                subtitle: Text(_getThemeLabel(themeProvider.themePreference.name)),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _showThemeDialog(),
+                onTap: () => _showThemeDialog(themeProvider),
+              ),
+              ListTile(
+                title: const Text('High Contrast'),
+                subtitle: const Text('Improve text readability'),
+                trailing: Switch(
+                  value: themeProvider.isHighContrastEnabled,
+                  onChanged: (value) => themeProvider.toggleHighContrast(),
+                ),
+              ),
+              ListTile(
+                title: const Text('Text Size'),
+                subtitle: Text('${(themeProvider.textScale * 100).toInt()}%'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () => _showTextSizeDialog(themeProvider),
               ),
               ListTile(
                 title: const Text('Language'),
@@ -302,7 +318,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _showThemeDialog() {
+  void _showThemeDialog(ThemeProvider themeProvider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -310,38 +326,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            RadioListTile<String>(
+            RadioListTile<ThemePreference>(
               title: const Text('Light'),
-              value: 'light',
-              groupValue: _selectedTheme,
+              value: ThemePreference.light,
+              groupValue: themeProvider.themePreference,
               onChanged: (value) {
-                setState(() => _selectedTheme = value!);
-                _saveSetting('theme', value!);
-                Navigator.pop(context);
+                if (value != null) {
+                  themeProvider.setLightMode();
+                  Navigator.pop(context);
+                }
               },
             ),
-            RadioListTile<String>(
+            RadioListTile<ThemePreference>(
               title: const Text('Dark'),
-              value: 'dark',
-              groupValue: _selectedTheme,
+              value: ThemePreference.dark,
+              groupValue: themeProvider.themePreference,
               onChanged: (value) {
-                setState(() => _selectedTheme = value!);
-                _saveSetting('theme', value!);
-                Navigator.pop(context);
+                if (value != null) {
+                  themeProvider.setDarkMode();
+                  Navigator.pop(context);
+                }
               },
             ),
-            RadioListTile<String>(
+            RadioListTile<ThemePreference>(
               title: const Text('System Default'),
-              value: 'system',
-              groupValue: _selectedTheme,
+              value: ThemePreference.system,
+              groupValue: themeProvider.themePreference,
               onChanged: (value) {
-                setState(() => _selectedTheme = value!);
-                _saveSetting('theme', value!);
-                Navigator.pop(context);
+                if (value != null) {
+                  themeProvider.setSystemMode();
+                  Navigator.pop(context);
+                }
               },
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showTextSizeDialog(ThemeProvider themeProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Text Size'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Adjust the text size for better readability'),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('A', style: TextStyle(fontSize: 14)),
+                Expanded(
+                  child: Slider(
+                    value: themeProvider.textScale,
+                    min: 0.8,
+                    max: 1.4,
+                    divisions: 6,
+                    label: '${(themeProvider.textScale * 100).toInt()}%',
+                    onChanged: (value) => themeProvider.setTextScale(value),
+                  ),
+                ),
+                const Text('A', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text('Current: ${(themeProvider.textScale * 100).toInt()}%'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done'),
+          ),
+        ],
       ),
     );
   }

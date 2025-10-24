@@ -16,59 +16,104 @@ class AuthService {
 
   AuthService._internal();
 
+  DioClient get dioClient => _dioClient;
+
   Future<User> login(String username, String password) async {
     try {
       // Log the attempt for debugging
-      debugPrint('🔐 Attempting login for user: $username');
-      debugPrint('🌐 Using base URL: ${Constants.baseUrl}');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('🔐 LOGIN ATTEMPT START');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('👤 Username: $username');
+      debugPrint('🌐 Base URL: ${Constants.baseUrl}');
+      debugPrint('📍 Login Endpoint: ${Constants.loginEndpoint}');
+      debugPrint('🔗 Full URL: ${Constants.baseUrl}${Constants.loginEndpoint}');
       
-      // Use FormData for login endpoint (TokenObtainPairView expects form data)
-      final formData = FormData.fromMap({
+      // Use JSON data for login endpoint (Django TokenObtainPairView expects JSON)
+      final loginData = {
         'username': username,
         'password': password,
-      });
+      };
 
-      debugPrint('📤 Sending login request to: ${Constants.baseUrl}${Constants.loginEndpoint}');
+      debugPrint('📤 Sending POST request with JSON data...');
+      debugPrint('📦 Request body: $loginData');
       
       final response = await _dioClient.dio.post(
         Constants.loginEndpoint,
-        data: formData,
+        data: loginData,
       );
 
-      debugPrint('✅ Login request successful, status: ${response.statusCode}');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('✅ LOGIN RESPONSE RECEIVED');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('📊 Status Code: ${response.statusCode}');
+      debugPrint('📦 Response Data Type: ${response.data.runtimeType}');
+      debugPrint('📦 Response Keys: ${response.data is Map ? (response.data as Map).keys : 'N/A'}');
       
       final tokens = response.data;
       final accessToken = tokens['access'];
       final refreshToken = tokens['refresh'];
 
       if (accessToken == null || refreshToken == null) {
+        debugPrint('❌ Missing tokens in response!');
+        debugPrint('   Access Token: ${accessToken != null ? 'Present' : 'MISSING'}');
+        debugPrint('   Refresh Token: ${refreshToken != null ? 'Present' : 'MISSING'}');
         throw Exception('Invalid response: Missing tokens');
       }
 
+      debugPrint('✅ Tokens extracted successfully');
+      debugPrint('   Access Token (first 20 chars): ${accessToken.toString().substring(0, 20)}...');
+      
       // Store tokens
       await _dioClient.setAuthTokens(accessToken, refreshToken);
-      debugPrint('💾 Tokens stored successfully');
+      debugPrint('💾 Tokens stored in SharedPreferences');
 
       // Get user profile information
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       debugPrint('👤 Fetching user profile...');
       final user = await _getUserProfile(accessToken);
-      debugPrint('✅ User profile fetched successfully: ${user.username}');
+      debugPrint('✅ User profile fetched: ${user.username} (${user.role})');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('🎉 LOGIN SUCCESS');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       return user;
     } on DioException catch (e) {
-      debugPrint('❌ Login failed with DioException: ${e.type} - ${e.message}');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('❌ LOGIN FAILED - DioException');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('❌ Exception Type: ${e.type}');
+      debugPrint('❌ Error Message: ${e.message}');
+      debugPrint('❌ Request URI: ${e.requestOptions.uri}');
+      debugPrint('❌ Request Method: ${e.requestOptions.method}');
+      debugPrint('❌ Request Headers: ${e.requestOptions.headers}');
+      
       if (e.response != null) {
-        debugPrint('📄 Response status: ${e.response?.statusCode}');
-        debugPrint('📄 Response data: ${e.response?.data}');
+        debugPrint('📄 Response Status: ${e.response?.statusCode}');
+        debugPrint('📄 Response Data: ${e.response?.data}');
+        debugPrint('📄 Response Headers: ${e.response?.headers}');
+      } else {
+        debugPrint('⚠️ No response received (connection issue)');
       }
+      
+      if (e.error != null) {
+        debugPrint('🔴 Underlying Error: ${e.error}');
+        debugPrint('🔴 Error Type: ${e.error.runtimeType}');
+      }
+      
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       
       // Provide more specific error messages
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
-        throw Exception('Connection timeout. Please check your internet connection and try again.');
-      } else if (e.type == DioExceptionType.connectionError) {
-        throw Exception('Cannot connect to server. Please check if the backend is running and accessible.');
+        throw Exception('Connection timeout. Server at ${Constants.baseUrl} is not responding.');
+      } else if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.unknown) {
+        throw Exception('Cannot connect to server at ${Constants.baseUrl}.\n'
+            'Please verify:\n'
+            '1. Backend is running\n'
+            '2. Your phone can access ${Constants.baseUrl}/health/ in browser\n'
+            '3. Firewall is not blocking the connection');
       } else if (e.response?.statusCode == 401) {
         throw Exception('Invalid username or password.');
       } else if (e.response?.statusCode == 400) {
@@ -81,27 +126,49 @@ class AuthService {
         throw Exception('Login failed: ${e.message ?? 'Unknown error'}');
       }
     } catch (e) {
-      debugPrint('❌ Login failed with unexpected error: $e');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('❌ LOGIN FAILED - Unexpected Error');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('❌ Error: $e');
+      debugPrint('❌ Error Type: ${e.runtimeType}');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       throw Exception('Login failed: $e');
     }
   }
 
-  Future<User> register(String username, String email, String password, String role) async {
+  Future<User> register(
+    String username,
+    String email,
+    String password,
+    String role, {
+    Map<String, dynamic>? additionalData,
+  }) async {
     try {
-      debugPrint('🔐 Attempting registration for user: $username with role: $role');
-      debugPrint('🌐 Using base URL: ${Constants.baseUrl}');
-      
+      debugPrint('🔐 [FLUTTER_AUTH] Attempting registration for user: $username with role: $role');
+      debugPrint('🌐 [FLUTTER_AUTH] Using base URL: ${Constants.baseUrl}');
+
+      final Map<String, dynamic> requestData = {
+        'username': username,
+        'email': email,
+        'password': password,
+        'role': role,
+      };
+
+      // Add any additional data (for processing units, shops, etc.)
+      if (additionalData != null) {
+        requestData.addAll(additionalData);
+        debugPrint('📦 [FLUTTER_AUTH] Including additional data: ${additionalData.keys.join(", ")}');
+        debugPrint('📦 [FLUTTER_AUTH] Additional data values: $additionalData');
+      }
+
+      debugPrint('📤 [FLUTTER_AUTH] Sending registration request to: ${Constants.registerEndpoint}');
       final response = await _dioClient.dio.post(
         Constants.registerEndpoint,
-        data: {
-          'username': username,
-          'email': email,
-          'password': password,
-          'role': role,
-        },
+        data: requestData,
       );
 
-      debugPrint('✅ Registration request successful, status: ${response.statusCode}');
+      debugPrint('✅ [FLUTTER_AUTH] Registration request successful, status: ${response.statusCode}');
+      debugPrint('📄 [FLUTTER_AUTH] Response data: ${response.data}');
 
       final data = response.data;
       final tokens = data['tokens'];
@@ -110,21 +177,21 @@ class AuthService {
 
       // Store tokens
       await _dioClient.setAuthTokens(accessToken, refreshToken);
-      debugPrint('💾 Tokens stored successfully');
+      debugPrint('💾 [FLUTTER_AUTH] Tokens stored successfully');
 
       // Return user from response
       final userData = data['user'];
       final user = User.fromJson(userData);
-      debugPrint('✅ User registered successfully: ${user.username}');
+      debugPrint('✅ [FLUTTER_AUTH] User registered successfully: ${user.username} (role: ${user.role})');
 
       return user;
     } on DioException catch (e) {
-      debugPrint('❌ Registration failed with DioException: ${e.type} - ${e.message}');
+      debugPrint('❌ [FLUTTER_AUTH] Registration failed with DioException: ${e.type} - ${e.message}');
       if (e.response != null) {
-        debugPrint('📄 Response status: ${e.response?.statusCode}');
-        debugPrint('📄 Response data: ${e.response?.data}');
+        debugPrint('📄 [FLUTTER_AUTH] Response status: ${e.response?.statusCode}');
+        debugPrint('📄 [FLUTTER_AUTH] Response data: ${e.response?.data}');
       }
-      
+
       // Provide more specific error messages
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
@@ -144,7 +211,7 @@ class AuthService {
         throw Exception('Registration failed: ${e.message ?? 'Unknown error'}');
       }
     } catch (e) {
-      debugPrint('❌ Registration failed with unexpected error: $e');
+      debugPrint('❌ [FLUTTER_AUTH] Registration failed with unexpected error: $e');
       throw Exception('Registration failed: $e');
     }
   }

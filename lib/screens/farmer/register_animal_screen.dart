@@ -51,6 +51,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   @override
   void initState() {
     super.initState();
+    print('🔵 [RegisterAnimalScreen] initState called');
     _generateTagId();
   }
 
@@ -169,28 +170,48 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   }
 
   Future<void> _registerAnimal() async {
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🐄 REGISTER_ANIMAL - START');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     if (!_formKey.currentState!.validate()) {
+      print('❌ Form validation failed');
       return;
     }
 
     if (_selectedSpecies == null) {
+      print('❌ No species selected');
       _showErrorSnackbar('Please select a species');
       return;
     }
 
+    print('✅ Form validated successfully');
+    print('📋 Animal Details:');
+    print('   - Species: $_selectedSpecies');
+    print('   - Tag ID: ${_tagIdController.text}');
+    print('   - Breed: ${_breedController.text}');
+    print('   - Weight: $_weightValue kg');
+    print('   - Gender: $_selectedGender');
+    print('   - Health Status: $_selectedHealthStatus');
+    print('   - Has Photo: ${_selectedImage != null}');
+    
     setState(() => _isLoading = true);
 
     try {
       final animalProvider = context.read<AnimalProvider>();
+      print('📊 Provider state BEFORE creation:');
+      print('   - Current animals count: ${animalProvider.animals.length}');
+      print('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
       
       // Calculate age in months from birth date
       final now = DateTime.now();
-      final ageInMonths = ((now.difference(_selectedDate).inDays) / 30.44).round(); // More accurate month calculation
-      
-      // Ensure age is at least 1 month
+      final ageInMonths = ((now.difference(_selectedDate).inDays) / 30.44).round();
       final finalAge = ageInMonths < 1 ? 1.0 : ageInMonths.toDouble();
       
-      print('DEBUG: Birth date: $_selectedDate, Now: $now, Age in months: $finalAge');
+      print('📅 Age calculation:');
+      print('   - Birth date: $_selectedDate');
+      print('   - Current date: $now');
+      print('   - Age in months: $finalAge');
       
       final animal = Animal(
         farmer: 0, // Will be set by backend from auth user
@@ -204,39 +225,70 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         breed: _breedController.text.isNotEmpty ? _breedController.text : null,
         abbatoirName: _abbatoirController.text.isNotEmpty ? _abbatoirController.text : 'Default Abattoir',
         healthStatus: _selectedHealthStatus,
+        gender: _selectedGender,
+        notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
 
-      await animalProvider.createAnimal(animal, photo: _selectedImage);
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📡 Calling animalProvider.createAnimal()...');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      final createdAnimal = await animalProvider.createAnimal(animal, photo: _selectedImage);
 
-      if (mounted) {
-        // Clear the local cache first to force a fresh fetch
-        await animalProvider.clearAnimals();
-        
-        // Refresh the animal list to ensure UI is updated
-        await animalProvider.fetchAnimals(slaughtered: null);
-        
-        print('📋 After registration: ${animalProvider.animals.length} animals loaded');
-        
+      print('🔄 Fetching updated animal list for farmer dashboard');
+      await animalProvider.fetchAnimals(slaughtered: null);
+
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('✅ CREATE_ANIMAL RESPONSE RECEIVED');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📊 Created animal details:');
+      print('   - Created: ${createdAnimal != null}');
+      if (createdAnimal != null) {
+        print('   - ID: ${createdAnimal.id}');
+        print('   - Animal ID: ${createdAnimal.animalId}');
+        print('   - Species: ${createdAnimal.species}');
+        print('   - Slaughtered: ${createdAnimal.slaughtered}');
+      }
+      print('📊 Provider state AFTER creation:');
+      print('   - Animals count: ${animalProvider.animals.length}');
+      print('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
+      print('   - Last animal in list: ${animalProvider.animals.isNotEmpty ? animalProvider.animals.last.animalId : "none"}');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      if (mounted && createdAnimal != null) {
+        print('✅ Animal created successfully, showing success message');
         _showSuccessSnackbar('Animal registered successfully!');
         
-        // Small delay to ensure snackbar is visible
+        print('⏳ Waiting 500ms for snackbar visibility...');
         await Future.delayed(const Duration(milliseconds: 500));
         
-        // Navigate back to history or home
+        print('🔙 Navigating back to previous screen');
         if (mounted) {
           context.pop();
+          print('✅ Navigation complete - Dashboard should auto-refresh via didChangeDependencies');
         }
-        
-        // Optionally navigate to livestock history
-        // context.push('/livestock-history');
+      } else {
+        print('❌ Animal creation returned null or widget not mounted');
       }
+      
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🏁 REGISTER_ANIMAL - COMPLETE');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } catch (e) {
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('❌ REGISTER_ANIMAL - ERROR');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('❌ Error: $e');
+      print('❌ Error type: ${e.runtimeType}');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       if (mounted) {
         _showErrorSnackbar('Failed to register animal: ${e.toString()}');
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+        print('🔄 Loading state set to false');
       }
     }
   }
@@ -279,6 +331,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('🔵 [RegisterAnimalScreen] build() called - isLoading: $_isLoading');
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: _buildAppBar(),
@@ -306,7 +359,12 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
               'Save',
               style: AppTypography.labelLarge(color: Colors.white),
             ),
-            onPressed: _registerAnimal,
+            onPressed: () {
+              print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              print('🔘 APPBAR SAVE BUTTON PRESSED');
+              print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              _registerAnimal();
+            },
           ),
         if (_isLoading)
           const Center(
@@ -888,8 +946,29 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   }
 
   Widget _buildRegisterButton() {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : _registerAnimal,
+    print('🔵 [RegisterButton] Building button - isLoading: $_isLoading');
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+      onPressed: _isLoading ? null : () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('👆 Register button tapped')),
+        );
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        print('🔘 REGISTER BUTTON PRESSED');
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        print('📋 Current form state:');
+        print('   - isLoading: $_isLoading');
+        print('   - selectedSpecies: $_selectedSpecies');
+        print('   - tagId: ${_tagIdController.text}');
+        print('   - breed: ${_breedController.text}');
+        print('   - weight: $_weightValue');
+        print('   - gender: $_selectedGender');
+        print('   - healthStatus: $_selectedHealthStatus');
+        print('   - hasPhoto: ${_selectedImage != null}');
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        _registerAnimal();
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.farmerPrimary,
         foregroundColor: Colors.white,
@@ -919,6 +998,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                 ),
               ],
             ),
+      ),
     );
   }
 

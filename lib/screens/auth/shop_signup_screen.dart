@@ -113,7 +113,8 @@ class _ShopSignupScreenState extends State<ShopSignupScreen>
     });
 
     try {
-      final shops = await _shopService.getShops();
+      // Use public endpoint that doesn't require authentication
+      final shops = await _shopService.getPublicShops();
       setState(() {
         _availableShops = shops;
       });
@@ -168,44 +169,57 @@ class _ShopSignupScreenState extends State<ShopSignupScreen>
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // Step 1: Register the user account
-      final success = await authProvider.register(
-        _usernameController.text.trim(),
-        _emailController.text.trim(),
-        _passwordController.text,
-        'Shop',
-      );
-
-      if (!success) {
-        throw Exception(authProvider.error ?? 'Registration failed');
-      }
-
-      // Step 2: Create shop or submit join request
       if (_signupMode == 'create') {
-        // Create new shop
-        await _shopService.createShop(
-          Shop(
-            name: _storeNameController.text.trim(),
-            description: _descriptionController.text.trim(),
-            location: '${_cityController.text}, ${_stateController.text} ${_zipController.text}',
-            contactEmail: _emailController.text.trim(),
-            contactPhone: _phoneController.text.trim(),
-            businessLicense: _businessLicenseController.text.trim(),
-          ),
+        // For creating a new shop:
+        // The backend register endpoint will automatically create the shop
+        // We pass the shop details as part of the registration
+        
+        final success = await authProvider.register(
+          _usernameController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text,
+          'Shop',
+          additionalData: {
+            'shop_name': _storeNameController.text.trim(),
+            'location': '${_addressController.text}, ${_cityController.text}, ${_stateController.text} ${_zipController.text}',
+            'phone': _phoneController.text.trim(),
+            'business_license': _businessLicenseController.text.trim(),
+            'description': _descriptionController.text.trim(),
+          },
         );
 
+        if (!success) {
+          throw Exception(authProvider.error ?? 'Registration failed');
+        }
+
         if (mounted) {
-          _showSuccessSnackbar('Shop created successfully!');
-          context.go('/login');
+          _showSuccessSnackbar('Shop created successfully! Welcome to MeatTrace Pro.');
+          _navigateToRoleBasedHome('Shop');
         }
       } else {
-        // Submit join request (would need a join request API)
+        // For joining an existing shop:
+        // Step 1: Register the user account first
+        final success = await authProvider.register(
+          _usernameController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text,
+          'Shop',
+          additionalData: {
+            'shop_id': _selectedShop?.id,
+          },
+        );
+
+        if (!success) {
+          throw Exception(authProvider.error ?? 'Registration failed');
+        }
+
+        // Step 2: Submit join request (would need a join request API)
         // For now, just show success message
         if (mounted) {
           _showSuccessSnackbar(
             'Join request submitted! You will be notified when approved.',
           );
-          context.go('/login');
+          _navigateToRoleBasedHome('Shop');
         }
       }
     } catch (e) {
@@ -239,6 +253,24 @@ class _ShopSignupScreenState extends State<ShopSignupScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  void _navigateToRoleBasedHome(String role) {
+    switch (role.toLowerCase()) {
+      case 'farmer':
+        context.go('/farmer-home');
+        break;
+      case 'processingunit':
+      case 'processing_unit':
+        context.go('/processor-home');
+        break;
+      case 'shop':
+        context.go('/shop-home');
+        break;
+      default:
+        // Fallback to login if role is unknown
+        context.go('/login');
+    }
   }
 
   @override

@@ -6,6 +6,7 @@ import '../../providers/product_provider.dart';
 import '../../models/product.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
+import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_card.dart';
 import '../../widgets/core/status_badge.dart';
@@ -152,7 +153,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(
-                child: Icon(Icons.qr_code, size: 140),
+                child: Icon(CustomIcons.MEATTRACE_ICON, size: 140),
               ),
             ),
             const SizedBox(height: 12),
@@ -198,7 +199,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             const SizedBox(height: 16),
             _buildInfoRow(Icons.category, 'Product Type', _product?.productType ?? 'N/A'),
             const Divider(height: 24),
-            _buildInfoRow(Icons.qr_code, 'Batch Number', _product?.batchNumber ?? 'N/A'),
+            _buildInfoRow(CustomIcons.MEATTRACE_ICON, 'Batch Number', _product?.batchNumber ?? 'N/A'),
             const Divider(height: 24),
             _buildInfoRow(Icons.monitor_weight, 'Weight', '${_product?.weight ?? 0} kg'),
             const Divider(height: 24),

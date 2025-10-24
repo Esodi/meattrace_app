@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/animal_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../models/animal.dart';
 import '../../utils/app_colors.dart';
@@ -40,20 +39,30 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
     setState(() => _isLoading = true);
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final currentUserId = authProvider.user?.id;
 
-      // Fetch all animals (processing units need to see transferred animals)
+      // Fetch all animals - backend now filters by processing unit automatically
+      // based on user's role and linked processing unit
       await animalProvider.fetchAnimals(slaughtered: null);
 
-      if (currentUserId != null) {
-        final pending = animalProvider.animals.where((animal) {
-          return animal.transferredTo == currentUserId && animal.receivedBy == null;
-        }).toList();
+      // Filter for animals that are transferred but not yet received
+      // The backend get_queryset() already filters to show only animals
+      // transferred to this processing unit (whole or parts)
+      final pending = animalProvider.animals.where((animal) {
+        // Check if whole animal is transferred OR if any parts are transferred
+        final hasTransferredParts = animal.hasSlaughterParts && 
+            animal.slaughterParts.any((p) => p.isTransferred);
+        final wholeAnimalTransferred = animal.transferredTo != null;
+        
+        return (wholeAnimalTransferred || hasTransferredParts) && 
+               animal.receivedBy == null;
+      }).toList();
 
-        setState(() => _pendingAnimals = pending);
-      }
+      print('🔍 RECEIVE_SCREEN - Total animals from API: ${animalProvider.animals.length}');
+      print('🔍 RECEIVE_SCREEN - Pending to receive: ${pending.length}');
+      
+      setState(() => _pendingAnimals = pending);
     } catch (e) {
+      print('❌ RECEIVE_SCREEN - Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading animals: $e')),
@@ -112,7 +121,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
           final animal = _pendingAnimals.firstWhere((a) => a.id == animalId);
           final partIds = partReceive['part_ids'] as List<int>;
           final parts = animal.slaughterParts.where((p) => partIds.contains(p.id)).toList();
-          final partTypes = parts.map((p) => p.partType.displayName).toList();
+          final partTypes = parts.map((p) => _getPartLabel(p)).toList();
           
           await activityProvider.logPartReceive(
             animalId: animalId.toString(),
@@ -756,7 +765,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                       dense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: AppTheme.space8),
                       title: Text(
-                        part.partType.displayName,
+                        _getPartLabel(part),
                         style: AppTypography.bodyMedium(),
                       ),
                       subtitle: Text(
@@ -884,5 +893,64 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+
+  // Helper to get proper label for parts of type 'other'
+  String _getPartLabel(SlaughterPart part) {
+    if (part.partType == SlaughterPartType.other && part.description != null) {
+      final regex = RegExp(r'Created from (.+) measurement');
+      final match = regex.firstMatch(part.description!);
+      if (match != null) {
+        var key = match.group(1)!;
+        // Remove '_weight' suffix if present
+        key = key.replaceAll('_weight', '');
+        
+        // Map common measurement keys to proper anatomical names
+        final Map<String, String> anatomicalNames = {
+          'head': 'Head',
+          'torso': 'Torso',
+          'front_legs': 'Front Legs',
+          'hind_legs': 'Hind Legs',
+          'organs': 'Organs',
+          'neck': 'Neck',
+          'shoulder': 'Shoulder',
+          'loin': 'Loin',
+          'leg': 'Leg',
+          'breast': 'Breast',
+          'ribs': 'Ribs',
+          'flank': 'Flank',
+          'belly': 'Belly',
+          'back': 'Back',
+          'tail': 'Tail',
+          'hide': 'Hide',
+          'skin': 'Skin',
+          'feet': 'Feet',
+          'hooves': 'Hooves',
+          'wings': 'Wings',
+          'thighs': 'Thighs',
+          'drumsticks': 'Drumsticks',
+          'liver': 'Liver',
+          'heart': 'Heart',
+          'kidneys': 'Kidneys',
+          'lungs': 'Lungs',
+          'intestines': 'Intestines',
+          'stomach': 'Stomach',
+          'tongue': 'Tongue',
+          'brain': 'Brain',
+          'total_carcass': 'Total Carcass',
+        };
+        
+        // Check if we have a predefined name for this key
+        if (anatomicalNames.containsKey(key)) {
+          return anatomicalNames[key]!;
+        }
+        
+        // Otherwise, format the key by replacing underscores and capitalizing
+        key = key.replaceAll('_', ' ');
+        key = key.split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : '').join(' ');
+        return key;
+      }
+    }
+    return part.partType.displayName;
   }
 }

@@ -202,14 +202,11 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
 
             // App Preferences
             _buildSectionHeader('Preferences', isDark),
-            _buildSwitchTile(
-              icon: Icons.dark_mode_outlined,
-              title: 'Dark Mode',
-              subtitle: 'Enable dark theme',
-              value: isDark,
-              onChanged: (value) {
-                themeProvider.toggleTheme();
-              },
+            _buildSettingsTile(
+              icon: Icons.palette_outlined,
+              title: 'Theme',
+              subtitle: _getThemeLabel(themeProvider.themePreference.name),
+              onTap: () => _showThemeDialog(themeProvider),
               isDark: isDark,
             ),
             _buildSwitchTile(
@@ -228,6 +225,16 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
               subtitle: '${(themeProvider.textScale * 100).toInt()}%',
               onTap: () {
                 _showTextSizeDialog(themeProvider);
+              },
+              isDark: isDark,
+            ),
+            _buildSwitchTile(
+              icon: Icons.reduce_capacity_outlined,
+              title: 'Reduce Motion',
+              subtitle: 'Minimize animations and transitions',
+              value: themeProvider.reduceMotion,
+              onChanged: (value) {
+                themeProvider.setReduceMotion(value);
               },
               isDark: isDark,
             ),
@@ -553,10 +560,92 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
     );
   }
 
+  String _getThemeLabel(String theme) {
+    switch (theme) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      case 'system':
+        return 'System Default';
+      default:
+        return theme;
+    }
+  }
+
+  void _showThemeDialog(ThemeProvider themeProvider) {
+    final isDark = themeProvider.isDarkMode;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Select Theme',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'Light',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.light,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setLightMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'Dark',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.dark,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setDarkMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'System Default',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.system,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setSystemMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<bool?> _showLogoutDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

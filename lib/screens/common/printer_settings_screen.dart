@@ -1,8 +1,13 @@
+// Temporarily ignore deprecated RadioListTile APIs (migrate to RadioGroup later)
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
-import '../../utils/app_colors.dart';
-import '../../utils/app_typography.dart';
-import '../../utils/app_theme.dart';
-import '../../widgets/core/custom_button.dart';
+import 'package:meattrace_app/utils/app_colors.dart';
+import 'package:meattrace_app/utils/app_typography.dart';
+import 'package:meattrace_app/utils/app_theme.dart';
+import 'package:meattrace_app/widgets/core/custom_button.dart';
+import 'package:meattrace_app/services/bluetooth_printing_service.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Bluetooth printer settings screen
 /// Manages printer connection, device discovery, and print settings
@@ -15,9 +20,10 @@ class PrinterSettingsScreen extends StatefulWidget {
 
 class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   bool _isScanning = false;
-  bool _isBluetoothEnabled = true;
+  bool _isBluetoothEnabled = false;
   BluetoothDevice? _connectedDevice;
   final List<BluetoothDevice> _availableDevices = [];
+  final BluetoothPrintingService _printingService = BluetoothPrintingService();
 
   @override
   void initState() {
@@ -26,11 +32,38 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   }
 
   Future<void> _checkBluetoothStatus() async {
-    // TODO: Implement bluetooth status check
-    // Use flutter_blue_plus or similar package
-    setState(() {
-      _isBluetoothEnabled = true;
-    });
+    try {
+      // Listen to adapter state once and update
+      final state = await FlutterBluePlus.adapterState.first;
+      setState(() {
+        _isBluetoothEnabled = state == BluetoothAdapterState.on;
+      });
+
+      // Also listen for changes
+      FlutterBluePlus.adapterState.listen((s) {
+        if (mounted) setState(() => _isBluetoothEnabled = s == BluetoothAdapterState.on);
+      });
+    } catch (e) {
+      // Fallback: assume disabled
+      setState(() => _isBluetoothEnabled = false);
+    }
+  }
+
+  Future<void> _openBluetoothSettings() async {
+    // Attempt to open the OS settings so the user can enable Bluetooth.
+    // There's no cross-platform programmatic 'enable' for Bluetooth; instruct
+    // the user to toggle it in system settings. We open app settings as a
+    // helpful shortcut.
+    try {
+      final opened = await openAppSettings();
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enable Bluetooth from your system settings')),
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open settings: $e')));
+    }
   }
 
   Future<void> _startScanning() async {
@@ -39,63 +72,75 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       _availableDevices.clear();
     });
 
-    // TODO: Implement bluetooth scanning
-    // Simulate device discovery
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Ensure permissions for BLE scan
+      final granted = await _printingService.requestPermissions();
+      if (!granted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Bluetooth permissions are required to scan for printers')),
+          );
+        }
+        setState(() => _isScanning = false);
+        return;
+      }
 
-    setState(() {
-      _availableDevices.addAll([
-        BluetoothDevice(
-          name: 'Zebra ZD421',
-          address: '00:07:4D:4F:4E:59',
-          isConnected: false,
-        ),
-        BluetoothDevice(
-          name: 'Epson TM-T88VI',
-          address: '00:01:90:A2:B3:C4',
-          isConnected: false,
-        ),
-        BluetoothDevice(
-          name: 'Brother QL-820NWB',
-          address: '00:80:92:12:34:56',
-          isConnected: false,
-        ),
-      ]);
-      _isScanning = false;
-    });
+      final devices = await _printingService.scanPrinters();
+      if (mounted) {
+        setState(() {
+          _availableDevices.addAll(devices);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to scan for printers: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isScanning = false);
+    }
   }
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
-    // TODO: Implement bluetooth connection
-    setState(() {
-      _connectedDevice = device.copyWith(isConnected: true);
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Connected to ${device.name}'),
-          backgroundColor: AppColors.success,
-        ),
-      );
+    try {
+      final connected = await _printingService.connectToPrinter(device, maxRetries: 3);
+      if (connected) {
+        setState(() => _connectedDevice = device);
+        if (mounted) {
+            final displayName = device.platformName.isNotEmpty ? device.platformName : device.remoteId.toString();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Connected to $displayName'), backgroundColor: AppColors.success),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to connect: $e')),
+        );
+      }
     }
   }
 
   Future<void> _disconnectDevice() async {
-    // TODO: Implement bluetooth disconnection
-    final deviceName = _connectedDevice?.name ?? 'device';
-    
-    setState(() {
-      _connectedDevice = null;
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Disconnected from $deviceName'),
-          backgroundColor: AppColors.warning,
-        ),
-      );
+    try {
+      await _printingService.disconnect();
+    final deviceName = (_connectedDevice != null && _connectedDevice!.platformName.isNotEmpty)
+      ? _connectedDevice!.platformName
+      : (_connectedDevice?.remoteId.toString() ?? 'device');
+      setState(() => _connectedDevice = null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Disconnected from $deviceName'), backgroundColor: AppColors.warning),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to disconnect: $e')),
+        );
+      }
     }
   }
 
@@ -138,7 +183,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.textSecondary.withAlpha(51)),
       ),
       child: Row(
         children: [
@@ -146,8 +191,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
             padding: const EdgeInsets.all(AppTheme.space12),
             decoration: BoxDecoration(
               color: _isBluetoothEnabled
-                  ? AppColors.info.withValues(alpha: 0.1)
-                  : AppColors.textSecondary.withValues(alpha: 0.1),
+                  ? AppColors.info.withAlpha(26)
+                  : AppColors.textSecondary.withAlpha(26),
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
             ),
             child: Icon(
@@ -182,10 +227,23 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               setState(() {
                 _isBluetoothEnabled = value;
               });
-              // TODO: Enable/disable bluetooth
+              // Offer a shortcut to system settings where Bluetooth can be enabled
+              if (!value) {
+                // User turned the switch off in the UI - ask them to use system settings
+                _openBluetoothSettings();
+              } else {
+                _openBluetoothSettings();
+              }
             },
-            activeColor: AppColors.info,
+            // activeColor is deprecated; use activeThumbColor
+            activeThumbColor: AppColors.info,
           ),
+          const SizedBox(width: AppTheme.space8),
+          if (!_isBluetoothEnabled)
+            ElevatedButton(
+              onPressed: _openBluetoothSettings,
+              child: const Text('Open Bluetooth Settings'),
+            ),
         ],
       ),
     );
@@ -197,7 +255,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.3), width: 2),
+        border: Border.all(color: AppColors.success.withAlpha(77), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,7 +265,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(AppTheme.space8),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.1),
+                  color: AppColors.success.withAlpha(26),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -239,15 +297,18 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _connectedDevice!.name,
+                      Text(
+                        // platformName is non-nullable; check emptiness instead of null
+                        _connectedDevice!.platformName.isNotEmpty
+                            ? _connectedDevice!.platformName
+                            : _connectedDevice!.remoteId.toString(),
                       style: AppTypography.bodyLarge().copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: AppTheme.space4),
                     Text(
-                      _connectedDevice!.address,
+                      _connectedDevice!.remoteId.toString(),
                       style: AppTypography.bodyMedium().copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -268,6 +329,36 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               icon: Icons.bluetooth_disabled,
             ),
           ),
+          const SizedBox(height: AppTheme.space12),
+          Row(
+            children: [
+              Expanded(
+                child: CustomButton(
+                  label: 'Set as Default',
+                  variant: ButtonVariant.primary,
+                  onPressed: () async {
+                    if (_connectedDevice != null) {
+                      await _printingService.saveSelectedPrinter(_connectedDevice!);
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved as default printer')));
+                    }
+                  },
+                  icon: Icons.star,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space12),
+              Expanded(
+                child: CustomButton(
+                  label: 'Clear Default',
+                  variant: ButtonVariant.secondary,
+                  onPressed: () async {
+                    await _printingService.clearSavedPrinter();
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cleared default printer')));
+                  },
+                  icon: Icons.clear,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -278,7 +369,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.textSecondary.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,7 +481,16 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   }
 
   Widget _buildDeviceListItem(BluetoothDevice device) {
-    final isConnected = _connectedDevice?.address == device.address;
+    final isConnected = _connectedDevice?.remoteId.toString() == device.remoteId.toString();
+
+    String deviceTitle() {
+      // Prefer platformName (flutter_blue_plus), then name, then id
+    // Prefer platformName (non-nullable) and fall back to remoteId string
+    if (device.platformName.isNotEmpty) return device.platformName;
+    return device.remoteId.toString();
+    }
+
+    String deviceSubtitle() => device.remoteId.toString();
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
@@ -400,7 +500,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(AppTheme.space12),
         decoration: BoxDecoration(
-          color: AppColors.info.withValues(alpha: 0.1),
+          color: AppColors.info.withAlpha(26),
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
         ),
         child: const Icon(
@@ -410,13 +510,13 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         ),
       ),
       title: Text(
-        device.name,
+        deviceTitle(),
         style: AppTypography.bodyLarge().copyWith(
           fontWeight: FontWeight.w600,
         ),
       ),
       subtitle: Text(
-        device.address,
+        deviceSubtitle(),
         style: AppTypography.bodyMedium().copyWith(
           color: AppColors.textSecondary,
         ),
@@ -428,7 +528,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 vertical: AppTheme.space6,
               ),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.1),
+                color: AppColors.success.withAlpha(26),
                 borderRadius: BorderRadius.circular(AppTheme.radiusFull),
               ),
               child: Text(
@@ -460,7 +560,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => PrintDialog(
-        printerName: _connectedDevice?.name ?? 'Printer',
+          printerName: _connectedDevice != null && _connectedDevice!.platformName.isNotEmpty
+              ? _connectedDevice!.platformName
+              : (_connectedDevice?.remoteId.toString() ?? 'Printer'),
         onPrint: (template, copies) {
           Navigator.pop(context);
           _printLabel(template, copies);
@@ -528,7 +630,7 @@ class _PrintDialogState extends State<PrintDialog> {
                 Container(
                   padding: const EdgeInsets.all(AppTheme.space8),
                   decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.1),
+                    color: AppColors.info.withAlpha(26),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),
                   child: const Icon(
@@ -572,6 +674,10 @@ class _PrintDialogState extends State<PrintDialog> {
             ),
             const SizedBox(height: AppTheme.space12),
             ...PrintTemplate.values.map((template) {
+              // The RadioListTile 'groupValue' and 'onChanged' APIs are deprecated in
+              // newer Flutter versions in favor of RadioGroup. We keep the current
+              // widget for now and suppress the analyzer info to avoid noise.
+              // TODO: migrate to RadioGroup when ready.
               return RadioListTile<PrintTemplate>(
                 value: template,
                 groupValue: _selectedTemplate,
@@ -659,30 +765,7 @@ class _PrintDialogState extends State<PrintDialog> {
   }
 }
 
-/// Bluetooth device model
-class BluetoothDevice {
-  final String name;
-  final String address;
-  final bool isConnected;
 
-  BluetoothDevice({
-    required this.name,
-    required this.address,
-    required this.isConnected,
-  });
-
-  BluetoothDevice copyWith({
-    String? name,
-    String? address,
-    bool? isConnected,
-  }) {
-    return BluetoothDevice(
-      name: name ?? this.name,
-      address: address ?? this.address,
-      isConnected: isConnected ?? this.isConnected,
-    );
-  }
-}
 
 /// Print template enum
 enum PrintTemplate {

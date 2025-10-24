@@ -105,24 +105,29 @@ class ProductProvider with ChangeNotifier {
     await _dbHelper.insertProducts(_products);
   }
 
-  Future<void> fetchProducts({String? productType, int? animal, String? search}) async {
+  Future<void> fetchProducts({String? productType, int? animal, int? processingUnitId, String? search, bool? pendingReceipt, bool forceRefresh = false}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      // Always fetch fresh data from API (no caching)
       _products = await _productService.getProducts(
         productType: productType,
         animal: animal,
+        processingUnit: processingUnitId,
         search: search,
+        pendingReceipt: pendingReceipt,
       );
       await _saveToDatabase();
+      _productsStream.add(_products); // Update stream with fresh data
     } catch (e) {
       _error = e.toString();
       // Load offline data if API fails
       await _loadOfflineData();
     } finally {
       _isLoading = false;
+      _isLoadingStream.add(false);
       notifyListeners();
     }
   }

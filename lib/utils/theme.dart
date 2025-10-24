@@ -318,18 +318,19 @@ class AppTheme {
   );
 
   // Role-based themes
-  static ThemeData getThemeForRole(String? role) {
+  static ThemeData getThemeForRole(String? role, {Brightness brightness = Brightness.light}) {
+    final isDark = brightness == Brightness.dark;
     switch (role?.toLowerCase()) {
       case 'farmer':
-        return _farmerTheme;
+        return isDark ? _farmerDarkTheme : _farmerTheme;
       case 'processing_unit':
       case 'processor':
-        return _processorTheme;
+        return isDark ? _processorDarkTheme : _processorTheme;
       case 'shop':
       case 'retail':
-        return _shopTheme;
+        return isDark ? _shopDarkTheme : _shopTheme;
       default:
-        return lightTheme; // Default to processor theme
+        return isDark ? darkTheme : lightTheme;
     }
   }
 
@@ -435,6 +436,117 @@ class AppTheme {
       backgroundColor: surfaceWhite,
       selectedItemColor: secondaryBurgundy,
       unselectedItemColor: textSecondary,
+      elevation: 8,
+      type: BottomNavigationBarType.fixed,
+      selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      unselectedLabelStyle: TextStyle(fontSize: 12),
+    ),
+  );
+
+  // Farmer Dark Theme - Primary Red focus with dark adaptations
+  static ThemeData _farmerDarkTheme = darkTheme.copyWith(
+    colorScheme: const ColorScheme.dark(
+      primary: primaryRed,
+      secondary: secondaryBlue,
+      tertiary: accentOrange,
+      surface: Color(0xFF2D2D2D),
+      background: Color(0xFF1A1A1A),
+      error: errorRed,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: Colors.white,
+      onBackground: Colors.white,
+      onError: Colors.white,
+      surfaceTint: Color(0xFF3D3D3D),
+    ),
+    appBarTheme: darkTheme.appBarTheme.copyWith(
+      backgroundColor: primaryRed,
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryRed,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
+        minimumSize: const Size(double.infinity, 48),
+      ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: primaryRed,
+      foregroundColor: Colors.white,
+      elevation: 6,
+      shape: CircleBorder(),
+      sizeConstraints: BoxConstraints.tightFor(width: 56, height: 56),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Color(0xFF1E1E1E),
+      selectedItemColor: primaryRed,
+      unselectedItemColor: Color(0xFFB0B0B0),
+      elevation: 8,
+      type: BottomNavigationBarType.fixed,
+      selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      unselectedLabelStyle: TextStyle(fontSize: 12),
+    ),
+  );
+
+  // Processor Dark Theme - Primary Green focus with dark adaptations
+  static ThemeData _processorDarkTheme = darkTheme;
+
+  // Shop Dark Theme - Secondary Burgundy focus with dark adaptations
+  static ThemeData _shopDarkTheme = darkTheme.copyWith(
+    colorScheme: const ColorScheme.dark(
+      primary: secondaryBurgundy,
+      secondary: secondaryBlue,
+      tertiary: accentMaroon,
+      surface: Color(0xFF2D2D2D),
+      background: Color(0xFF1A1A1A),
+      error: errorRed,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: Colors.white,
+      onBackground: Colors.white,
+      onError: Colors.white,
+      surfaceTint: Color(0xFF3D3D3D),
+    ),
+    appBarTheme: darkTheme.appBarTheme.copyWith(
+      backgroundColor: secondaryBurgundy,
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: secondaryBurgundy,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
+        minimumSize: const Size(double.infinity, 48),
+      ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: secondaryBurgundy,
+      foregroundColor: Colors.white,
+      elevation: 6,
+      shape: CircleBorder(),
+      sizeConstraints: BoxConstraints.tightFor(width: 56, height: 56),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Color(0xFF1E1E1E),
+      selectedItemColor: secondaryBurgundy,
+      unselectedItemColor: Color(0xFFB0B0B0),
       elevation: 8,
       type: BottomNavigationBarType.fixed,
       selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),

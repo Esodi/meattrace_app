@@ -461,7 +461,12 @@ class AnimalService {
       }
 
       print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_API_CALL_START - Making POST request to ${Constants.carcassMeasurementsEndpoint}');
-      final response = await _dioClient.dio.post(
+      // Increase timeout for carcass measurement API call
+      final dioExtended = _dioClient.dio;
+      dioExtended.options.connectTimeout = const Duration(seconds: 60);
+      dioExtended.options.sendTimeout = const Duration(seconds: 60);
+      dioExtended.options.receiveTimeout = const Duration(seconds: 60);
+      final response = await dioExtended.post(
         Constants.carcassMeasurementsEndpoint,
         data: requestData,
       );

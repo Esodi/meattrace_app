@@ -7,6 +7,7 @@ import '../../models/product.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 
 /// Processor QR Codes Screen - View and manage product QR codes
 class ProcessorQRCodesScreen extends StatefulWidget {
@@ -133,7 +134,8 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
   }
 
   Widget _buildQRCodeCard(Product product) {
-    final qrData = 'PRODUCT:${product.id}:${product.batchNumber}';
+    final qrData = '${Constants.baseUrl}/product-info/view/${product.id}/';
+    debugPrint('🔗 Generated QR Data: $qrData');
 
     return Card(
       elevation: 2,

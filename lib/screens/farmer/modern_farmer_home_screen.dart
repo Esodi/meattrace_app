@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/activity_provider.dart';
+import '../../services/api_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
@@ -22,7 +23,7 @@ class ModernFarmerHomeScreen extends StatefulWidget {
 }
 
 class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, RouteAware {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -49,27 +50,68 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when returning to this screen
+    print('🔄 [FarmerDashboard] didChangeDependencies - Refreshing data');
+    _loadData();
+  }
+
+  @override
   void dispose() {
     _fadeController.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
-    print('🏠 [FarmerHome] _loadData - START');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🏠 FARMER_DASHBOARD - LOAD_DATA START');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
     final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
     
-    print('🏠 [FarmerHome] Fetching animals and activities...');
-    await Future.wait([
-      animalProvider.fetchAnimals(slaughtered: null), // Fetch ALL animals (active + slaughtered)
-      activityProvider.fetchActivities(),
-    ]);
+    print('📊 Provider state BEFORE fetch:');
+    print('   - animalProvider.animals.length: ${animalProvider.animals.length}');
+    print('   - animalProvider.isLoading: ${animalProvider.isLoading}');
+    print('   - animalProvider.error: ${animalProvider.error}');
+    print('   - activityProvider.activities.length: ${activityProvider.activities.length}');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    print('🏠 [FarmerHome] Animals fetched: ${animalProvider.animals.length}');
-    print('🏠 [FarmerHome] Activities fetched: ${activityProvider.activities.length}');
+    print('📡 Starting parallel fetch of animals, activities, and dashboard...');
+    try {
+      final apiService = ApiService();
+      await Future.wait([
+        animalProvider.fetchAnimals(slaughtered: null), // Fetch ALL animals (active + slaughtered)
+        activityProvider.fetchActivities(),
+        apiService.fetchDashboard(), // Fetch dashboard data
+        apiService.fetchActivities(), // Fetch activity data
+      ]);
+      
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('✅ FETCH COMPLETE');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📊 Provider state AFTER fetch:');
+      print('   - animalProvider.animals.length: ${animalProvider.animals.length}');
+      print('   - animalProvider.isLoading: ${animalProvider.isLoading}');
+      print('   - animalProvider.error: ${animalProvider.error}');
+      print('   - activityProvider.activities.length: ${activityProvider.activities.length}');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    } catch (e, stackTrace) {
+      print('❌ ERROR in parallel fetch: $e');
+      print('❌ Stack trace: $stackTrace');
+    }
     
+    print('🔄 Loading transferred count...');
     await _loadTransferredCount();
-    print('🏠 [FarmerHome] _loadData - COMPLETE');
+    
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('� FARMER_DASHBOARD - LOAD_DATA COMPLETE');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('📊 Final counts:');
+    print('   - Total animals: ${animalProvider.animals.length}');
+    print('   - Transferred count: $_transferredCount');
+    print('   - Activities: ${activityProvider.activities.length}');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
   Future<void> _loadTransferredCount() async {
@@ -122,9 +164,9 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
     final user = authProvider.user;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         toolbarHeight: 64,
@@ -279,13 +321,17 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
               // Recent Animals List
               Consumer<AnimalProvider>(
                 builder: (context, animalProvider, child) {
-                  print('🏠 [FarmerHome] Consumer rebuilding...');
-                  print('🏠   - isLoading: ${animalProvider.isLoading}');
-                  print('🏠   - animals.length: ${animalProvider.animals.length}');
-                  print('🏠   - error: ${animalProvider.error}');
+                  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                  print('� UI CONSUMER - REBUILDING');
+                  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                  print('📊 Current provider state:');
+                  print('   - isLoading: ${animalProvider.isLoading}');
+                  print('   - animals.length: ${animalProvider.animals.length}');
+                  print('   - error: ${animalProvider.error}');
+                  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                   
                   if (animalProvider.isLoading && animalProvider.animals.isEmpty) {
-                    print('🏠   - Showing loading indicator');
+                    print('⏳ Showing loading indicator (no cached data)');
                     return const SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
@@ -297,16 +343,24 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
                   }
 
                   final recentAnimals = animalProvider.animals.take(5).toList();
-                  print('🏠   - Recent animals to display: ${recentAnimals.length}');
+                  print('📋 Recent animals to display: ${recentAnimals.length}');
+                  if (recentAnimals.isNotEmpty) {
+                    print('📝 First few animals:');
+                    for (var i = 0; i < recentAnimals.length && i < 3; i++) {
+                      final a = recentAnimals[i];
+                      print('   [$i] ${a.animalId} - ${a.species} (ID: ${a.id})');
+                    }
+                  }
 
                   if (recentAnimals.isEmpty) {
-                    print('🏠   - Showing empty state');
+                    print('📭 No animals - showing empty state');
                     return SliverToBoxAdapter(
                       child: _buildEmptyState(),
                     );
                   }
                   
-                  print('🏠   - Showing ${recentAnimals.length} animals');
+                  print('✅ Rendering ${recentAnimals.length} animal cards');
+                  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
                   return SliverPadding(
                     padding: const EdgeInsets.fromLTRB(
@@ -371,7 +425,7 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
         ),
         unselectedLabelStyle: AppTypography.labelMedium(),
         elevation: 8,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.pets),

@@ -111,6 +111,11 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         background: _buildHeaderImage(),
       ),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.home_outlined),
+          tooltip: 'Home',
+          onPressed: () => context.go('/farmer-home'),
+        ),
         PopupMenuButton<String>(
           onSelected: _handleMenuAction,
           itemBuilder: (context) => [

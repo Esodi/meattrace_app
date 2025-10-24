@@ -4,9 +4,10 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+// url_launcher is not used here; removed to satisfy analyzer
 import 'package:geolocator/geolocator.dart';
 import 'dart:ui' as ui;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PrinterManager {
   BluetoothDevice? _currentDevice;
@@ -71,12 +72,12 @@ class PrinterManager {
       try {
         const int chunkSize = 200; // Use smaller chunks to avoid MTU limits
         final totalBytes = bytes.length;
-        print('📤 [PrinterManager] Writing $totalBytes bytes to printer in chunks of $chunkSize...');
+  debugPrint('📤 [PrinterManager] Writing $totalBytes bytes to printer in chunks of $chunkSize...');
 
         for (int i = 0; i < totalBytes; i += chunkSize) {
           final end = (i + chunkSize < totalBytes) ? i + chunkSize : totalBytes;
           final chunk = bytes.sublist(i, end);
-          print('📤 [PrinterManager] Writing chunk ${i ~/ chunkSize + 1} (${chunk.length} bytes)...');
+          debugPrint('📤 [PrinterManager] Writing chunk ${i ~/ chunkSize + 1} (${chunk.length} bytes)...');
 
           await _writeCharacteristic!.write(chunk, withoutResponse: true);
 
@@ -86,9 +87,9 @@ class PrinterManager {
           }
         }
 
-        print('✅ [PrinterManager] All bytes written successfully');
+  debugPrint('✅ [PrinterManager] All bytes written successfully');
       } catch (e) {
-        print('❌ [PrinterManager] Failed to write bytes: $e');
+  debugPrint('❌ [PrinterManager] Failed to write bytes: $e');
         // Reset connection state on write failure
         _currentDevice = null;
         _writeCharacteristic = null;
@@ -111,13 +112,16 @@ class BluetoothPrintingService {
   BluetoothDevice? _selectedPrinter;
   bool _isConnected = false;
 
+  static const String _kSelectedPrinterKey = 'bt_selected_printer_remote_id';
+  static const String _kSelectedPrinterNameKey = 'bt_selected_printer_name';
+
   void _initializePlugin() {
-    print('🔧 [BluetoothPrintingService] Initializing flutter_blue_plus...');
+  debugPrint('🔧 [BluetoothPrintingService] Initializing flutter_blue_plus...');
 
     // Set log level for debugging
     FlutterBluePlus.setLogLevel(LogLevel.info, color: true);
 
-    print('✅ [BluetoothPrintingService] Initialized with flutter_blue_plus - full control over Bluetooth connections');
+  debugPrint('✅ [BluetoothPrintingService] Initialized with flutter_blue_plus - full control over Bluetooth connections');
   }
 
   PrinterManager get printerManager {
@@ -128,59 +132,114 @@ class BluetoothPrintingService {
   bool get isConnected => _isConnected && _selectedPrinter != null;
   BluetoothDevice? get selectedPrinter => _selectedPrinter;
 
+  /// Persist the selected printer remote id + name to shared preferences
+  Future<void> saveSelectedPrinter(BluetoothDevice device) async {
+    try {
+      _selectedPrinter = device;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kSelectedPrinterKey, device.remoteId.toString());
+    // prefer platformName (non-nullable in this SDK), fall back to remoteId string
+    final name = device.platformName.isNotEmpty ? device.platformName : device.remoteId.toString();
+    await prefs.setString(_kSelectedPrinterNameKey, name);
+    } catch (e) {
+  debugPrint('❌ [BluetoothPrintingService] Failed to save selected printer: $e');
+    }
+  }
+
+  Future<void> clearSavedPrinter() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kSelectedPrinterKey);
+      await prefs.remove(_kSelectedPrinterNameKey);
+      _selectedPrinter = null;
+    } catch (e) {
+  debugPrint('❌ [BluetoothPrintingService] Failed to clear saved printer: $e');
+    }
+  }
+
+  Future<String?> getSavedPrinterId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_kSelectedPrinterKey);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Try to connect to the saved printer by scanning and matching remoteId.
+  Future<bool> connectToSavedPrinter({int maxRetries = 3}) async {
+    try {
+      final savedId = await getSavedPrinterId();
+      if (savedId == null) return false;
+
+      final devices = await scanPrinters();
+      try {
+  // Match by remoteId or platformName (flutter_blue_plus). platformName is non-nullable.
+  final match = devices.firstWhere((d) => d.remoteId.toString() == savedId || d.platformName.toString() == savedId);
+        return await connectToPrinter(match, maxRetries: maxRetries);
+      } catch (e) {
+        debugPrint('⚠️ [BluetoothPrintingService] Saved printer not found during scan: $e');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ [BluetoothPrintingService] Error connecting to saved printer: $e');
+      return false;
+    }
+  }
+
   Future<bool> requestPermissions() async {
     try {
-      print('🔐 [BluetoothPrintingService] Requesting Bluetooth permissions...');
+  debugPrint('🔐 [BluetoothPrintingService] Requesting Bluetooth permissions...');
 
       // Request permissions one by one for better error handling
       final bluetoothScan = await Permission.bluetoothScan.request();
-      print('📡 Bluetooth scan permission: ${bluetoothScan.toString()}');
+  debugPrint('📡 Bluetooth scan permission: ${bluetoothScan.toString()}');
 
       final bluetoothConnect = await Permission.bluetoothConnect.request();
-      print('🔗 Bluetooth connect permission: ${bluetoothConnect.toString()}');
+  debugPrint('🔗 Bluetooth connect permission: ${bluetoothConnect.toString()}');
 
       final location = await Permission.location.request();
-      print('📍 Location permission: ${location.toString()}');
+  debugPrint('📍 Location permission: ${location.toString()}');
 
       // Check if location services are enabled (required for BLE scanning)
       final locationEnabled = await Permission.location.serviceStatus.isEnabled;
-      print('📍 Location services enabled: $locationEnabled');
+  debugPrint('📍 Location services enabled: $locationEnabled');
 
       final allGranted = bluetoothScan.isGranted && bluetoothConnect.isGranted && location.isGranted;
-      print('✅ [BluetoothPrintingService] All permissions granted: $allGranted');
+  debugPrint('✅ [BluetoothPrintingService] All permissions granted: $allGranted');
 
       return allGranted;
     } catch (e) {
-      print('❌ [BluetoothPrintingService] Error requesting permissions: $e');
+  debugPrint('❌ [BluetoothPrintingService] Error requesting permissions: $e');
       return false;
     }
   }
 
   Future<void> openLocationSettings() async {
-    print('🔧 [BluetoothPrintingService] Opening location settings...');
+  debugPrint('🔧 [BluetoothPrintingService] Opening location settings...');
     try {
       await Geolocator.openLocationSettings();
-      print('✅ [BluetoothPrintingService] Location settings opened');
+  debugPrint('✅ [BluetoothPrintingService] Location settings opened');
     } catch (e) {
-      print('❌ [BluetoothPrintingService] Failed to open location settings: $e');
+  debugPrint('❌ [BluetoothPrintingService] Failed to open location settings: $e');
       // Fallback to app settings
       try {
         await openAppSettings();
-        print('✅ [BluetoothPrintingService] App settings opened as fallback');
+  debugPrint('✅ [BluetoothPrintingService] App settings opened as fallback');
       } catch (e2) {
-        print('❌ [BluetoothPrintingService] Failed to open app settings: $e2');
+  debugPrint('❌ [BluetoothPrintingService] Failed to open app settings: $e2');
       }
     }
   }
 
   Future<List<BluetoothDevice>> scanPrinters() async {
     try {
-      print('🔍 [BluetoothPrintingService] Starting BLE printer scan (note: ESC/POS printers typically use Classic Bluetooth, not BLE)...');
+  debugPrint('🔍 [BluetoothPrintingService] Starting BLE printer scan (note: ESC/POS printers typically use Classic Bluetooth, not BLE)...');
 
       // Check if location services are enabled (required for BLE scanning)
       final locationEnabled = await Permission.location.serviceStatus.isEnabled;
       if (!locationEnabled) {
-        print('⚠️ [BluetoothPrintingService] Location services are disabled. Opening location settings...');
+  debugPrint('⚠️ [BluetoothPrintingService] Location services are disabled. Opening location settings...');
         await openLocationSettings();
         throw Exception('Location services are required for Bluetooth scanning. Please enable location services and try again.');
       }
@@ -191,7 +250,7 @@ class BluetoothPrintingService {
       }
 
       final adapterState = await FlutterBluePlus.adapterState.first;
-      print('📡 [BluetoothPrintingService] Bluetooth adapter state: $adapterState');
+  debugPrint('📡 [BluetoothPrintingService] Bluetooth adapter state: $adapterState');
       if (adapterState != BluetoothAdapterState.on) {
         throw Exception('Bluetooth is not enabled. Please enable Bluetooth and try again.');
       }
@@ -200,39 +259,39 @@ class BluetoothPrintingService {
       // Convert ScanResult to BluetoothDevice, filtering for printers if possible
       final devices = scanResults.map((result) => result.device).toList();
 
-      print('✅ [BluetoothPrintingService] Found ${devices.length} BLE devices');
+  debugPrint('✅ [BluetoothPrintingService] Found ${devices.length} BLE devices');
       if (devices.isEmpty) {
-        print('⚠️ [BluetoothPrintingService] No BLE devices found. If using Classic Bluetooth printer, this library only supports BLE. Consider switching to flutter_bluetooth_serial for Classic Bluetooth.');
+  debugPrint('⚠️ [BluetoothPrintingService] No BLE devices found. If using Classic Bluetooth printer, this library only supports BLE. Consider switching to flutter_bluetooth_serial for Classic Bluetooth.');
       }
       return devices;
     } catch (e) {
-      print('❌ [BluetoothPrintingService] Failed to scan printers: $e');
+  debugPrint('❌ [BluetoothPrintingService] Failed to scan printers: $e');
       throw Exception('Failed to scan printers: $e');
     }
   }
 
   Future<bool> connectToPrinter(BluetoothDevice printer, {int maxRetries = 3}) async {
-    print('🔗 [BluetoothPrintingService] Starting connection to printer: ${printer.platformName} (${printer.remoteId})');
+  debugPrint('🔗 [BluetoothPrintingService] Starting connection to printer: ${printer.platformName} (${printer.remoteId})');
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        print('🔄 [BluetoothPrintingService] Connection attempt $attempt/$maxRetries');
+  debugPrint('🔄 [BluetoothPrintingService] Connection attempt $attempt/$maxRetries');
         await printerManager.connect(printer);
         _selectedPrinter = printer;
         _isConnected = true;
-        print('✅ [BluetoothPrintingService] Connected successfully to ${printer.platformName}');
+  debugPrint('✅ [BluetoothPrintingService] Connected successfully to ${printer.platformName}');
 
         // Add a small delay after connection to let the connection stabilize
         await Future.delayed(const Duration(milliseconds: 500));
-        print('📡 [BluetoothPrintingService] Connection stabilized, isConnected: $isConnected');
+  debugPrint('📡 [BluetoothPrintingService] Connection stabilized, isConnected: $isConnected');
         return true;
       } catch (e) {
-        print('❌ [BluetoothPrintingService] Connection attempt $attempt failed: $e');
+  debugPrint('❌ [BluetoothPrintingService] Connection attempt $attempt failed: $e');
         if (attempt == maxRetries) {
-          print('💥 [BluetoothPrintingService] All connection attempts failed');
+          debugPrint('💥 [BluetoothPrintingService] All connection attempts failed');
           throw Exception('Failed to connect to printer after $maxRetries attempts: $e');
         }
         // Wait before retrying
-        print('⏳ [BluetoothPrintingService] Waiting ${attempt}s before retry...');
+  debugPrint('⏳ [BluetoothPrintingService] Waiting ${attempt}s before retry...');
         await Future.delayed(Duration(seconds: attempt));
       }
     }
@@ -240,14 +299,14 @@ class BluetoothPrintingService {
   }
 
   Future<void> disconnect() async {
-    print('🔌 [BluetoothPrintingService] Disconnecting from printer...');
+  debugPrint('🔌 [BluetoothPrintingService] Disconnecting from printer...');
     try {
       await printerManager.disconnect();
       _selectedPrinter = null;
       _isConnected = false;
-      print('✅ [BluetoothPrintingService] Disconnected successfully');
+  debugPrint('✅ [BluetoothPrintingService] Disconnected successfully');
     } catch (e) {
-      print('❌ [BluetoothPrintingService] Disconnect failed: $e');
+  debugPrint('❌ [BluetoothPrintingService] Disconnect failed: $e');
       // Still clear the selected printer and connection status even if disconnect fails
       _selectedPrinter = null;
       _isConnected = false;
@@ -265,11 +324,9 @@ class BluetoothPrintingService {
 
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
-      final paint = Paint();
-
-      qrPainter.paint(canvas, Size(size, size));
-
-      final picture = recorder.endRecording();
+  // Paint QR to canvas and export as PNG
+  qrPainter.paint(canvas, Size(size, size));
+  final picture = recorder.endRecording();
       final img = await picture.toImage(size.toInt(), size.toInt());
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
@@ -279,34 +336,34 @@ class BluetoothPrintingService {
   }
 
   Future<void> printQRCode(String qrData, String productName, String batchNumber) async {
-    print('🖨️ [BluetoothPrintingService] Starting QR code print for: $productName (Batch: $batchNumber)');
-    print('📊 [BluetoothPrintingService] QR data being encoded: $qrData');
+      debugPrint('🖨️ [BluetoothPrintingService] Starting QR code print for: $productName (Batch: $batchNumber)');
+    debugPrint('📊 [BluetoothPrintingService] QR data being encoded: $qrData');
 
     BluetoothDevice? printerToUse = _selectedPrinter;
     if (printerToUse == null) {
-      print('❌ [BluetoothPrintingService] No printer selected');
+  debugPrint('❌ [BluetoothPrintingService] No printer selected');
       throw Exception('No printer selected');
     }
 
     // Ensure connection is valid
     if (!isConnected) {
-      print('🔄 [BluetoothPrintingService] Not connected, attempting to reconnect...');
+  debugPrint('🔄 [BluetoothPrintingService] Not connected, attempting to reconnect...');
       try {
         await connectToPrinter(printerToUse, maxRetries: 2);
       } catch (e) {
-        print('❌ [BluetoothPrintingService] Reconnection failed: $e');
+  debugPrint('❌ [BluetoothPrintingService] Reconnection failed: $e');
         throw Exception('Failed to connect to printer: $e');
       }
     }
 
     try {
-      print('🎨 [BluetoothPrintingService] Generating QR image...');
+  debugPrint('🎨 [BluetoothPrintingService] Generating QR image...');
       // Generate QR image
       final qrImage = await _generateQRImage(qrData, 200.0);
       if (qrImage == null) {
         throw Exception('Failed to generate QR code image');
       }
-      print('✅ [BluetoothPrintingService] QR image generated successfully');
+  debugPrint('✅ [BluetoothPrintingService] QR image generated successfully');
 
       // Create ESC/POS commands
       final profile = await CapabilityProfile.load();
@@ -336,26 +393,26 @@ class BluetoothPrintingService {
       bytes += generator.feed(3);
       bytes += generator.cut();
 
-      print('📤 [BluetoothPrintingService] Sending ${bytes.length} bytes to printer...');
+  debugPrint('📤 [BluetoothPrintingService] Sending ${bytes.length} bytes to printer...');
       // Send to printer
       try {
         await printerManager.writeBytes(Uint8List.fromList(bytes));
-        print('✅ [BluetoothPrintingService] Data sent to printer successfully');
+  debugPrint('✅ [BluetoothPrintingService] Data sent to printer successfully');
 
         // Add delay after printing to ensure data is sent
-        print('⏳ [BluetoothPrintingService] Waiting for print completion...');
-        await Future.delayed(const Duration(milliseconds: 1000));
-        print('✅ [BluetoothPrintingService] QR code print completed');
+  debugPrint('⏳ [BluetoothPrintingService] Waiting for print completion...');
+  await Future.delayed(const Duration(milliseconds: 1000));
+  debugPrint('✅ [BluetoothPrintingService] QR code print completed');
       } catch (e) {
         // If writing fails, reset connection state
-        _isConnected = false;
-        _selectedPrinter = null;
-        print('💥 [BluetoothPrintingService] Print failed, resetting connection: $e');
+  _isConnected = false;
+  _selectedPrinter = null;
+  debugPrint('💥 [BluetoothPrintingService] Print failed, resetting connection: $e');
         throw Exception('Failed to print QR code: $e');
       }
 
     } catch (e) {
-      print('💥 [BluetoothPrintingService] Failed to print QR code: $e');
+  debugPrint('💥 [BluetoothPrintingService] Failed to print QR code: $e');
       throw Exception('Failed to print QR code: $e');
     }
   }
@@ -368,11 +425,11 @@ class BluetoothPrintingService {
 
     // Ensure connection is valid
     if (!isConnected) {
-      print('🔄 [BluetoothPrintingService] Not connected, attempting to reconnect for test print...');
+  debugPrint('🔄 [BluetoothPrintingService] Not connected, attempting to reconnect for test print...');
       try {
         await connectToPrinter(printerToUse, maxRetries: 2);
       } catch (e) {
-        print('❌ [BluetoothPrintingService] Reconnection failed for test print: $e');
+    debugPrint('❌ [BluetoothPrintingService] Reconnection failed for test print: $e');
         throw Exception('Failed to connect to printer: $e');
       }
     }
@@ -401,7 +458,9 @@ class BluetoothPrintingService {
         // If writing fails, reset connection state
         _isConnected = false;
         _selectedPrinter = null;
-        print('💥 [BluetoothPrintingService] Test print failed, resetting connection: $e');
+  _isConnected = false;
+  _selectedPrinter = null;
+  debugPrint('💥 [BluetoothPrintingService] Test print failed, resetting connection: $e');
         throw Exception('Failed to print test page: $e');
       }
     } catch (e) {

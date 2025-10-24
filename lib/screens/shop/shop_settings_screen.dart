@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/shop_management_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
@@ -24,20 +25,23 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final user = authProvider.user;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Settings',
-          style: AppTypography.headlineMedium(),
+          style: AppTypography.headlineMedium().copyWith(
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
       ),
       body: ListView(
@@ -97,7 +101,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
           ),
 
           // Notifications Section
-          _buildSectionHeader('Notifications'),
+          _buildSectionHeader('Notifications', themeProvider),
           _buildSettingsCard([
             _buildSwitchTile(
               title: 'Push Notifications',
@@ -107,6 +111,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                 setState(() => _notificationsEnabled = value);
               },
               icon: Icons.notifications,
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildSwitchTile(
@@ -117,11 +122,12 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                 setState(() => _emailNotifications = value);
               },
               icon: Icons.email,
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           // Shop Preferences
-          _buildSectionHeader('Shop Preferences'),
+          _buildSectionHeader('Shop Preferences', themeProvider),
           _buildSettingsCard([
             _buildSwitchTile(
               title: 'Auto-Confirm Orders',
@@ -131,6 +137,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                 setState(() => _autoConfirmOrders = value);
               },
               icon: Icons.auto_mode,
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
@@ -139,6 +146,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               icon: Icons.payment,
               trailing: Icon(Icons.chevron_right),
               onTap: () => _showPaymentMethodDialog(),
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
@@ -151,11 +159,52 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                   SnackBar(content: Text('Business hours feature coming soon')),
                 );
               },
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
+
+          // Appearance Section
+          _buildSectionHeader('Appearance', themeProvider),
+          _buildSettingsCard([
+            _buildListTile(
+              title: 'Theme',
+              subtitle: _getThemeLabel(themeProvider.themePreference.name),
+              icon: Icons.palette,
+              trailing: Icon(Icons.chevron_right),
+              onTap: () => _showThemeDialog(themeProvider),
+              themeProvider: themeProvider,
+            ),
+            const Divider(height: 1),
+            _buildSwitchTile(
+              title: 'High Contrast',
+              subtitle: 'Improve text readability',
+              value: themeProvider.isHighContrastEnabled,
+              onChanged: (value) => themeProvider.toggleHighContrast(),
+              icon: Icons.contrast,
+              themeProvider: themeProvider,
+            ),
+            const Divider(height: 1),
+            _buildListTile(
+              title: 'Text Size',
+              subtitle: '${(themeProvider.textScale * 100).toInt()}%',
+              icon: Icons.text_fields,
+              trailing: Icon(Icons.chevron_right),
+              onTap: () => _showTextSizeDialog(themeProvider),
+              themeProvider: themeProvider,
+            ),
+            const Divider(height: 1),
+            _buildSwitchTile(
+              title: 'Reduce Motion',
+              subtitle: 'Minimize animations and transitions',
+              value: themeProvider.reduceMotion,
+              onChanged: (value) => themeProvider.setReduceMotion(value),
+              icon: Icons.reduce_capacity,
+              themeProvider: themeProvider,
+            ),
+          ], themeProvider),
 
           // Staff Management
-          _buildSectionHeader('Staff Management'),
+          _buildSectionHeader('Staff Management', themeProvider),
           _buildSettingsCard([
             Consumer<ShopManagementProvider>(
               builder: (context, provider, _) {
@@ -187,7 +236,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                           ),
                         ),
                       const SizedBox(width: 8),
-                      Icon(Icons.chevron_right),
+                      const Icon(Icons.chevron_right),
                     ],
                   ),
                   onTap: () {
@@ -209,81 +258,88 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                       );
                     }
                   },
+                  themeProvider: themeProvider,
                 );
               },
             ),
-          ]),
+          ], themeProvider),
 
           // Data & Privacy
-          _buildSectionHeader('Data & Privacy'),
+          _buildSectionHeader('Data & Privacy', themeProvider),
           _buildSettingsCard([
             _buildListTile(
               title: 'Backup Data',
               subtitle: 'Export your shop data',
               icon: Icons.backup,
-              trailing: Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Backup feature coming soon')),
                 );
               },
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
               title: 'Privacy Policy',
               subtitle: 'Read our privacy policy',
               icon: Icons.privacy_tip,
-              trailing: Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 // Navigate to privacy policy
               },
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           // Support
-          _buildSectionHeader('Support'),
+          _buildSectionHeader('Support', themeProvider),
           _buildSettingsCard([
             _buildListTile(
               title: 'Help Center',
               subtitle: 'Get help and support',
               icon: Icons.help_outline,
-              trailing: Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/help'),
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
               title: 'Report a Problem',
               subtitle: 'Send us feedback',
               icon: Icons.bug_report,
-              trailing: Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Feedback form coming soon')),
                 );
               },
+              themeProvider: themeProvider,
             ),
             const Divider(height: 1),
             _buildListTile(
               title: 'About',
               subtitle: 'Version 1.0.0',
               icon: Icons.info_outline,
-              trailing: Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () => _showAboutDialog(),
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           // Danger Zone
-          _buildSectionHeader('Account'),
+          _buildSectionHeader('Account', themeProvider),
           _buildSettingsCard([
             _buildListTile(
               title: 'Sign Out',
               subtitle: 'Sign out of your account',
               icon: Icons.logout,
-              trailing: Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () => _showSignOutDialog(),
               titleColor: AppColors.error,
+              themeProvider: themeProvider,
             ),
-          ]),
+          ], themeProvider),
 
           SizedBox(height: AppTheme.space24),
         ],
@@ -291,7 +347,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, ThemeProvider themeProvider) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppTheme.space16,
@@ -302,25 +358,26 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
       child: Text(
         title,
         style: AppTypography.labelLarge(
-          color: AppColors.textSecondary,
+          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
         ).copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  Widget _buildSettingsCard(List<Widget> children) {
+  Widget _buildSettingsCard(List<Widget> children, ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow: [
+        border: Theme.of(context).brightness == Brightness.dark ? Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)) : null,
+        boxShadow: Theme.of(context).brightness == Brightness.light ? [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
-        ],
+        ] : null,
       ),
       child: Column(children: children),
     );
@@ -332,18 +389,21 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
     required IconData icon,
+    required ThemeProvider themeProvider,
   }) {
     return SwitchListTile(
       value: value,
       onChanged: onChanged,
       title: Text(
         title,
-        style: AppTypography.bodyLarge(),
+        style: AppTypography.bodyLarge().copyWith(
+          color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary,
+        ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium(
-          color: AppColors.textSecondary,
+          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
         ),
       ),
       secondary: Container(
@@ -369,6 +429,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
     required Widget trailing,
     required VoidCallback onTap,
     Color? titleColor,
+    required ThemeProvider themeProvider,
   }) {
     return ListTile(
       onTap: onTap,
@@ -387,13 +448,13 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
       title: Text(
         title,
         style: AppTypography.bodyLarge().copyWith(
-          color: titleColor,
+          color: titleColor ?? (themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium(
-          color: AppColors.textSecondary,
+          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
         ),
       ),
       trailing: trailing,
@@ -474,22 +535,190 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
     );
   }
 
-  void _showSignOutDialog() {
+  String _getThemeLabel(String theme) {
+    switch (theme) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      case 'system':
+        return 'System Default';
+      default:
+        return theme;
+    }
+  }
+
+  void _showThemeDialog(ThemeProvider themeProvider) {
+    final isDark = themeProvider.isDarkMode;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
         title: Text(
-          'Sign Out',
-          style: AppTypography.headlineSmall(),
+          'Select Theme',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
         ),
-        content: Text(
-          'Are you sure you want to sign out?',
-          style: AppTypography.bodyMedium(),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'Light',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.light,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setLightMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'Dark',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.dark,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setDarkMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            RadioListTile<ThemePreference>(
+              title: Text(
+                'System Default',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              value: ThemePreference.system,
+              groupValue: themeProvider.themePreference,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setSystemMode();
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTextSizeDialog(ThemeProvider themeProvider) {
+    final isDark = themeProvider.isDarkMode;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Text Size',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Adjust the text size for better readability',
+              style: AppTypography.bodyMedium().copyWith(
+                color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'A',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: themeProvider.textScale,
+                    min: 0.8,
+                    max: 1.4,
+                    divisions: 6,
+                    label: '${(themeProvider.textScale * 100).toInt()}%',
+                    activeColor: AppColors.shopPrimary,
+                    onChanged: (value) => themeProvider.setTextScale(value),
+                  ),
+                ),
+                Text(
+                  'A',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Current: ${(themeProvider.textScale * 100).toInt()}%',
+              style: AppTypography.titleMedium().copyWith(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: Text(
+              'Done',
+              style: TextStyle(color: AppColors.shopPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSignOutDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDark = themeProvider.isDarkMode;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Sign Out',
+          style: AppTypography.headlineSmall().copyWith(
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to sign out?',
+          style: AppTypography.bodyMedium().copyWith(
+            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () async {

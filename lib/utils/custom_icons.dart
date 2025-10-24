@@ -5,6 +5,13 @@ import 'package:flutter/material.dart';
 class CustomIcons {
   CustomIcons._();
 
+  // ========== APP BRANDING ICON ==========
+  
+  /// MeatTrace App Icon - Primary branding icon used throughout the application
+  /// This icon represents the MeatTrace application identity and should be used
+  /// for app logo, splash screens, login screens, and main navigation
+  static const IconData MEATTRACE_ICON = Icons.qr_code_scanner;
+
   // ========== LIVESTOCK SPECIES ICONS ==========
   
   /// Cattle/Cow Icon (24x24)
@@ -152,6 +159,9 @@ class CustomIcons {
   
   /// Processed Meat (alias for sausage)
   static const IconData processedMeat = sausage;
+
+  /// Slaughter Icon (fallback)
+  static const IconData slaughter = Icons.cut;
 }
 
 /// Helper method to get species icon by name

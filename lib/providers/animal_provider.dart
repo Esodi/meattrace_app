@@ -94,14 +94,27 @@ class AnimalProvider with ChangeNotifier {
   }
 
   Future<void> fetchAnimals({String? species, bool? slaughtered, String? search, int? page}) async {
-    debugPrint('🟦 AnimalProvider.fetchAnimals - START');
-    debugPrint('🟦 Parameters: species=$species, slaughtered=$slaughtered, search=$search, page=$page');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🐄 ANIMAL_PROVIDER - FETCH_ANIMALS START');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('� Parameters:');
+    print('   - species: $species');
+    print('   - slaughtered: $slaughtered');
+    print('   - search: $search');
+    print('   - page: $page');
+    print('📊 Current state BEFORE fetch:');
+    print('   - _animals.length: ${_animals.length}');
+    print('   - _isLoading: $_isLoading');
+    print('   - _error: $_error');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     _isLoading = true;
     _error = null;
     notifyListeners();
+    print('🔔 notifyListeners() called - isLoading set to true');
 
     try {
-      debugPrint('🟦 Calling AnimalService.getAnimals...');
+      print('� Calling AnimalService.getAnimals...');
       final result = await _animalService.getAnimals(
         species: species,
         slaughtered: slaughtered,
@@ -109,29 +122,70 @@ class AnimalProvider with ChangeNotifier {
         page: page,
         ordering: '-created_at', // Order by newest first
       );
-      debugPrint('🟦 AnimalService returned ${result['results'].length} animals');
-      _animals = result['results'] as List<Animal>;
-      debugPrint('🟦 Updated _animals list. New count: ${_animals.length}');
       
-      // Log each animal
-      for (var i = 0; i < _animals.length; i++) {
-        final animal = _animals[i];
-        debugPrint('  [$i] ${animal.animalId} - ${animal.species} (slaughtered: ${animal.slaughtered})');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('✅ ANIMAL_SERVICE RESPONSE RECEIVED');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('� Result type: ${result.runtimeType}');
+      print('📦 Result keys: ${result.keys.toList()}');
+      if (result.containsKey('results')) {
+        print('📦 Results type: ${result['results'].runtimeType}');
+        print('📦 Results count: ${(result['results'] as List).length}');
       }
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      _animals = result['results'] as List<Animal>;
+      print('✅ Animals assigned to _animals list. New count: ${_animals.length}');
+      
+      // Log each animal in detail
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🐮 DETAILED ANIMAL LIST');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      for (var i = 0; i < _animals.length && i < 10; i++) {
+        final animal = _animals[i];
+        print('[$i] Animal Details:');
+        print('    - ID: ${animal.id}');
+        print('    - Animal ID: ${animal.animalId}');
+        print('    - Species: ${animal.species}');
+        print('    - Slaughtered: ${animal.slaughtered}');
+        print('    - Health Status: ${animal.healthStatus}');
+        print('    - Farmer ID: ${animal.farmer}');
+        print('    - Transferred To: ${animal.transferredTo}');
+        print('    - Created: ${animal.createdAt}');
+      }
+      if (_animals.length > 10) {
+        print('... and ${_animals.length - 10} more animals');
+      }
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       
       await _saveToDatabase();
-      debugPrint('✅ AnimalProvider.fetchAnimals - SUCCESS. Total animals: ${_animals.length}');
+      print('💾 Animals saved to database');
+      print('✅ FETCH_ANIMALS SUCCESS - Total animals: ${_animals.length}');
     } catch (e, stackTrace) {
-      debugPrint('❌ AnimalProvider.fetchAnimals - ERROR: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('❌ ANIMAL_PROVIDER ERROR');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('❌ Error: $e');
+      print('❌ Stack trace:');
+      print(stackTrace);
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       _error = e.toString();
       // Load offline data if API fails
+      print('🔄 Loading offline data as fallback...');
       await _loadOfflineData();
-      debugPrint('🟦 Loaded offline data. Animals count: ${_animals.length}');
+      print('� Loaded offline data. Animals count: ${_animals.length}');
     } finally {
       _isLoading = false;
       notifyListeners();
-      debugPrint('🟦 AnimalProvider.fetchAnimals - COMPLETE. Notified listeners.');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🏁 ANIMAL_PROVIDER - FETCH_ANIMALS COMPLETE');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('� Final state:');
+      print('   - _animals.length: ${_animals.length}');
+      print('   - _isLoading: $_isLoading');
+      print('   - _error: $_error');
+      print('🔔 notifyListeners() called - UI will rebuild');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
   }
 
@@ -224,37 +278,23 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 
-  Future<void> slaughterAnimal(String animalId, dynamic result) async {
+  Future<void> slaughterAnimal(int animalId) async {
     try {
-      // Find the animal by animalId string
-      final index = _animals.indexWhere((a) => a.animalId == animalId);
-      if (index == -1) {
-        throw Exception('Animal not found');
+      // Call the service to slaughter the animal
+      final updatedAnimal = await _animalService.slaughterAnimal(animalId);
+
+      // Find the animal in the local list and update it
+      final index = _animals.indexWhere((a) => a.id == animalId);
+      if (index != -1) {
+        _animals[index] = updatedAnimal;
+        await _saveToDatabase();
+        notifyListeners();
       }
-      final animal = _animals[index];
-      // Call service with int id
-      final updatedAnimal = await _animalService.slaughterAnimal(animal.id!);
-      // Handle the result (slaughter date)
-      final updatedWithDate = Animal(
-        id: updatedAnimal.id,
-        farmer: updatedAnimal.farmer,
-        species: updatedAnimal.species,
-        age: updatedAnimal.age,
-        liveWeight: updatedAnimal.liveWeight,
-        createdAt: updatedAnimal.createdAt,
-        slaughtered: updatedAnimal.slaughtered,
-        slaughteredAt: result as DateTime?,  // Use the provided date
-        animalId: updatedAnimal.animalId,
-        breed: updatedAnimal.breed,
-        abbatoirName: updatedAnimal.abbatoirName,
-        healthStatus: updatedAnimal.healthStatus,
-      );
-      _animals[index] = updatedWithDate;
-      await _saveToDatabase();
-      notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+      // Re-throw the exception to be handled by the UI
+      rethrow;
     }
   }
 
@@ -413,6 +453,27 @@ class AnimalProvider with ChangeNotifier {
   Future<List<Map<String, dynamic>>> getProcessingUnits() async {
     try {
       return await _animalService.getProcessingUnits();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> createCarcassMeasurement(CarcassMeasurement measurement) async {
+    try {
+      final createdMeasurement = await _animalService.createCarcassMeasurement(measurement);
+
+      // Find the animal in the local list and update it
+      final index = _animals.indexWhere((a) => a.id == measurement.animalId);
+      if (index != -1) {
+        // Since the slaughter action happens on the backend, we need to refetch the animal
+        // to get the updated `slaughtered` status and slaughter parts.
+        final updatedAnimal = await _animalService.getAnimal(measurement.animalId);
+        _animals[index] = updatedAnimal;
+        await _saveToDatabase();
+        notifyListeners();
+      }
     } catch (e) {
       _error = e.toString();
       notifyListeners();

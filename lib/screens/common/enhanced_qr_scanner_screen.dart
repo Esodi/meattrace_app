@@ -6,9 +6,10 @@ import '../../deferred/qr_scanner_deferred.dart' deferred as qrDeferred show QRV
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_text_field.dart';
-// import 'product_display_screen.dart'; // TODO: Create this file
+import 'product_display_screen.dart';
 import '../../services/scan_history_service.dart';
 // Removed old_ui widget imports - widgets moved to old_ui folder
 // import '../../widgets/enhanced_back_button.dart';
@@ -364,7 +365,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
               child: Column(
                 children: [
                   Icon(
-                    Icons.qr_code_scanner,
+                    CustomIcons.MEATTRACE_ICON,
                     size: 40,
                     color: theme.colorScheme.primary,
                   ),
@@ -666,26 +667,22 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
       final scanHistoryService = ScanHistoryService();
       scanHistoryService.addScan(productId);
 
-      // Navigate to product display
-      // TODO: Navigate to ProductDisplayScreen once created
-      // Navigator.push(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (context) => ProductDisplayScreen(productId: productId),
-      //   ),
-      // ).then((_) {
-      //   // Resume scanning when returning
-      //   setState(() {
-      //     _isScanning = true;
-      //   });
-      // });
-      
-      // Temporary: Just show a snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Product ID: $productId - Display screen coming soon')),
-      );
-      setState(() {
-        _isScanning = true;
+      // Navigate to product display screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProductDisplayScreen(
+            productId: productId,
+            source: widget.source,
+          ),
+        ),
+      ).then((_) {
+        // Resume scanning when returning
+        if (mounted) {
+          setState(() {
+            _isScanning = true;
+          });
+        }
       });
     } else {
       _showErrorDialog('Invalid QR Code. Please try again.');
