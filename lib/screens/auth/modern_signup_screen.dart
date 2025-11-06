@@ -177,11 +177,11 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
     });
 
     // Show loading notification
-    AuthNotificationService.showLoading(
-      context,
-      'Creating your account...',
-      title: 'Please Wait',
-    );
+    // AuthNotificationService.showLoading(
+    //   context,
+    //   'Creating your account...',
+    //   title: 'Please Wait',
+    // );
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);

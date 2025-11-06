@@ -8,6 +8,7 @@ import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/custom_icons.dart';
+import '../../widgets/core/logo_with_border.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_text_field.dart';
 
@@ -383,33 +384,16 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
     
     return Column(
       children: [
-        // Logo with custom image
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.farmerPrimary,
-              width: 3,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.farmerPrimary.withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/icons/MEATTRACE_ICON.png',
-              width: 94,
-              height: 94,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
+        // Logo with custom circular border
+        Builder(builder: (context) {
+          final theme = Theme.of(context);
+          return LogoWithBorder(
+            size: 80,
+            borderWidth: 3,
+            borderColor: theme.colorScheme.primary.withOpacity(0.95),
+            assetPath: 'assets/icons/MEATTRACE_ICON.png',
+          );
+        }),
         
         const SizedBox(height: AppTheme.space16),
         

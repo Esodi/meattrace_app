@@ -35,6 +35,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   int _selectedIndex = 0;
   ProductionStats? _productionStats;
   bool _isLoadingStats = false;
+  Map<String, dynamic>? _pipeline;
+  bool _isLoadingPipeline = false;
 
   @override
   void initState() {
@@ -72,7 +74,54 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       _loadProductionStats(),
       apiService.fetchDashboard(), // Fetch dashboard data
       apiService.fetchActivities(), // Fetch activity data
+      _loadProcessingPipeline(),
     ]);
+  }
+
+  Future<void> _loadProcessingPipeline() async {
+    if (!mounted) return;
+    setState(() => _isLoadingPipeline = true);
+
+    try {
+      final apiService = ApiService();
+      final data = await apiService.fetchProcessingPipeline();
+
+      if (mounted) {
+        setState(() => _pipeline = data);
+      }
+    } catch (e) {
+      debugPrint('Error loading processing pipeline: $e');
+      if (mounted) setState(() => _pipeline = null);
+    } finally {
+      if (mounted) setState(() => _isLoadingPipeline = false);
+    }
+  }
+
+  Future<void> _advancePipeline() async {
+    final apiService = ApiService();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Advancing pipeline...')),
+    );
+
+    try {
+      // Try a backend endpoint for advancing pipeline. Backend may not
+      // expose this; handle errors gracefully.
+      await apiService.post('/processing-pipeline/advance/');
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pipeline advanced')),
+      );
+      await _loadProcessingPipeline();
+      await _loadPendingAnimalsCount();
+      await _loadProductionStats();
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not advance pipeline: $e')),
+      );
+      debugPrint('Advance pipeline failed: $e');
+    }
   }
 
   Future<void> _loadPendingAnimalsCount() async {
@@ -405,6 +454,19 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   }
 
   Widget _buildWelcomeHeader(String username) {
+    // Gather provider-driven stats inside the welcome card so the overview
+    // appears within the same hero card (following the farmer dashboard pattern)
+    final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    final receivedAnimals = _productionStats?.totalAnimalsReceived ??
+        animalProvider.animals.where((a) => a.receivedBy == authProvider.user?.id).length;
+    final totalProducts = _productionStats?.totalProductsCreated ?? productProvider.products.length;
+    final activeProducts = _productionStats?.totalProductsTransferred != null
+        ? (totalProducts - _productionStats!.totalProductsTransferred)
+        : productProvider.products.where((p) => p.transferredTo == null).length;
+
     return Container(
       margin: const EdgeInsets.all(AppTheme.space16),
       padding: const EdgeInsets.all(AppTheme.space24),
@@ -518,34 +580,16 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsSection(AnimalProvider animalProvider, ProductProvider productProvider) {
-  final authProvider = Provider.of<AuthProvider>(context);
-  final processingUnitId = authProvider.user?.processingUnitId;
-
-    // Use ProductionStats API data if available, otherwise fall back to local calculations
-  final receivedAnimals = _productionStats?.totalAnimalsReceived ??
-    animalProvider.animals.where((a) => a.receivedBy == authProvider.user?.id).length;
-    final totalProducts = _productionStats?.totalProductsCreated ?? productProvider.products.length;
-    final activeProducts = _productionStats?.totalProductsTransferred != null
-        ? (totalProducts - (_productionStats!.totalProductsTransferred))
-        : productProvider.products.where((p) => p.transferredTo == null).length;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: AppTheme.space24),
+          // Production Overview inside the welcome card (farmer-style)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Production Overview',
-                style: AppTypography.headlineMedium(),
+                style: AppTypography.headlineMedium().copyWith(
+                  color: Colors.white,
+                ),
               ),
               if (_isLoadingStats)
                 SizedBox(
@@ -553,7 +597,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AppColors.processorPrimary,
+                    color: Colors.white,
                   ),
                 ),
             ],
@@ -562,22 +606,22 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
           Row(
             children: [
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'Received',
                   value: receivedAnimals.toString(),
                   subtitle: 'Animals',
                   icon: Icons.inbox,
-                  color: AppColors.info,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(width: AppTheme.space12),
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'Pending',
                   value: _isLoadingPending ? '...' : _pendingAnimalsCount.toString(),
                   subtitle: 'Transfers',
                   icon: Icons.schedule,
-                  color: AppColors.warning,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -586,53 +630,84 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
           Row(
             children: [
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'Products',
                   value: totalProducts.toString(),
                   subtitle: 'Total',
                   icon: CustomIcons.meatCut,
-                  color: AppColors.processorPrimary,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(width: AppTheme.space12),
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'In Stock',
                   value: activeProducts.toString(),
                   subtitle: 'Products',
                   icon: Icons.inventory,
-                  color: AppColors.success,
+                  color: Colors.white,
                 ),
               ),
             ],
           ),
-          // Show additional stats from ProductionStats API if available
-          if (_productionStats != null) ...[
-            const SizedBox(height: AppTheme.space12),
-            Row(
-              children: [
-                Expanded(
-                  child: StatsCard(
-                    label: 'Today',
-                    value: _productionStats!.productsCreatedToday.toString(),
-                    subtitle: 'Products',
-                    icon: Icons.today,
-                    color: AppColors.accentOrange,
-                  ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsSection(AnimalProvider animalProvider, ProductProvider productProvider) {
+    // Overview moved into welcome header; keep this section minimal or use for
+    // additional, wider stats in future. For now render nothing to avoid
+    // duplicate overview UI.
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildStatsCardInWelcome({
+    required String label,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+              const SizedBox(width: AppTheme.space8),
+              Text(
+                label,
+                style: AppTypography.labelMedium().copyWith(
+                  color: color.withValues(alpha: 0.9),
                 ),
-                const SizedBox(width: AppTheme.space12),
-                Expanded(
-                  child: StatsCard(
-                    label: 'This Week',
-                    value: _productionStats!.productsCreatedThisWeek.toString(),
-                    subtitle: 'Products',
-                    icon: Icons.calendar_view_week,
-                    color: AppColors.secondaryBlue,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space4),
+          Text(
+            value,
+            style: AppTypography.headlineSmall().copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
             ),
-          ],
+          ),
+          Text(
+            subtitle,
+            style: AppTypography.bodySmall().copyWith(
+              color: color.withValues(alpha: 0.8),
+            ),
+          ),
         ],
       ),
     );
@@ -682,19 +757,14 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
             style: AppTypography.headlineMedium(),
           ),
           const SizedBox(height: AppTheme.space12),
-          GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: AppTheme.space8,
-              mainAxisSpacing: AppTheme.space8,
-              childAspectRatio: 0.9,
-            ),
-            itemCount: actions.length,
+          GridView.count(
+            crossAxisCount: 4,
+            crossAxisSpacing: AppTheme.space8,
+            mainAxisSpacing: AppTheme.space8,
+            childAspectRatio: 0.9,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemBuilder: (context, index) {
-              return _buildQuickActionButton(actions[index]);
-            },
+            children: actions.map((action) => _buildQuickActionButton(action)).toList(),
           ),
         ],
       ),

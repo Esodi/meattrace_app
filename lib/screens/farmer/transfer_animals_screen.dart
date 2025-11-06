@@ -7,6 +7,7 @@ import '../../providers/activity_provider.dart';
 import '../../services/processing_unit_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
+import '../../utils/anatomical_name_mapping.dart';
 import '../../widgets/core/custom_card.dart';
 
 class TransferAnimalsScreen extends StatefulWidget {
@@ -981,53 +982,8 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
       final match = regex.firstMatch(part.description!);
       if (match != null) {
         var key = match.group(1)!;
-        // Remove '_weight' suffix if present
-        key = key.replaceAll('_weight', '');
-        
-        // Map common measurement keys to proper anatomical names
-        final Map<String, String> anatomicalNames = {
-          'head': 'Head',
-          'torso': 'Torso',
-          'front_legs': 'Front Legs',
-          'hind_legs': 'Hind Legs',
-          'organs': 'Organs',
-          'neck': 'Neck',
-          'shoulder': 'Shoulder',
-          'loin': 'Loin',
-          'leg': 'Leg',
-          'breast': 'Breast',
-          'ribs': 'Ribs',
-          'flank': 'Flank',
-          'belly': 'Belly',
-          'back': 'Back',
-          'tail': 'Tail',
-          'hide': 'Hide',
-          'skin': 'Skin',
-          'feet': 'Feet',
-          'hooves': 'Hooves',
-          'wings': 'Wings',
-          'thighs': 'Thighs',
-          'drumsticks': 'Drumsticks',
-          'liver': 'Liver',
-          'heart': 'Heart',
-          'kidneys': 'Kidneys',
-          'lungs': 'Lungs',
-          'intestines': 'Intestines',
-          'stomach': 'Stomach',
-          'tongue': 'Tongue',
-          'brain': 'Brain',
-          'total_carcass': 'Total Carcass',
-        };
-        
-        // Check if we have a predefined name for this key
-        if (anatomicalNames.containsKey(key)) {
-          return anatomicalNames[key]!;
-        }
-        
-        // Otherwise, format the key by replacing underscores and capitalizing
-        key = key.replaceAll('_', ' ');
-        key = key.split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : '').join(' ');
-        return key;
+        // Use the centralized anatomical name mapping utility
+        return AnatomicalNameMapping().getDisplayName(key);
       }
     }
     return part.partType.displayName;

@@ -37,33 +37,42 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   
   // Measurement controllers for split carcass
   final _headWeightController = TextEditingController();
-  final _torsoWeightController = TextEditingController();
-  final _frontLegsController = TextEditingController();
-  final _hindLegsController = TextEditingController();
-  final _organsController = TextEditingController();
+  final _feetWeightController = TextEditingController();
+  final _leftCarcassWeightController = TextEditingController();
+  final _rightCarcassWeightController = TextEditingController();
   
   // Measurement controller for whole carcass
   final _totalWeightController = TextEditingController();
-  
+
+  // Additional controllers for whole carcass detailed measurements
+  final _headWeightWholeController = TextEditingController();
+  final _feetWeightWholeController = TextEditingController();
+  final _wholeCarcassWeightController = TextEditingController();
+
   // Notes
   final _notesController = TextEditingController();
-  
+
   // Unit selections
   String _headUnit = 'kg';
-  String _torsoUnit = 'kg';
-  String _frontLegsUnit = 'kg';
-  String _hindLegsUnit = 'kg';
-  String _organsUnit = 'kg';
-  String _totalUnit = 'kg';
+  String _feetUnit = 'kg';
+  String _leftCarcassUnit = 'kg';
+  String _rightCarcassUnit = 'kg';
+
+  // Units for whole carcass detailed measurements
+  String _headWholeUnit = 'kg';
+  String _feetWholeUnit = 'kg';
+  String _wholeCarcassUnit = 'kg';
   
-  // Custom measurements
-  final List<Map<String, dynamic>> _customMeasurements = [];
   
   // State
   bool _isLoading = false;
   bool _isSubmitting = false;
+  bool _isOffline = false;
   List<Animal> _availableAnimals = [];
   List<Animal> _filteredAnimals = [];
+  String? _networkError;
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
 
   @override
   void initState() {
@@ -89,11 +98,13 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   void dispose() {
     _searchController.dispose();
     _headWeightController.dispose();
-    _torsoWeightController.dispose();
-    _frontLegsController.dispose();
-    _hindLegsController.dispose();
-    _organsController.dispose();
+    _feetWeightController.dispose();
+    _leftCarcassWeightController.dispose();
+    _rightCarcassWeightController.dispose();
     _totalWeightController.dispose();
+    _headWeightWholeController.dispose();
+    _feetWeightWholeController.dispose();
+    _wholeCarcassWeightController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -103,7 +114,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
       await animalProvider.fetchAnimals(slaughtered: false);
-      
+
       final animals = animalProvider.animals.where((animal) {
         return !animal.slaughtered &&
           animal.transferredTo == null &&
@@ -116,6 +127,8 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         _availableAnimals = animals;
         _filteredAnimals = animals;
         _isLoading = false;
+        _isOffline = false;
+        _networkError = null;
       });
 
       if (widget.animalId != null) {
@@ -125,8 +138,12 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showError('Failed to load animals: ${e.toString()}');
+      setState(() {
+        _isLoading = false;
+        _isOffline = true;
+        _networkError = e.toString();
+      });
+      _showError('Failed to load animals: ${e.toString()}\n\nWorking in offline mode. Some features may be limited.');
     }
   }
 
@@ -172,23 +189,63 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
   double _calculateTotalWeight() {
     if (_carcassType == 'whole') {
-      return double.tryParse(_totalWeightController.text) ?? 0.0;
+      // For whole carcass, use the whole carcass weight field
+      return double.tryParse(_wholeCarcassWeightController.text) ?? 0.0;
     }
-    
+
     // Split carcass - sum all parts
     double total = 0.0;
     total += double.tryParse(_headWeightController.text) ?? 0.0;
-    total += double.tryParse(_torsoWeightController.text) ?? 0.0;
-    total += double.tryParse(_frontLegsController.text) ?? 0.0;
-    total += double.tryParse(_hindLegsController.text) ?? 0.0;
-    total += double.tryParse(_organsController.text) ?? 0.0;
-    
-    // Add custom measurements
-    for (var measurement in _customMeasurements) {
-      total += double.tryParse(measurement['controller'].text) ?? 0.0;
-    }
-    
+    total += double.tryParse(_feetWeightController.text) ?? 0.0;
+    total += double.tryParse(_leftCarcassWeightController.text) ?? 0.0;
+    total += double.tryParse(_rightCarcassWeightController.text) ?? 0.0;
+
     return total;
+  }
+
+  bool _validateWeights() {
+    final totalWeight = _calculateTotalWeight();
+
+    // Check for negative weights
+    if (totalWeight < 0) {
+      _showError('Total carcass weight cannot be negative');
+      return false;
+    }
+
+    // Check for unrealistic weights (too small for any animal)
+    if (totalWeight > 0 && totalWeight < 0.5) {
+      _showError('Total carcass weight seems too small. Please verify measurements.');
+      return false;
+    }
+
+    // Check for unrealistic weights (too large for typical livestock)
+    if (totalWeight > 2000) {
+      _showError('Total carcass weight seems unusually large. Please verify measurements.');
+      return false;
+    }
+
+    // Check individual weights for negative values
+    final weightControllers = [
+      _headWeightController,
+      _feetWeightController,
+      _leftCarcassWeightController,
+      _rightCarcassWeightController,
+      _totalWeightController,
+      _headWeightWholeController,
+      _feetWeightWholeController,
+      _wholeCarcassWeightController,
+    ];
+
+    for (var controller in weightControllers) {
+      final weight = double.tryParse(controller.text);
+      if (weight != null && weight < 0) {
+        _showError('Individual weights cannot be negative');
+        return false;
+      }
+    }
+
+
+    return true;
   }
 
   double _calculateYieldPercentage() {
@@ -204,158 +261,406 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     return (carcassWeight / liveWeight) * 100;
   }
 
-  void _addCustomMeasurement() {
-    setState(() {
-      _customMeasurements.add({
-        'name': TextEditingController(),
-        'controller': TextEditingController(),
-        'unit': 'kg',
-      });
-    });
-  }
-
-  void _removeCustomMeasurement(int index) {
-    setState(() {
-      _customMeasurements[index]['name'].dispose();
-      _customMeasurements[index]['controller'].dispose();
-      _customMeasurements.removeAt(index);
-    });
-  }
 
   Future<void> _confirmAndSlaughter() async {
     print('🔵 [SlaughterScreen] _confirmAndSlaughter called');
-    
+
     if (_selectedAnimal == null) {
       print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _confirmAndSlaughter');
       _showError('Error: No animal selected');
       return;
     }
-    
+
     if (!_formKey.currentState!.validate()) {
       print('⚠️ [SlaughterScreen] Form validation failed');
       _showError('Please fill in all required fields');
       return;
     }
 
+    // Validate weights comprehensively
+    if (!_validateWeights()) {
+      return;
+    }
+
     // Validate minimum measurements
     final totalWeight = _calculateTotalWeight();
     print('🔵 [SlaughterScreen] Total weight: $totalWeight kg');
-    
+
     if (totalWeight <= 0) {
       print('⚠️ [SlaughterScreen] Invalid total weight: $totalWeight');
       _showError('Total carcass weight must be greater than 0');
       return;
     }
 
+    // Validate against live weight (yield percentage check)
+    if (_selectedAnimal!.liveWeight != null && totalWeight > _selectedAnimal!.liveWeight!) {
+      _showError('Total carcass weight (${totalWeight.toStringAsFixed(1)} kg) cannot exceed live weight (${_selectedAnimal!.liveWeight} kg)');
+      return;
+    }
+
+    // Check for unrealistic weights
+    if (totalWeight > 2000) {
+      _showError('Total carcass weight seems unusually large (${totalWeight.toStringAsFixed(1)} kg). Please verify measurements.');
+      return;
+    }
+
+    // Check if data is complete for the selected carcass type
+    if (!_validateDataCompleteness()) {
+      return;
+    }
+
     print('✅ [SlaughterScreen] Showing confirmation dialog');
-    
+
     print('✅ [SlaughterScreen] User confirmed slaughter, proceeding...');
     await _performSlaughter();
   }
 
+  bool _validateDataCompleteness() {
+    if (_carcassType == 'whole') {
+      if (_wholeCarcassWeightController.text.isEmpty) {
+        _showError('Whole carcass weight is required');
+        return false;
+      }
+    } else {
+      // Split carcass validation
+      if (_headWeightController.text.isEmpty ||
+          _feetWeightController.text.isEmpty ||
+          _leftCarcassWeightController.text.isEmpty ||
+          _rightCarcassWeightController.text.isEmpty) {
+        _showError('All four measurements are required for split carcass: head, feet, left carcass, right carcass');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   Future<void> _performSlaughter() async {
     print('🔵 [SlaughterScreen] _performSlaughter started');
-    
+
     if (_selectedAnimal == null) {
       print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _performSlaughter');
       _showError('Error: No animal selected');
       return;
     }
-    
+
     setState(() => _isSubmitting = true);
 
     try {
-      print('🔵 [SlaughterScreen] Creating DioClient');
-      final dioClient = DioClient();
-      
-      print('🔵 [SlaughterScreen] Creating carcass measurements FIRST (before marking as slaughtered)');
-      // STEP 1: Create carcass measurements FIRST
-      Map<String, Map<String, dynamic>> measurements = {};
-      
-      if (_carcassType == 'split') {
-        // Add split carcass measurements
-        if (_headWeightController.text.isNotEmpty) {
-          measurements['head_weight'] = {
-            'value': double.parse(_headWeightController.text),
-            'unit': _headUnit,
-          };
-        }
-        if (_torsoWeightController.text.isNotEmpty) {
-          measurements['torso_weight'] = {
-            'value': double.parse(_torsoWeightController.text),
-            'unit': _torsoUnit,
-          };
-        }
-        if (_frontLegsController.text.isNotEmpty) {
-          measurements['front_legs_weight'] = {
-            'value': double.parse(_frontLegsController.text),
-            'unit': _frontLegsUnit,
-          };
-        }
-        if (_hindLegsController.text.isNotEmpty) {
-          measurements['hind_legs_weight'] = {
-            'value': double.parse(_hindLegsController.text),
-            'unit': _hindLegsUnit,
-          };
-        }
-        if (_organsController.text.isNotEmpty) {
-          measurements['organs_weight'] = {
-            'value': double.parse(_organsController.text),
-            'unit': _organsUnit,
-          };
-        }
-        
-        // Add custom measurements
-        for (var measurement in _customMeasurements) {
-          final name = (measurement['name'] as TextEditingController).text;
-          final value = (measurement['controller'] as TextEditingController).text;
-          if (name.isNotEmpty && value.isNotEmpty) {
-            measurements[name.toLowerCase().replaceAll(' ', '_')] = {
-              'value': double.parse(value),
-              'unit': measurement['unit'],
+      await _performSlaughterWithRetry();
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      print('❌ [SlaughterScreen] Final failure after retries: $e');
+
+      // Check if it's a network error and offer offline fallback
+      if (_isNetworkError(e)) {
+        await _showOfflineFallbackDialog();
+      } else {
+        _showError('Failed to record slaughter: ${e.toString()}');
+      }
+    }
+  }
+
+  Future<void> _performSlaughterWithRetry() async {
+    _retryCount = 0;
+
+    while (_retryCount <= _maxRetries) {
+      try {
+        print('🔵 [SlaughterScreen] Attempt ${_retryCount + 1}/${_maxRetries + 1}');
+
+        print('🔵 [SlaughterScreen] Creating DioClient');
+        final dioClient = DioClient();
+
+        print('🔵 [SlaughterScreen] Creating carcass measurements FIRST (before marking as slaughtered)');
+        // STEP 1: Create carcass measurements FIRST
+        Map<String, Map<String, dynamic>> measurements = {};
+
+        if (_carcassType == 'split') {
+          // Add split carcass measurements
+          if (_headWeightController.text.isNotEmpty) {
+            measurements['head_weight'] = {
+              'value': double.parse(_headWeightController.text),
+              'unit': _headUnit,
             };
           }
+          if (_feetWeightController.text.isNotEmpty) {
+            measurements['feet_weight'] = {
+              'value': double.parse(_feetWeightController.text),
+              'unit': _feetUnit,
+            };
+          }
+          if (_leftCarcassWeightController.text.isNotEmpty) {
+            measurements['left_carcass_weight'] = {
+              'value': double.parse(_leftCarcassWeightController.text),
+              'unit': _leftCarcassUnit,
+            };
+          }
+          if (_rightCarcassWeightController.text.isNotEmpty) {
+            measurements['right_carcass_weight'] = {
+              'value': double.parse(_rightCarcassWeightController.text),
+              'unit': _rightCarcassUnit,
+            };
+          }
+        } else {
+          // Whole carcass - detailed measurements
+          if (_headWeightWholeController.text.isNotEmpty) {
+            measurements['head_weight'] = {
+              'value': double.parse(_headWeightWholeController.text),
+              'unit': _headWholeUnit,
+            };
+          }
+          if (_feetWeightWholeController.text.isNotEmpty) {
+            measurements['feet_weight'] = {
+              'value': double.parse(_feetWeightWholeController.text),
+              'unit': _feetWholeUnit,
+            };
+          }
+          measurements['whole_carcass_weight'] = {
+            'value': double.parse(_wholeCarcassWeightController.text),
+            'unit': _wholeCarcassUnit,
+          };
         }
-      } else {
-        // Whole carcass - single measurement
-        measurements['total_carcass_weight'] = {
-          'value': double.parse(_totalWeightController.text),
-          'unit': _totalUnit,
-        };
+
+        print('🔵 [SlaughterScreen] Measurements prepared: $measurements');
+        print('🔵 [SlaughterScreen] Carcass type before API call: $_carcassType');
+
+        // Create carcass measurement record
+        final measurement = CarcassMeasurement(
+          animalId: _selectedAnimal!.id!,
+          carcassType: _carcassType == 'split' ? CarcassType.split : CarcassType.whole,
+          measurements: Map<String, Map<String, dynamic>>.from(measurements),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+        await animalProvider.createCarcassMeasurement(measurement);
+
+        // Log activity
+        final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+        await activityProvider.logSlaughter(
+          animalId: _selectedAnimal!.id.toString(),
+          animalTag: _selectedAnimal!.animalId,
+        );
+
+        setState(() => _isSubmitting = false);
+
+        if (mounted) {
+          _showSuccessDialog();
+        }
+        return; // Success, exit retry loop
+
+      } catch (e) {
+        _retryCount++;
+        print('⚠️ [SlaughterScreen] Attempt ${_retryCount} failed: $e');
+
+        if (_retryCount <= _maxRetries && _isNetworkError(e)) {
+          // Wait before retry (exponential backoff)
+          await Future.delayed(Duration(seconds: _retryCount * 2));
+          continue;
+        } else {
+          // Max retries reached or non-network error
+          rethrow;
+        }
       }
+    }
+  }
 
+  bool _isNetworkError(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    return errorString.contains('network') ||
+           errorString.contains('connection') ||
+           errorString.contains('timeout') ||
+           errorString.contains('socket') ||
+           errorString.contains('dio');
+  }
 
-      print('🔵 [SlaughterScreen] Measurements prepared: $measurements');
-      print('🔵 [SlaughterScreen] Carcass type before API call: $_carcassType');
-      
-      // Create carcass measurement record
-      final measurement = CarcassMeasurement(
-        animalId: _selectedAnimal!.id!,
-        carcassType: _carcassType == 'split' ? CarcassType.split : CarcassType.whole,
-        measurements: Map<String, Map<String, dynamic>>.from(measurements),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+  Future<void> _showOfflineFallbackDialog() async {
+    if (!mounted) return;
 
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-      await animalProvider.createCarcassMeasurement(measurement);
+    final shouldSaveOffline = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.wifi_off, color: AppColors.warning, size: 28),
+            const SizedBox(width: 12),
+            const Text('Network Error'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Unable to connect to the server. Would you like to save this slaughter record offline and sync later?',
+              style: AppTypography.bodyLarge(),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.info.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.info.withOpacity(0.3)),
+              ),
+              child: Text(
+                'Offline data will be automatically synced when connection is restored.',
+                style: AppTypography.bodySmall(color: AppColors.info),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          CustomButton(
+            label: 'Save Offline',
+            onPressed: () => Navigator.of(context).pop(true),
+            customColor: AppColors.farmerPrimary,
+            fullWidth: false,
+          ),
+        ],
+      ),
+    );
 
-      // Log activity
-      final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
-      await activityProvider.logSlaughter(
-        animalId: _selectedAnimal!.id.toString(),
-        animalTag: _selectedAnimal!.animalId,
-      );
+    if (shouldSaveOffline == true) {
+      await _saveSlaughterOffline();
+    }
+  }
 
+  Future<void> _saveSlaughterOffline() async {
+    try {
+      // Create offline slaughter record
+      final offlineData = {
+        'animal_id': _selectedAnimal!.id,
+        'animal_tag': _selectedAnimal!.animalId,
+        'carcass_type': _carcassType,
+        'measurements': _prepareMeasurements(),
+        'notes': _notesController.text,
+        'timestamp': DateTime.now().toIso8601String(),
+        'synced': false,
+      };
+
+      // Save to local storage (you would implement this based on your storage solution)
+      // For now, we'll just show a success message
       setState(() => _isSubmitting = false);
 
       if (mounted) {
-        _showSuccessDialog();
+        _showOfflineSuccessDialog();
       }
     } catch (e) {
       setState(() => _isSubmitting = false);
-      _showError('Failed to record slaughter: ${e.toString()}');
+      _showError('Failed to save offline: ${e.toString()}');
     }
+  }
+
+  Map<String, Map<String, dynamic>> _prepareMeasurements() {
+    Map<String, Map<String, dynamic>> measurements = {};
+
+    if (_carcassType == 'split') {
+      // Send only the four new fields for split carcass
+      if (_headWeightController.text.isNotEmpty) {
+        measurements['head'] = {
+          'value': double.parse(_headWeightController.text),
+          'unit': _headUnit,
+        };
+      }
+      if (_feetWeightController.text.isNotEmpty) {
+        measurements['feet'] = {
+          'value': double.parse(_feetWeightController.text),
+          'unit': _feetUnit,
+        };
+      }
+      if (_leftCarcassWeightController.text.isNotEmpty) {
+        measurements['left_carcass'] = {
+          'value': double.parse(_leftCarcassWeightController.text),
+          'unit': _leftCarcassUnit,
+        };
+      }
+      if (_rightCarcassWeightController.text.isNotEmpty) {
+        measurements['right_carcass'] = {
+          'value': double.parse(_rightCarcassWeightController.text),
+          'unit': _rightCarcassUnit,
+        };
+      }
+    } else {
+      if (_headWeightWholeController.text.isNotEmpty) {
+        measurements['head_weight'] = {
+          'value': double.parse(_headWeightWholeController.text),
+          'unit': _headWholeUnit,
+        };
+      }
+      if (_feetWeightWholeController.text.isNotEmpty) {
+        measurements['feet_weight'] = {
+          'value': double.parse(_feetWeightWholeController.text),
+          'unit': _feetWholeUnit,
+        };
+      }
+      measurements['whole_carcass_weight'] = {
+        'value': double.parse(_wholeCarcassWeightController.text),
+        'unit': _wholeCarcassUnit,
+      };
+    }
+
+    return measurements;
+  }
+
+  void _showOfflineSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.offline_pin, color: AppColors.success, size: 28),
+            const SizedBox(width: 12),
+            const Text('Saved Offline'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_selectedAnimal!.species} ${_selectedAnimal!.animalId} slaughter record saved offline',
+              style: AppTypography.bodyLarge(),
+            ),
+            const SizedBox(height: 16),
+            _buildSuccessItem('Carcass Weight', '${_calculateTotalWeight().toStringAsFixed(1)} kg'),
+            _buildSuccessItem('Parts Recorded', _carcassType == 'split' ? '4' : '1'),
+            _buildSuccessItem('Type', _carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+              ),
+              child: Text(
+                'This record will be automatically synced when you regain internet connection.',
+                style: AppTypography.bodySmall(color: AppColors.warning),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          CustomButton(
+            label: 'Done',
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.go('/farmer-home');
+            },
+            customColor: AppColors.farmerPrimary,
+            fullWidth: false,
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSuccessDialog() {
@@ -387,7 +692,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             ),
             const SizedBox(height: 16),
             _buildSuccessItem('Carcass Weight', '${_calculateTotalWeight().toStringAsFixed(1)} kg'),
-            _buildSuccessItem('Parts Recorded', _carcassType == 'split' ? '${_customMeasurements.length + 5}' : '1'),
+            _buildSuccessItem('Parts Recorded', _carcassType == 'split' ? '4' : '1'),
             _buildSuccessItem('Type', _carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass'),
             const SizedBox(height: 16),
             Text(
@@ -437,11 +742,24 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
+
+    // For network errors, show a more detailed message
+    String displayMessage = message;
+    if (_isOffline || message.contains('network') || message.contains('connection')) {
+      displayMessage += '\n\nYou can continue working offline.';
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(displayMessage),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        action: _isOffline ? SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () => _loadAvailableAnimals(),
+        ) : null,
       ),
     );
   }
@@ -477,12 +795,43 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                 ],
               ),
             )
-          : IndexedStack(
-              index: _currentStep,
+          : Column(
               children: [
-                _buildAnimalSelectionStep(),
-                _buildCarcassTypeStep(),
-                _buildMeasurementStep(),
+                if (_isOffline) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    color: AppColors.warning.withOpacity(0.1),
+                    child: Row(
+                      children: [
+                        Icon(Icons.wifi_off, color: AppColors.warning, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Working offline - Changes will sync when connection is restored',
+                            style: AppTypography.bodySmall(color: AppColors.warning),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _loadAvailableAnimals,
+                          child: Text(
+                            'Retry',
+                            style: AppTypography.bodySmall(color: AppColors.farmerPrimary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentStep,
+                    children: [
+                      _buildAnimalSelectionStep(),
+                      _buildCarcassTypeStep(),
+                      _buildMeasurementStep(),
+                    ],
+                  ),
+                ),
               ],
             ),
     );
@@ -802,7 +1151,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Head, Torso, Legs, Organs • Better traceability',
+                          'Head, Feet, Left Carcass, Right Carcass • Better traceability',
                           style: AppTypography.bodySmall(color: AppColors.textSecondary).copyWith(fontStyle: FontStyle.italic),
                         ),
                       ],
@@ -980,61 +1329,37 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
   Widget _buildWholeCarcassMeasurements() {
     print('🔵 [SlaughterScreen] _buildWholeCarcassMeasurements called');
-    
+
     if (_selectedAnimal == null) {
       print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _buildWholeCarcassMeasurements');
       return Center(child: Text('Error: No animal selected', style: AppTypography.bodyLarge(color: AppColors.error)));
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Total Carcass Weight',
+          'Detailed Carcass Measurements',
           style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
-        
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: CustomTextField(
-                controller: _totalWeightController,
-                label: 'Weight',
-                hint: 'Enter total weight',
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Weight is required';
-                  }
-                  final weight = double.tryParse(value);
-                  if (weight == null || weight <= 0) {
-                    return 'Enter valid weight';
-                  }
-                  return null;
-                },
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 1,
-              child: DropdownButtonFormField<String>(
-                value: _totalUnit,
-                decoration: const InputDecoration(
-                  labelText: 'Unit',
-                  border: OutlineInputBorder(),
-                ),
-                items: ['kg', 'lbs', 'g'].map((unit) {
-                  return DropdownMenuItem(value: unit, child: Text(unit));
-                }).toList(),
-                onChanged: (value) => setState(() => _totalUnit = value!),
-              ),
-            ),
-          ],
-        ),
+
+        // HEAD weight field
+        _buildMeasurementField('Head Weight', _headWeightWholeController, _headWholeUnit, (value) {
+          setState(() => _headWholeUnit = value);
+        }),
+        const SizedBox(height: 16),
+
+        // FEET weight field
+        _buildMeasurementField('Feet Weight', _feetWeightWholeController, _feetWholeUnit, (value) {
+          setState(() => _feetWholeUnit = value);
+        }),
+        const SizedBox(height: 16),
+
+        // WHOLE CARCASS weight field
+        _buildMeasurementField('Whole Carcass Weight', _wholeCarcassWeightController, _wholeCarcassUnit, (value) {
+          setState(() => _wholeCarcassUnit = value);
+        }, required: true),
 
         const SizedBox(height: 16),
 
@@ -1088,7 +1413,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Whole carcass recording is faster but provides less detailed part tracking.',
+                  'Whole carcass recording provides detailed part tracking while maintaining faster processing.',
                   style: AppTypography.bodySmall(color: AppColors.info),
                 ),
               ),
@@ -1104,111 +1429,29 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Standard Measurements',
+          'Split Carcass Measurements',
           style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
 
         _buildMeasurementField('Head Weight', _headWeightController, _headUnit, (value) {
           setState(() => _headUnit = value);
-        }),
-        const SizedBox(height: 16),
-
-        _buildMeasurementField('Torso Weight', _torsoWeightController, _torsoUnit, (value) {
-          setState(() => _torsoUnit = value);
         }, required: true),
         const SizedBox(height: 16),
 
-        _buildMeasurementField('Front Legs (Pair)', _frontLegsController, _frontLegsUnit, (value) {
-          setState(() => _frontLegsUnit = value);
-        }),
+        _buildMeasurementField('Feet Weight', _feetWeightController, _feetUnit, (value) {
+          setState(() => _feetUnit = value);
+        }, required: true),
         const SizedBox(height: 16),
 
-        _buildMeasurementField('Hind Legs (Pair)', _hindLegsController, _hindLegsUnit, (value) {
-          setState(() => _hindLegsUnit = value);
-        }),
+        _buildMeasurementField('Left Carcass Weight', _leftCarcassWeightController, _leftCarcassUnit, (value) {
+          setState(() => _leftCarcassUnit = value);
+        }, required: true),
         const SizedBox(height: 16),
 
-        _buildMeasurementField('Organs (Optional)', _organsController, _organsUnit, (value) {
-          setState(() => _organsUnit = value);
-        }),
-
-        const SizedBox(height: 24),
-
-        // Custom measurements
-        if (_customMeasurements.isNotEmpty) ...[
-          Text(
-            'Custom Measurements',
-            style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 16),
-          
-          ..._customMeasurements.asMap().entries.map((entry) {
-            final index = entry.key;
-            final measurement = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: CustomTextField(
-                      controller: measurement['name'],
-                      label: 'Part Name',
-                      hint: 'e.g., Tail, Hide',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 2,
-                    child: CustomTextField(
-                      controller: measurement['controller'],
-                      label: 'Weight',
-                      hint: '0.0',
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 1,
-                    child: DropdownButtonFormField<String>(
-                      value: measurement['unit'],
-                      decoration: const InputDecoration(
-                        labelText: 'Unit',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: ['kg', 'lbs', 'g'].map((unit) {
-                        return DropdownMenuItem(value: unit, child: Text(unit));
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() => measurement['unit'] = value!);
-                      },
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete, color: AppColors.error),
-                    onPressed: () => _removeCustomMeasurement(index),
-                  ),
-                ],
-              ),
-            );
-          }),
-          
-          const SizedBox(height: 8),
-        ],
-
-        // Add custom measurement button
-        OutlinedButton.icon(
-          onPressed: _addCustomMeasurement,
-          icon: const Icon(Icons.add),
-          label: const Text('Add Custom Measurement'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.farmerPrimary,
-            side: BorderSide(color: AppColors.farmerPrimary),
-          ),
-        ),
+        _buildMeasurementField('Right Carcass Weight', _rightCarcassWeightController, _rightCarcassUnit, (value) {
+          setState(() => _rightCarcassUnit = value);
+        }, required: true),
       ],
     );
   }

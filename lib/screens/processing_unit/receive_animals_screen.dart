@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/animal_provider.dart';
-import '../../providers/activity_provider.dart';
 import '../../models/animal.dart';
+import '../../utils/anatomical_name_mapping.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
@@ -21,11 +21,15 @@ class ReceiveAnimalsScreen extends StatefulWidget {
 class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
   bool _isLoading = false;
   List<Animal> _pendingAnimals = [];
-  
+
   // State management for whole animals and parts
-  final Set<int> _selectedWholeAnimals = {};
-  final Map<int, List<int>> _selectedPartsByAnimal = {};  // animal_id -> [part_ids]
   final Map<int, bool> _expandedAnimals = {};             // Track expanded cards
+
+  // New state management for accept/reject decisions
+  final Map<int, String> _animalDecisions = {};          // animal_id -> 'accept' or 'reject'
+  final Map<int, Map<String, dynamic>> _animalRejectionReasons = {}; // animal_id -> rejection data
+  final Map<String, String> _partDecisions = {};         // 'animalId_partId' -> 'accept' or 'reject'
+  final Map<String, Map<String, dynamic>> _partRejectionReasons = {}; // 'animalId_partId' -> rejection data
 
   @override
   void initState() {
@@ -48,21 +52,19 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
       // The backend get_queryset() already filters to show only animals
       // transferred to this processing unit (whole or parts)
       final pending = animalProvider.animals.where((animal) {
-        // Check if whole animal is transferred OR if any parts are transferred
-        final hasTransferredParts = animal.hasSlaughterParts && 
-            animal.slaughterParts.any((p) => p.isTransferred);
+        // Check if whole animal is transferred and not received
         final wholeAnimalTransferred = animal.transferredTo != null;
-        
-        return (wholeAnimalTransferred || hasTransferredParts) && 
-               animal.receivedBy == null;
+        final wholeAnimalPending = wholeAnimalTransferred && animal.receivedBy == null;
+
+        // Check if any parts are transferred and not received
+        final hasPendingParts = animal.hasSlaughterParts &&
+            animal.slaughterParts.any((p) => p.isTransferred && p.receivedBy == null);
+
+        return wholeAnimalPending || hasPendingParts;
       }).toList();
 
-      print('🔍 RECEIVE_SCREEN - Total animals from API: ${animalProvider.animals.length}');
-      print('🔍 RECEIVE_SCREEN - Pending to receive: ${pending.length}');
-      
       setState(() => _pendingAnimals = pending);
     } catch (e) {
-      print('❌ RECEIVE_SCREEN - Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading animals: $e')),
@@ -73,118 +75,25 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
     }
   }
 
-  Future<void> _receiveSelectedAnimals() async {
-    if (_selectedWholeAnimals.isEmpty && _selectedPartsByAnimal.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select animals or parts to receive')),
-      );
-      return;
-    }
 
-    setState(() => _isLoading = true);
-    try {
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-      final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
-      
-      // Build part receives array: [{animal_id: X, part_ids: [1,2,3]}, ...]
-      final partReceives = _selectedPartsByAnimal.entries
-          .where((entry) => entry.value.isNotEmpty)
-          .map((entry) => {
-            'animal_id': entry.key,
-            'part_ids': entry.value,
-          })
-          .toList();
-      
-      // Receive animals and parts
-      await animalProvider.receiveAnimals(
-        _selectedWholeAnimals.toList(),
-        partReceives: partReceives,
-      );
-      
-      // Refresh the animal list - fetch all animals
-      await animalProvider.fetchAnimals(slaughtered: null);
-
-      // Calculate total items received
-      final totalAnimals = _selectedWholeAnimals.length;
-      final totalParts = _selectedPartsByAnimal.values.fold<int>(
-        0, (sum, parts) => sum + parts.length
-      );
-      
-      // Log activities based on receive type
-      if (totalAnimals > 0 && partReceives.isEmpty) {
-        // Only whole animals received
-        await activityProvider.logReceive(count: totalAnimals);
-      } else if (totalAnimals == 0 && partReceives.isNotEmpty) {
-        // Only parts received
-        for (var partReceive in partReceives) {
-          final animalId = partReceive['animal_id'];
-          final animal = _pendingAnimals.firstWhere((a) => a.id == animalId);
-          final partIds = partReceive['part_ids'] as List<int>;
-          final parts = animal.slaughterParts.where((p) => partIds.contains(p.id)).toList();
-          final partTypes = parts.map((p) => _getPartLabel(p)).toList();
-          
-          await activityProvider.logPartReceive(
-            animalId: animalId.toString(),
-            animalTag: animal.animalId,
-            partTypes: partTypes,
-          );
-        }
-      } else {
-        // Mixed receive (whole animals + parts)
-        await activityProvider.logMixedReceive(
-          wholeAnimalCount: totalAnimals,
-          partReceiveCount: partReceives.length,
-        );
-      }
-      
-      String message;
-      if (totalAnimals > 0 && totalParts > 0) {
-        message = 'Successfully received $totalAnimals animal(s) and $totalParts part(s)';
-      } else if (totalAnimals > 0) {
-        message = 'Successfully received $totalAnimals animal(s)';
-      } else {
-        message = 'Successfully received $totalParts part(s)';
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        context.pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error receiving animals: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  @override
   @override
   Widget build(BuildContext context) {
-    final hasSelections = _selectedWholeAnimals.isNotEmpty || _selectedPartsByAnimal.isNotEmpty;
-    final totalAnimals = _selectedWholeAnimals.length;
-    final totalParts = _selectedPartsByAnimal.values.fold<int>(0, (sum, parts) => sum + parts.length);
-    
-    String selectionText;
-    if (totalAnimals > 0 && totalParts > 0) {
-      selectionText = '$totalAnimals animal(s), $totalParts part(s)';
-    } else if (totalAnimals > 0) {
-      selectionText = '$totalAnimals Selected';
-    } else if (totalParts > 0) {
-      selectionText = '$totalParts part(s)';
+    final hasDecisions = _animalDecisions.isNotEmpty || _partDecisions.isNotEmpty;
+    final totalAcceptedAnimals = _animalDecisions.values.where((d) => d == 'accept').length;
+    final totalRejectedAnimals = _animalDecisions.values.where((d) => d == 'reject').length;
+    final totalAcceptedParts = _partDecisions.values.where((d) => d == 'accept').length;
+    final totalRejectedParts = _partDecisions.values.where((d) => d == 'reject').length;
+
+    String decisionText;
+    if (hasDecisions) {
+      final parts = <String>[];
+      if (totalAcceptedAnimals > 0) parts.add('$totalAcceptedAnimals accepted');
+      if (totalRejectedAnimals > 0) parts.add('$totalRejectedAnimals rejected');
+      if (totalAcceptedParts > 0) parts.add('$totalAcceptedParts parts accepted');
+      if (totalRejectedParts > 0) parts.add('$totalRejectedParts parts rejected');
+      decisionText = parts.join(', ');
     } else {
-      selectionText = '';
+      decisionText = '';
     }
     
     return Scaffold(
@@ -201,7 +110,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
           style: AppTypography.headlineMedium(),
         ),
         actions: [
-          if (hasSelections)
+          if (hasDecisions)
             Padding(
               padding: const EdgeInsets.only(right: AppTheme.space8),
               child: Center(
@@ -215,7 +124,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),
                   child: Text(
-                    selectionText,
+                    decisionText,
                     style: AppTypography.labelMedium().copyWith(
                       color: AppColors.processorPrimary,
                       fontWeight: FontWeight.w600,
@@ -254,7 +163,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                     ),
                   ],
                 ),
-      bottomNavigationBar: hasSelections
+      bottomNavigationBar: hasDecisions
           ? Container(
               padding: const EdgeInsets.all(AppTheme.space16),
               decoration: BoxDecoration(
@@ -269,12 +178,8 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
               ),
               child: SafeArea(
                 child: CustomButton(
-                  label: totalAnimals > 0 && totalParts > 0
-                      ? 'Receive $totalAnimals Animal(s) & $totalParts Part(s)'
-                      : totalAnimals > 0
-                          ? 'Receive $totalAnimals Animal(s)'
-                          : 'Receive $totalParts Part(s)',
-                  onPressed: _isLoading ? null : _receiveSelectedAnimals,
+                  label: 'Review Decisions',
+                  onPressed: _isLoading ? null : _showReviewScreen,
                   loading: _isLoading,
                 ),
               ),
@@ -329,251 +234,204 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
   }
 
   Widget _buildActionButtons() {
-    final hasAnySelections = _selectedWholeAnimals.isNotEmpty || _selectedPartsByAnimal.isNotEmpty;
-    final allWholePendingSelected = _pendingAnimals
-        .where((a) => !a.isSplitCarcass || !a.hasSlaughterParts)
-        .every((a) => _selectedWholeAnimals.contains(a.id));
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                setState(() {
-                  if (allWholePendingSelected && hasAnySelections) {
-                    // Deselect all
-                    _selectedWholeAnimals.clear();
-                    _selectedPartsByAnimal.clear();
-                  } else {
-                    // Select all whole animals
-                    _selectedWholeAnimals.addAll(
-                      _pendingAnimals
-                          .where((a) => !a.isSplitCarcass || !a.hasSlaughterParts)
-                          .map((a) => a.id!)
-                    );
-                    // Select all transferred parts from split carcass animals
-                    for (var animal in _pendingAnimals.where((a) => a.isSplitCarcass && a.hasSlaughterParts)) {
-                      final transferredParts = animal.slaughterParts
-                          .where((p) => p.isTransferred)
-                          .map((p) => p.id!)
-                          .toList();
-                      if (transferredParts.isNotEmpty) {
-                        _selectedPartsByAnimal[animal.id!] = transferredParts;
-                      }
-                    }
-                  }
-                });
-              },
-              icon: Icon(
-                allWholePendingSelected && hasAnySelections
-                    ? Icons.deselect
-                    : Icons.select_all,
-                size: 20,
-              ),
-              label: Text(
-                allWholePendingSelected && hasAnySelections
-                    ? 'Deselect All'
-                    : 'Select All',
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.processorPrimary,
-                side: BorderSide(color: AppColors.processorPrimary),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppTheme.space12),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: !hasAnySelections
-                  ? null
-                  : () {
-                      setState(() {
-                        _selectedWholeAnimals.clear();
-                        _selectedPartsByAnimal.clear();
-                      });
-                    },
-              icon: const Icon(Icons.clear, size: 20),
-              label: const Text('Clear'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textSecondary,
-                side: BorderSide(color: AppColors.textSecondary.withValues(alpha: 0.3)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    // Action buttons are no longer needed in the new decision-based flow
+    return const SizedBox.shrink();
   }
 
   Widget _buildAnimalCard(Animal animal) {
     final isSplitCarcass = animal.isSplitCarcass && animal.hasSlaughterParts;
     final isExpanded = _expandedAnimals[animal.id] ?? false;
-    
+    final decision = _animalDecisions[animal.id];
+
     // For whole carcass or when parts aren't loaded
     if (!isSplitCarcass) {
-      final isSelected = _selectedWholeAnimals.contains(animal.id);
-      
       return Card(
         margin: const EdgeInsets.only(bottom: AppTheme.space12),
-        elevation: isSelected ? 4 : 2,
+        elevation: decision != null ? 4 : 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           side: BorderSide(
-            color: isSelected
-                ? AppColors.processorPrimary
-                : Colors.transparent,
+            color: decision == 'accept'
+                ? AppColors.success
+                : decision == 'reject'
+                    ? AppColors.error
+                    : Colors.transparent,
             width: 2,
           ),
         ),
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              if (isSelected) {
-                _selectedWholeAnimals.remove(animal.id);
-              } else {
-                _selectedWholeAnimals.add(animal.id!);
-              }
-            });
-          },
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.space16),
-            child: Row(
-              children: [
-                // Selection Checkbox
-                Checkbox(
-                  value: isSelected,
-                  onChanged: (value) {
-                    setState(() {
-                      if (value == true) {
-                        _selectedWholeAnimals.add(animal.id!);
-                      } else {
-                        _selectedWholeAnimals.remove(animal.id);
-                      }
-                    });
-                  },
-                  activeColor: AppColors.processorPrimary,
-                ),
-                const SizedBox(width: AppTheme.space12),
-
-                // Animal Icon
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: AppColors.processorPrimary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  ),
-                  child: Icon(
-                    _getSpeciesIcon(animal.species),
-                    color: AppColors.processorPrimary,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.space12),
-
-                // Animal Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              animal.animalId,
-                              style: AppTypography.bodyLarge().copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppTheme.space8,
-                              vertical: AppTheme.space4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.info.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                            ),
-                            child: Text(
-                              'Whole Carcass',
-                              style: AppTypography.caption().copyWith(
-                                color: AppColors.info,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppTheme.space4),
-                      Text(
-                        '${animal.species}${animal.breed != null ? " • ${animal.breed}" : ""}',
-                        style: AppTypography.bodyMedium().copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.space8),
-                      Wrap(
-                        spacing: AppTheme.space8,
-                        runSpacing: AppTheme.space4,
-                        children: [
-                          _buildInfoChip(
-                            Icons.monitor_weight,
-                            '${animal.liveWeight ?? 0} kg',
-                          ),
-                          _buildInfoChip(
-                            Icons.calendar_today,
-                            '${animal.age} yrs',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Transfer Info
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    StatusBadge(
-                      label: 'Pending',
-                      color: AppColors.warning,
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.space16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Animal Icon
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.processorPrimary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                     ),
-                    if (animal.transferredAt != null) ...[
-                      const SizedBox(height: AppTheme.space8),
-                      Text(
-                        _formatDate(animal.transferredAt!),
-                        style: AppTypography.caption().copyWith(
-                          color: AppColors.textTertiary,
+                    child: Icon(
+                      _getSpeciesIcon(animal.species),
+                      color: AppColors.processorPrimary,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.space12),
+
+                  // Animal Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                animal.animalId,
+                                style: AppTypography.bodyLarge().copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTheme.space8,
+                                vertical: AppTheme.space4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.info.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                              ),
+                              child: Text(
+                                'Whole Carcass',
+                                style: AppTypography.caption().copyWith(
+                                  color: AppColors.info,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppTheme.space4),
+                        Text(
+                          '${animal.species}${animal.breed != null ? " • ${animal.breed}" : ""}',
+                          style: AppTypography.bodyMedium().copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.space8),
+                        Wrap(
+                          spacing: AppTheme.space8,
+                          runSpacing: AppTheme.space4,
+                          children: [
+                            _buildInfoChip(
+                              Icons.monitor_weight,
+                              '${animal.liveWeight ?? 0} kg',
+                            ),
+                            _buildInfoChip(
+                              Icons.calendar_today,
+                              '${animal.age} yrs',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Transfer Info
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      StatusBadge(
+                        label: 'Pending',
+                        color: AppColors.warning,
+                      ),
+                      if (animal.transferredAt != null) ...[
+                        const SizedBox(height: AppTheme.space8),
+                        Text(
+                          _formatDate(animal.transferredAt!),
+                          style: AppTypography.caption().copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.space16),
+              // Accept/Reject Radio Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: Text(
+                        'Accept',
+                        style: AppTypography.bodyMedium().copyWith(
+                          color: decision == 'accept' ? AppColors.success : AppColors.textPrimary,
+                          fontWeight: decision == 'accept' ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
+                      value: 'accept',
+                      groupValue: decision,
+                      onChanged: (value) {
+                        setState(() {
+                          _animalDecisions[animal.id!] = value!;
+                          _animalRejectionReasons.remove(animal.id);
+                        });
+                      },
+                      activeColor: AppColors.success,
+                      dense: true,
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: Text(
+                        'Reject',
+                        style: AppTypography.bodyMedium().copyWith(
+                          color: decision == 'reject' ? AppColors.error : AppColors.textPrimary,
+                          fontWeight: decision == 'reject' ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                      value: 'reject',
+                      groupValue: decision,
+                      onChanged: (value) async {
+                        final reason = await _showRejectionDialog(animal, null);
+                        if (reason != null) {
+                          setState(() {
+                            _animalDecisions[animal.id!] = value!;
+                            _animalRejectionReasons[animal.id!] = reason;
+                          });
+                        }
+                      },
+                      activeColor: AppColors.error,
+                      dense: true,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       );
     }
     
     // For split carcass with parts - show expandable card
-    final selectedPartIds = _selectedPartsByAnimal[animal.id!] ?? [];
-    final transferredParts = animal.slaughterParts.where((p) => p.isTransferred).toList();
-    final allTransferredSelected = selectedPartIds.length == transferredParts.length &&
-        transferredParts.isNotEmpty;
-    final somePartsSelected = selectedPartIds.isNotEmpty;
-    
+    final transferredParts = animal.slaughterParts.where((p) => p.isTransferred && p.receivedBy == null).toList();
+    final hasAnyPartDecisions = transferredParts.any((part) =>
+        _partDecisions.containsKey('${animal.id}_${part.id}'));
+
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.space12),
-      elevation: somePartsSelected ? 4 : 2,
+      elevation: hasAnyPartDecisions ? 4 : 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         side: BorderSide(
-          color: somePartsSelected
+          color: hasAnyPartDecisions
               ? AppColors.processorPrimary
               : Colors.transparent,
           width: 2,
@@ -654,10 +512,10 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        if (somePartsSelected) ...[
+                        if (hasAnyPartDecisions) ...[
                           const SizedBox(height: AppTheme.space4),
                           Text(
-                            '${selectedPartIds.length}/${transferredParts.length} parts selected',
+                            '${_partDecisions.values.where((d) => d == 'accept').length} parts to accept, ${_partDecisions.values.where((d) => d == 'reject').length} parts to reject',
                             style: AppTypography.bodySmall().copyWith(
                               color: AppColors.processorPrimary,
                               fontWeight: FontWeight.w600,
@@ -672,22 +530,9 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (somePartsSelected && !allTransferredSelected)
-                            Icon(Icons.check_box_outline_blank, color: AppColors.processorPrimary, size: 20)
-                          else if (allTransferredSelected)
-                            Icon(Icons.check_box, color: AppColors.processorPrimary, size: 20)
-                          else
-                            Icon(Icons.check_box_outline_blank, 
-                                color: AppColors.textSecondary.withValues(alpha: 0.3), size: 20),
-                          const SizedBox(width: AppTheme.space8),
-                          Icon(
-                            isExpanded ? Icons.expand_less : Icons.expand_more,
-                            color: AppColors.textSecondary,
-                          ),
-                        ],
+                      Icon(
+                        isExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: AppColors.textSecondary,
                       ),
                       const SizedBox(height: AppTheme.space4),
                       StatusBadge(
@@ -700,7 +545,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
               ),
             ),
           ),
-          
+
           // Expandable part list
           if (isExpanded) ...[
             const Divider(height: 1),
@@ -709,73 +554,107 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Transferred Parts',
-                        style: AppTypography.bodyMedium().copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            if (allTransferredSelected) {
-                              // Deselect all
-                              _selectedPartsByAnimal[animal.id!] = [];
-                            } else {
-                              // Select all transferred parts
-                              _selectedPartsByAnimal[animal.id!] = transferredParts
-                                  .map((p) => p.id!)
-                                  .toList();
-                            }
-                          });
-                        },
-                        icon: Icon(
-                          allTransferredSelected ? Icons.deselect : Icons.select_all,
-                          size: 18,
-                        ),
-                        label: Text(allTransferredSelected ? 'Deselect All' : 'Select All'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.processorPrimary,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Transferred Parts',
+                    style: AppTypography.bodyMedium().copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: AppTheme.space8),
                   ...transferredParts.map((part) {
-                    final isPartSelected = selectedPartIds.contains(part.id);
-                    
-                    return CheckboxListTile(
-                      value: isPartSelected,
-                      onChanged: (selected) {
-                        setState(() {
-                          if (selected == true) {
-                            if (_selectedPartsByAnimal[animal.id!] == null) {
-                              _selectedPartsByAnimal[animal.id!] = [];
-                            }
-                            _selectedPartsByAnimal[animal.id!]!.add(part.id!);
-                          } else {
-                            _selectedPartsByAnimal[animal.id!]?.remove(part.id!);
-                          }
-                        });
-                      },
-                      activeColor: AppColors.processorPrimary,
-                      dense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: AppTheme.space8),
-                      title: Text(
-                        _getPartLabel(part),
-                        style: AppTypography.bodyMedium(),
-                      ),
-                      subtitle: Text(
-                        '${part.weight.toStringAsFixed(2)} ${part.weightUnit}',
-                        style: AppTypography.bodySmall().copyWith(
-                          color: AppColors.textSecondary,
+                    final partKey = '${animal.id}_${part.id}';
+                    final decision = _partDecisions[partKey];
+                    final hasValidWeight = part.weight != null && part.weight > 0;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: AppTheme.space8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppTheme.space12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _getPartLabel(part),
+                                    style: AppTypography.bodyMedium().copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (hasValidWeight)
+                                  Text(
+                                    '${part.weight.toStringAsFixed(2)} ${part.weightUnit}',
+                                    style: AppTypography.bodySmall().copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  )
+                                else
+                                  Text(
+                                    'Weight missing',
+                                    style: AppTypography.bodySmall().copyWith(
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: AppTheme.space8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: RadioListTile<String>(
+                                    title: Text(
+                                      'Accept',
+                                      style: AppTypography.bodySmall().copyWith(
+                                        color: decision == 'accept' ? AppColors.success : AppColors.textPrimary,
+                                        fontWeight: decision == 'accept' ? FontWeight.w600 : FontWeight.normal,
+                                      ),
+                                    ),
+                                    value: 'accept',
+                                    groupValue: decision,
+                                    onChanged: hasValidWeight ? (value) {
+                                      setState(() {
+                                        _partDecisions[partKey] = value!;
+                                        _partRejectionReasons.remove(partKey);
+                                      });
+                                    } : null,
+                                    activeColor: AppColors.success,
+                                    dense: true,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: RadioListTile<String>(
+                                    title: Text(
+                                      'Reject',
+                                      style: AppTypography.bodySmall().copyWith(
+                                        color: decision == 'reject' ? AppColors.error : AppColors.textPrimary,
+                                        fontWeight: decision == 'reject' ? FontWeight.w600 : FontWeight.normal,
+                                      ),
+                                    ),
+                                    value: 'reject',
+                                    groupValue: decision,
+                                    onChanged: hasValidWeight ? (value) async {
+                                      final reason = await _showRejectionDialog(animal, part);
+                                      if (reason != null) {
+                                        setState(() {
+                                          _partDecisions[partKey] = value!;
+                                          _partRejectionReasons[partKey] = reason;
+                                        });
+                                      }
+                                    } : null,
+                                    activeColor: AppColors.error,
+                                    dense: true,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -902,55 +781,417 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
       final match = regex.firstMatch(part.description!);
       if (match != null) {
         var key = match.group(1)!;
-        // Remove '_weight' suffix if present
-        key = key.replaceAll('_weight', '');
-        
-        // Map common measurement keys to proper anatomical names
-        final Map<String, String> anatomicalNames = {
-          'head': 'Head',
-          'torso': 'Torso',
-          'front_legs': 'Front Legs',
-          'hind_legs': 'Hind Legs',
-          'organs': 'Organs',
-          'neck': 'Neck',
-          'shoulder': 'Shoulder',
-          'loin': 'Loin',
-          'leg': 'Leg',
-          'breast': 'Breast',
-          'ribs': 'Ribs',
-          'flank': 'Flank',
-          'belly': 'Belly',
-          'back': 'Back',
-          'tail': 'Tail',
-          'hide': 'Hide',
-          'skin': 'Skin',
-          'feet': 'Feet',
-          'hooves': 'Hooves',
-          'wings': 'Wings',
-          'thighs': 'Thighs',
-          'drumsticks': 'Drumsticks',
-          'liver': 'Liver',
-          'heart': 'Heart',
-          'kidneys': 'Kidneys',
-          'lungs': 'Lungs',
-          'intestines': 'Intestines',
-          'stomach': 'Stomach',
-          'tongue': 'Tongue',
-          'brain': 'Brain',
-          'total_carcass': 'Total Carcass',
-        };
-        
-        // Check if we have a predefined name for this key
-        if (anatomicalNames.containsKey(key)) {
-          return anatomicalNames[key]!;
-        }
-        
-        // Otherwise, format the key by replacing underscores and capitalizing
-        key = key.replaceAll('_', ' ');
-        key = key.split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : '').join(' ');
-        return key;
+        // Use the centralized anatomical name mapping utility
+        return AnatomicalNameMapping().getDisplayName(key);
       }
     }
     return part.partType.displayName;
+  }
+
+  Future<Map<String, dynamic>?> _showRejectionDialog(Animal animal, SlaughterPart? part) async {
+    final rejectionCategories = {
+      'quality': 'Quality Issues',
+      'documentation': 'Documentation Issues',
+      'health_safety': 'Health & Safety',
+      'compliance': 'Compliance Issues',
+      'logistics': 'Logistics Issues',
+      'other': 'Other',
+    };
+
+    final specificReasons = {
+      'quality': [
+        'Poor physical condition',
+        'Contamination',
+        'Incorrect weight',
+        'Physical damage',
+        'Expired/outdated',
+      ],
+      'documentation': [
+        'Missing documentation',
+        'Invalid documentation',
+        'Incomplete records',
+        'Wrong animal ID',
+      ],
+      'health_safety': [
+        'Disease symptoms',
+        'Parasites/insects',
+        'Chemical residues',
+        'Temperature issues',
+      ],
+      'compliance': [
+        'Missing certification',
+        'Traceability breach',
+        'Regulatory violation',
+      ],
+      'logistics': [
+        'Transport damage',
+        'Delayed delivery',
+        'Packaging issues',
+      ],
+      'other': ['Other (specify in notes)'],
+    };
+
+    String selectedCategory = 'quality';
+    String selectedReason = specificReasons['quality']!.first;
+    final notesController = TextEditingController();
+
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          part != null
+              ? 'Reject Part: ${_getPartLabel(part)}'
+              : 'Reject Animal: ${animal.animalId}',
+          style: AppTypography.headlineSmall(),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Please provide details for the rejection:',
+                style: AppTypography.bodyMedium(),
+              ),
+              const SizedBox(height: AppTheme.space16),
+              DropdownButtonFormField<String>(
+                initialValue: selectedCategory,
+                decoration: InputDecoration(
+                  labelText: 'Rejection Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: rejectionCategories.entries.map((entry) {
+                  return DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedCategory = value!;
+                    selectedReason = specificReasons[selectedCategory]!.first;
+                  });
+                },
+              ),
+              const SizedBox(height: AppTheme.space12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                decoration: InputDecoration(
+                  labelText: 'Specific Reason',
+                  border: OutlineInputBorder(),
+                ),
+                items: specificReasons[selectedCategory]!.map((reason) {
+                  return DropdownMenuItem(
+                    value: reason,
+                    child: Text(reason),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedReason = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: AppTheme.space12),
+              TextField(
+                controller: notesController,
+                decoration: InputDecoration(
+                  labelText: 'Additional Notes (Optional)',
+                  border: OutlineInputBorder(),
+                  hintText: 'Provide any additional details...',
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge().copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop({
+                'category': selectedCategory,
+                'specific_reason': selectedReason,
+                'notes': notesController.text.trim(),
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReviewScreen() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          padding: const EdgeInsets.all(AppTheme.space16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Review Decisions',
+                    style: AppTypography.headlineMedium(),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.space16),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    // Summary
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppTheme.space16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Summary',
+                              style: AppTypography.headlineSmall(),
+                            ),
+                            const SizedBox(height: AppTheme.space12),
+                            Row(
+                              children: [
+                                Icon(Icons.check_circle, color: AppColors.success),
+                                const SizedBox(width: AppTheme.space8),
+                                Text(
+                                  '${_animalDecisions.values.where((d) => d == 'accept').length + _partDecisions.values.where((d) => d == 'accept').length} items to accept',
+                                  style: AppTypography.bodyMedium(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppTheme.space8),
+                            Row(
+                              children: [
+                                Icon(Icons.cancel, color: AppColors.error),
+                                const SizedBox(width: AppTheme.space8),
+                                Text(
+                                  '${_animalDecisions.values.where((d) => d == 'reject').length + _partDecisions.values.where((d) => d == 'reject').length} items to reject',
+                                  style: AppTypography.bodyMedium(),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space16),
+
+                    // Animals to Accept
+                    if (_animalDecisions.values.where((d) => d == 'accept').isNotEmpty) ...[
+                      Text(
+                        'Animals to Accept',
+                        style: AppTypography.headlineSmall(),
+                      ),
+                      const SizedBox(height: AppTheme.space8),
+                      ..._animalDecisions.entries
+                          .where((entry) => entry.value == 'accept')
+                          .map((entry) {
+                        final animal = _pendingAnimals.firstWhere((a) => a.id == entry.key);
+                        return Card(
+                          child: ListTile(
+                            leading: Icon(Icons.check_circle, color: AppColors.success),
+                            title: Text(animal.animalId),
+                            subtitle: Text('${animal.species} • Whole Carcass'),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: AppTheme.space16),
+                    ],
+
+                    // Animals to Reject
+                    if (_animalDecisions.values.where((d) => d == 'reject').isNotEmpty) ...[
+                      Text(
+                        'Animals to Reject',
+                        style: AppTypography.headlineSmall(),
+                      ),
+                      const SizedBox(height: AppTheme.space8),
+                      ..._animalDecisions.entries
+                          .where((entry) => entry.value == 'reject')
+                          .map((entry) {
+                        final animal = _pendingAnimals.firstWhere((a) => a.id == entry.key);
+                        final reason = _animalRejectionReasons[entry.key];
+                        return Card(
+                          child: ListTile(
+                            leading: Icon(Icons.cancel, color: AppColors.error),
+                            title: Text(animal.animalId),
+                            subtitle: Text(
+                              reason != null
+                                  ? '${reason['category']} • ${reason['specific_reason']}'
+                                  : 'No reason provided',
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: AppTheme.space16),
+                    ],
+
+                    // Parts to Accept/Reject would go here
+                    // Similar structure for parts...
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppTheme.space16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Back to Edit'),
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.space12),
+                  Expanded(
+                    child: CustomButton(
+                      label: 'Submit Decisions',
+                      onPressed: _submitDecisions,
+                      loading: _isLoading,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitDecisions() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Prepare acceptance data
+      final animalIds = _animalDecisions.entries
+          .where((entry) => entry.value == 'accept')
+          .map((entry) => entry.key)
+          .toList();
+
+      // Prepare part receives - group accepted parts by animal
+      final partReceives = <Map<String, dynamic>>[];
+      final acceptedPartsByAnimal = <int, List<int>>{};
+
+      _partDecisions.entries
+          .where((entry) => entry.value == 'accept')
+          .forEach((entry) {
+            final parts = entry.key.split('_');
+            final animalId = int.parse(parts[0]);
+            final partId = int.parse(parts[1]);
+
+            if (!acceptedPartsByAnimal.containsKey(animalId)) {
+              acceptedPartsByAnimal[animalId] = [];
+            }
+            acceptedPartsByAnimal[animalId]!.add(partId);
+          });
+
+      acceptedPartsByAnimal.forEach((animalId, partIds) {
+        partReceives.add({
+          'animal_id': animalId,
+          'part_ids': partIds,
+        });
+      });
+
+      // Prepare rejection data
+      final animalRejections = _animalDecisions.entries
+          .where((entry) => entry.value == 'reject')
+          .map((entry) {
+            final animalId = entry.key;
+            final reason = _animalRejectionReasons[animalId];
+            return {
+              'animal_id': animalId,
+              'category': reason?['category'] ?? 'other',
+              'specific_reason': reason?['specific_reason'] ?? 'Other (specify in notes)',
+              'notes': reason?['notes'] ?? '',
+            };
+          })
+          .toList();
+
+      // Prepare part rejections
+      final partRejections = _partDecisions.entries
+          .where((entry) => entry.value == 'reject')
+          .map((entry) {
+            final parts = entry.key.split('_');
+            final animalId = int.parse(parts[0]);
+            final partId = int.parse(parts[1]);
+            final reason = _partRejectionReasons[entry.key];
+            return {
+              'part_id': partId,
+              'category': reason?['category'] ?? 'other',
+              'specific_reason': reason?['specific_reason'] ?? 'Other (specify in notes)',
+              'notes': reason?['notes'] ?? '',
+            };
+          })
+          .toList();
+
+      // Submit to API
+      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      await animalProvider.receiveAnimals(
+        animalIds,
+        partReceives: partReceives,
+        animalRejections: animalRejections,
+        partRejections: partRejections,
+      );
+
+      if (mounted) {
+        // Clear decision state to prevent resubmission
+        setState(() {
+          _animalDecisions.clear();
+          _animalRejectionReasons.clear();
+          _partDecisions.clear();
+          _partRejectionReasons.clear();
+        });
+
+        // Refresh the animal data to reflect the updated received status
+        await _loadPendingAnimals();
+
+        Navigator.of(context).pop(); // Close review screen
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully processed ${animalIds.length + partReceives.length} acceptances and ${animalRejections.length + partRejections.length} rejections'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        context.pop(); // Go back to previous screen
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error submitting decisions: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 }

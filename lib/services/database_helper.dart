@@ -25,9 +25,17 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'meattrace.db');
     return await openDatabase(
       path,
-      version: 12, // Increment version to trigger migration for weight column
+      version: 13, // Increment version to add SlaughterPart table
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      // onOpen ensures missing compatibility columns are added for existing installs
+      onOpen: (db) async {
+        try {
+          await _ensureColumnExists(db, 'animals', 'weight', 'REAL');
+        } catch (e) {
+          // ignore - best effort
+        }
+      },
     );
   }
 
@@ -79,6 +87,7 @@ class DatabaseHelper {
         animal_name TEXT,
         age INTEGER NOT NULL,
         live_weight REAL,
+        weight REAL,
         breed TEXT,
         abbatoir_name TEXT,
         health_status TEXT,
@@ -123,6 +132,27 @@ class DatabaseHelper {
         updated_at TEXT NOT NULL,
         delivery_address TEXT,
         notes TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE slaughter_parts (
+        id INTEGER PRIMARY KEY,
+        part_id TEXT UNIQUE,
+        animal INTEGER NOT NULL,
+        part_type TEXT NOT NULL,
+        weight REAL NOT NULL,
+        weight_unit TEXT NOT NULL,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        transferred_to INTEGER,
+        transferred_to_name TEXT,
+        transferred_at TEXT,
+        received_by INTEGER,
+        received_at TEXT,
+        received_by_username TEXT,
+        used_in_product INTEGER NOT NULL DEFAULT 0,
+        is_selected_for_transfer INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -319,6 +349,46 @@ class DatabaseHelper {
         // Column might already exist, ignore error
       }
     }
+    if (oldVersion < 13) {
+      // Create SlaughterPart table for new installations
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS slaughter_parts (
+            id INTEGER PRIMARY KEY,
+            part_id TEXT UNIQUE,
+            animal INTEGER NOT NULL,
+            part_type TEXT NOT NULL,
+            weight REAL NOT NULL,
+            weight_unit TEXT NOT NULL,
+            description TEXT,
+            created_at TEXT NOT NULL,
+            transferred_to INTEGER,
+            transferred_to_name TEXT,
+            transferred_at TEXT,
+            received_by INTEGER,
+            received_at TEXT,
+            received_by_username TEXT,
+            used_in_product INTEGER NOT NULL DEFAULT 0,
+            is_selected_for_transfer INTEGER NOT NULL DEFAULT 0
+          )
+        ''');
+      } catch (e) {
+        // Table might already exist, ignore error
+      }
+    }
+  }
+
+  // Ensure a column exists on a table; add it if missing (best-effort compatibility)
+  Future<void> _ensureColumnExists(Database db, String table, String columnName, String columnType) async {
+    try {
+      final info = await db.rawQuery("PRAGMA table_info($table)");
+      final hasColumn = info.any((column) => column['name'] == columnName);
+      if (!hasColumn) {
+        await db.execute('ALTER TABLE $table ADD COLUMN $columnName $columnType');
+      }
+    } catch (e) {
+      // Ignore - best effort to fix schema mismatches
+    }
   }
 
   // ProductCategory operations
@@ -377,8 +447,13 @@ class DatabaseHelper {
   Future<void> insertAnimals(List<Animal> animals, {bool synced = true}) async {
     final db = await database;
     final batch = db.batch();
+
+    // Check whether the legacy 'weight' column exists before inserting to avoid errors
+    final tableInfo = await db.rawQuery("PRAGMA table_info(animals)");
+    final hasWeightColumn = tableInfo.any((c) => c['name'] == 'weight');
+
     for (final animal in animals) {
-      batch.insert('animals', {
+      final map = {
         'id': animal.id,
         'farmer': animal.farmer,
         'species': animal.species,
@@ -386,7 +461,6 @@ class DatabaseHelper {
         'animal_name': animal.animalName,
         'age': animal.age,
         'live_weight': animal.liveWeight,
-        'weight': animal.liveWeight, // Keep old column for backward compatibility
         'breed': animal.breed,
         'abbatoir_name': animal.abbatoirName,
         'health_status': animal.healthStatus,
@@ -394,8 +468,15 @@ class DatabaseHelper {
         'slaughtered': animal.slaughtered ? 1 : 0,
         'slaughtered_at': animal.slaughteredAt?.toIso8601String(),
         'synced': synced ? 1 : 0,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      };
+
+      if (hasWeightColumn) {
+        map['weight'] = animal.liveWeight; // populate legacy column only if present
+      }
+
+      batch.insert('animals', map, conflictAlgorithm: ConflictAlgorithm.replace);
     }
+
     await batch.commit();
   }
 

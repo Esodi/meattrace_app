@@ -18,6 +18,9 @@ class AnimalProvider with ChangeNotifier {
   String? _error;
   SharedPreferences? _prefs;
   bool _isInitialized = false;
+  double? _headWeight;
+  double? _feetWeight;
+  double? _wholeCarcassWeight;
 
   List<Animal> get animals => _animals;
   List<Animal> get transferredAnimals => _transferredAnimals;
@@ -25,6 +28,9 @@ class AnimalProvider with ChangeNotifier {
   bool get isCreatingAnimal => _isCreatingAnimal;
   String? get error => _error;
   bool get isInitialized => _isInitialized;
+  double? get headWeight => _headWeight;
+  double? get feetWeight => _feetWeight;
+  double? get wholeCarcassWeight => _wholeCarcassWeight;
 
   // Lazy initializer for background data loading
   late final LazyInitializer<void> _dataInitializer;
@@ -308,6 +314,13 @@ class AnimalProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void clearCarcassWeights() {
+    _headWeight = null;
+    _feetWeight = null;
+    _wholeCarcassWeight = null;
+    notifyListeners();
+  }
+
   Future<Map<String, dynamic>> transferAnimals(
     List<int?> animalIds, 
     int processingUnitId, {
@@ -375,11 +388,15 @@ class AnimalProvider with ChangeNotifier {
   Future<Map<String, dynamic>> receiveAnimals(
     List<int?> animalIds, {
     List<Map<String, dynamic>>? partReceives,
+    List<Map<String, dynamic>>? animalRejections,
+    List<Map<String, dynamic>>? partRejections,
   }) async {
     try {
       final response = await _animalService.receiveAnimals(
         animalIds,
         partReceives: partReceives,
+        animalRejections: animalRejections,
+        partRejections: partRejections,
       );
       return response;
     } catch (e) {
@@ -462,6 +479,11 @@ class AnimalProvider with ChangeNotifier {
 
   Future<void> createCarcassMeasurement(CarcassMeasurement measurement) async {
     try {
+      // Extract the new fields from the measurement
+      _headWeight = measurement.measurements['head_weight']?['value'];
+      _feetWeight = measurement.measurements['feet_weight']?['value'];
+      _wholeCarcassWeight = measurement.measurements['whole_carcass_weight']?['value'];
+
       final createdMeasurement = await _animalService.createCarcassMeasurement(measurement);
 
       // Find the animal in the local list and update it

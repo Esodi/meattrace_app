@@ -29,7 +29,11 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   final _weightController = TextEditingController();
   final _abbatoirController = TextEditingController();
   final _notesController = TextEditingController();
-  
+
+  // Tag ID editing state
+  bool _isTagIdEditable = false;
+  bool _isCheckingTagId = false;
+
   // Form state
   String? _selectedSpecies;
   DateTime _selectedDate = DateTime.now();
@@ -38,6 +42,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   String _selectedHealthStatus = 'healthy';
   File? _selectedImage;
   bool _isLoading = false;
+  bool _useManualWeightInput = false;
 
   // Species options with icons - values must match backend choices
   final List<Map<String, dynamic>> _speciesOptions = [
@@ -65,12 +70,67 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
     super.dispose();
   }
 
+  void _updateWeightFromText(String value) {
+    final weight = double.tryParse(value);
+    if (weight != null && weight >= 0 && weight <= 1000) {
+      setState(() {
+        _weightValue = weight;
+      });
+    }
+  }
+
+  void _updateWeightFromSlider(double value) {
+    setState(() {
+      _weightValue = value;
+      if (!_useManualWeightInput) {
+        _weightController.text = value.toStringAsFixed(1);
+      }
+    });
+  }
+
   void _generateTagId() {
     final now = DateTime.now();
     final species = _selectedSpecies?.toUpperCase() ?? 'ANIMAL';
     final year = now.year;
     final random = now.millisecondsSinceEpoch % 1000;
     _tagIdController.text = '$species-$year-${random.toString().padLeft(3, '0')}';
+  }
+
+  Future<bool> _validateTagIdUniqueness(String tagId) async {
+    if (tagId.isEmpty) return true;
+
+    try {
+      final animalProvider = context.read<AnimalProvider>();
+      // Check against existing animals
+      final existingAnimal = animalProvider.animals.firstWhere(
+        (animal) => animal.animalId.toLowerCase() == tagId.toLowerCase(),
+        orElse: () => Animal(
+          id: -1,
+          farmer: 0,
+          species: '',
+          age: 0,
+          liveWeight: 0,
+          createdAt: DateTime.now(),
+          slaughtered: false,
+          animalId: '',
+          abbatoirName: '',
+        ),
+      );
+      return existingAnimal.id == -1; // True if no existing animal found
+    } catch (e) {
+      // If we can't check locally, assume it's valid (backend will validate)
+      return true;
+    }
+  }
+
+  void _toggleTagIdEditing() {
+    setState(() {
+      _isTagIdEditable = !_isTagIdEditable;
+      if (!_isTagIdEditable) {
+        // Reset to auto-generated if canceling edit
+        _generateTagId();
+      }
+    });
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -228,6 +288,15 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         gender: _selectedGender,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
+
+      // Additional validation for manual tag IDs
+      if (_isTagIdEditable) {
+        final isUnique = await _validateTagIdUniqueness(_tagIdController.text);
+        if (!isUnique) {
+          _showErrorSnackbar('Tag ID already exists. Please choose a different one.');
+          return;
+        }
+      }
 
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       print('📡 Calling animalProvider.createAnimal()...');
@@ -528,18 +597,69 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           const SizedBox(height: 16),
           
           // Tag ID
-          CustomTextField(
-            controller: _tagIdController,
-            label: 'Tag ID',
-            hint: 'Unique animal identifier',
-            prefixIcon: const Icon(Icons.tag),
-            readOnly: true,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Tag ID is required';
-              }
-              return null;
-            },
+          Container(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Tag ID *',
+                      style: AppTypography.labelLarge(color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      icon: Icon(
+                        _isTagIdEditable ? Icons.cancel : Icons.edit,
+                        size: 16,
+                      ),
+                      label: Text(
+                        _isTagIdEditable ? 'Cancel' : 'Edit',
+                        style: AppTypography.bodySmall(),
+                      ),
+                      onPressed: _toggleTagIdEditing,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                CustomTextField(
+                  controller: _tagIdController,
+                  label: _isTagIdEditable ? 'Enter Tag ID' : 'Tag ID',
+                  hint: _isTagIdEditable ? 'Enter unique animal identifier' : 'Auto-generated identifier',
+                  prefixIcon: const Icon(Icons.tag),
+                  readOnly: !_isTagIdEditable,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Tag ID is required';
+                    }
+                    if (value.length < 3) {
+                      return 'Tag ID must be at least 3 characters';
+                    }
+                    if (value.length > 50) {
+                      return 'Tag ID cannot exceed 50 characters';
+                    }
+                    // Basic format validation
+                    final validPattern = RegExp(r'^[A-Za-z0-9\-_]+$');
+                    if (!validPattern.hasMatch(value)) {
+                      return 'Tag ID can only contain letters, numbers, hyphens, and underscores';
+                    }
+                    return null;
+                  },
+                ),
+                if (!_isTagIdEditable)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Auto-generated from species and date',
+                      style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                    ),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           
@@ -582,7 +702,9 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
             onChanged: (value) {
               setState(() {
                 _selectedSpecies = value;
-                _generateTagId();
+                if (!_isTagIdEditable) {
+                  _generateTagId();
+                }
               });
             },
             validator: (value) {
@@ -674,50 +796,99 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           const SizedBox(height: 4),
           Divider(color: AppColors.divider),
           const SizedBox(height: 16),
-          
-          // Weight Slider
-          Text(
-            'Live Weight (kg)',
-            style: AppTypography.labelLarge(color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 8),
+
+          // Weight Input Mode Toggle
           Row(
             children: [
-              Expanded(
-                child: Slider(
-                  value: _weightValue,
-                  min: 0,
-                  max: 1000,
-                  divisions: 200,
-                  activeColor: AppColors.farmerPrimary,
-                  inactiveColor: AppColors.farmerPrimary.withOpacity(0.2),
-                  onChanged: (value) {
-                    setState(() {
-                      _weightValue = value;
-                    });
-                  },
-                ),
+              Text(
+                'Live Weight (kg)',
+                style: AppTypography.labelLarge(color: AppColors.textPrimary),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.farmerPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${_weightValue.toInt()} kg',
-                  style: AppTypography.titleMedium(color: AppColors.farmerPrimary),
-                ),
+              const Spacer(),
+              Text(
+                'Manual Input',
+                style: AppTypography.bodySmall(color: AppColors.textSecondary),
+              ),
+              Switch(
+                value: _useManualWeightInput,
+                onChanged: (value) {
+                  setState(() {
+                    _useManualWeightInput = value;
+                    if (value) {
+                      _weightController.text = _weightValue.toStringAsFixed(1);
+                    }
+                  });
+                },
+                activeColor: AppColors.farmerPrimary,
               ),
             ],
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('0 kg', style: AppTypography.bodySmall(color: AppColors.textSecondary)),
-              Text('1000 kg', style: AppTypography.bodySmall(color: AppColors.textSecondary)),
-            ],
-          ),
+          const SizedBox(height: 16),
+
+          // Weight Input (Slider or Manual)
+          if (_useManualWeightInput) ...[
+            CustomTextField(
+              controller: _weightController,
+              label: 'Enter Weight',
+              hint: 'e.g., 250.5',
+              prefixIcon: const Icon(Icons.monitor_weight),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+              ],
+              onChanged: _updateWeightFromText,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Weight is required';
+                }
+                final weight = double.tryParse(value);
+                if (weight == null) {
+                  return 'Please enter a valid number';
+                }
+                if (weight < 0) {
+                  return 'Weight must be positive';
+                }
+                if (weight > 1000) {
+                  return 'Weight cannot exceed 1000 kg';
+                }
+                return null;
+              },
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: _weightValue,
+                    min: 0,
+                    max: 1000,
+                    divisions: 200,
+                    activeColor: AppColors.farmerPrimary,
+                    inactiveColor: AppColors.farmerPrimary.withOpacity(0.2),
+                    onChanged: _updateWeightFromSlider,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.farmerPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${_weightValue.toStringAsFixed(1)} kg',
+                    style: AppTypography.titleMedium(color: AppColors.farmerPrimary),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('0 kg', style: AppTypography.bodySmall(color: AppColors.textSecondary)),
+                Text('1000 kg', style: AppTypography.bodySmall(color: AppColors.textSecondary)),
+              ],
+            ),
+          ],
           const SizedBox(height: 24),
           
           // Gender

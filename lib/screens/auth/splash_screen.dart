@@ -6,6 +6,7 @@ import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/custom_icons.dart';
+import '../../widgets/core/logo_with_border.dart';
 
 /// Splash Screen with Session-Based Authentication Check
 /// 
@@ -287,31 +288,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLogo() {
-    return Container(
-      width: 120,
-      height: 120,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: AppColors.farmerPrimary,
-          width: 4,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.farmerPrimary.withValues(alpha: 0.4),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: ClipOval(
-        child: Image.asset(
-          'assets/icons/MEATTRACE_ICON.png',
-          width: 112,
-          height: 112,
-          fit: BoxFit.cover,
-        ),
-      ),
+    final theme = Theme.of(context);
+    return LogoWithBorder(
+      size: 80,
+      borderWidth: 3,
+      borderColor: theme.colorScheme.primary.withOpacity(0.95),
+      assetPath: 'assets/icons/MEATTRACE_ICON.png',
     );
   }
 }

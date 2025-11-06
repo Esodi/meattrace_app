@@ -473,6 +473,20 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
   }
 
   Widget _buildWelcomeHeader(String username) {
+    // compute shop-level stats to display inside the welcome card (farmer-style)
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentShopId = authProvider.user?.shopId;
+
+    final shopProducts = productProvider.products.where((p) => p.receivedBy == currentShopId).toList();
+    final totalProducts = shopProducts.length;
+    final lowStock = shopProducts.where((p) => p.quantity > 0 && p.quantity <= 10).length;
+
+    double totalInventoryValue = 0.0;
+    for (var product in shopProducts) {
+      totalInventoryValue += (product.price * product.quantity);
+    }
+
     return Container(
       margin: const EdgeInsets.all(AppTheme.space16),
       padding: const EdgeInsets.all(AppTheme.space24),
@@ -586,6 +600,76 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
               ],
             ),
           ),
+          const SizedBox(height: AppTheme.space24),
+          // Sales / Production Overview inside the welcome card
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Sales Overview',
+                style: AppTypography.headlineMedium().copyWith(
+                  color: Colors.white,
+                ),
+              ),
+              if (_isLoadingSales)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatsCardInWelcome(
+                  label: 'Products',
+                  value: totalProducts.toString(),
+                  subtitle: 'In Inventory',
+                  icon: CustomIcons.meatCut,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space12),
+              Expanded(
+                child: _buildStatsCardInWelcome(
+                  label: 'Low Stock',
+                  value: lowStock.toString(),
+                  subtitle: 'Items',
+                  icon: Icons.warning,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatsCardInWelcome(
+                  label: 'Inventory',
+                  value: 'TZS ${totalInventoryValue.toStringAsFixed(0)}',
+                  subtitle: 'Total Value',
+                  icon: Icons.attach_money,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space12),
+              Expanded(
+                child: _buildStatsCardInWelcome(
+                  label: 'Sales',
+                  value: 'TZS ${_totalSales.toStringAsFixed(2)}',
+                  subtitle: 'Total Sales',
+                  icon: Icons.point_of_sale,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -612,59 +696,9 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Sales Overview',
-            style: AppTypography.headlineMedium(),
-          ),
-          const SizedBox(height: AppTheme.space12),
-          Row(
-            children: [
-              Expanded(
-                child: StatsCard(
-                  label: 'Products',
-                  value: totalProducts.toString(),
-                  subtitle: 'In Inventory',
-                  icon: CustomIcons.meatCut,
-                  color: AppColors.shopPrimary,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space12),
-              Expanded(
-                child: StatsCard(
-                  label: 'Low Stock',
-                  value: lowStock.toString(),
-                  subtitle: 'Items',
-                  icon: Icons.warning,
-                  color: AppColors.warning,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space12),
-          Row(
-            children: [
-              Expanded(
-                child: StatsCard(
-                  label: 'Inventory',
-                  value: 'TZS ${totalInventoryValue.toStringAsFixed(0)}',
-                  subtitle: 'Total Value',
-                  icon: Icons.attach_money,
-                  color: AppColors.success,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space12),
-              Expanded(
-                child: StatsCard(
-                  label: 'Sales',
-                  value: 'TZS ${_totalSales.toStringAsFixed(2)}',
-                  isLoading: _isLoadingSales,
-                  subtitle: 'Total Sales',
-                  icon: Icons.point_of_sale,
-                  color: AppColors.accentOrange,
-                ),
-              ),
-            ],
-          ),
+          // Overview moved into welcome card for compact summary; avoid
+          // duplicating content here. Keep this method for future wide stats.
+          const SizedBox.shrink(),
         ],
       ),
     );
@@ -731,6 +765,57 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCardInWelcome({
+    required String label,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+              const SizedBox(width: AppTheme.space8),
+              Text(
+                label,
+                style: AppTypography.labelMedium().copyWith(
+                  color: color.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space4),
+          Text(
+            value,
+            style: AppTypography.headlineSmall().copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: AppTypography.bodySmall().copyWith(
+              color: color.withValues(alpha: 0.8),
             ),
           ),
         ],

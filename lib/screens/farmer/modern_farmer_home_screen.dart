@@ -244,16 +244,11 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
           opacity: _fadeAnimation,
           child: CustomScrollView(
             slivers: [
-              // Welcome Header
-              SliverToBoxAdapter(
-                child: _buildWelcomeHeader(user?.username ?? 'Farmer'),
-              ),
-
-              // Stats Cards
+              // Welcome Header with Overview
               Consumer<AnimalProvider>(
                 builder: (context, animalProvider, child) {
                   return SliverToBoxAdapter(
-                    child: _buildStatsSection(animalProvider),
+                    child: _buildWelcomeHeader(user?.username ?? 'Farmer', animalProvider),
                   );
                 },
               ),
@@ -448,7 +443,11 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
     );
   }
 
-  Widget _buildWelcomeHeader(String username) {
+  Widget _buildWelcomeHeader(String username, AnimalProvider animalProvider) {
+    final totalAnimals = animalProvider.animals.length;
+    final activeAnimals = animalProvider.animals.where((a) => !a.slaughtered && a.transferredTo == null).length;
+    final processedAnimals = animalProvider.animals.where((a) => a.slaughtered).length;
+
     return Container(
       margin: const EdgeInsets.all(AppTheme.space16),
       padding: const EdgeInsets.all(AppTheme.space24),
@@ -561,45 +560,33 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsSection(AnimalProvider animalProvider) {
-    final totalAnimals = animalProvider.animals.length;
-    final activeAnimals = animalProvider.animals.where((a) => !a.slaughtered && a.transferredTo == null).length;
-    final processedAnimals = animalProvider.animals.where((a) => a.slaughtered).length;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: AppTheme.space24),
           Text(
             'Overview',
-            style: AppTypography.headlineMedium(),
+            style: AppTypography.headlineMedium().copyWith(
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: AppTheme.space12),
           Row(
             children: [
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'Total',
                   value: totalAnimals.toString(),
                   subtitle: 'Animals',
                   icon: Icons.pets,
-                  color: AppColors.farmerPrimary,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(width: AppTheme.space12),
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'Active',
                   value: activeAnimals.toString(),
                   subtitle: 'On Farm',
                   icon: Icons.health_and_safety,
-                  color: AppColors.success,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -608,22 +595,22 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
           Row(
             children: [
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'Processed',
                   value: processedAnimals.toString(),
                   subtitle: 'Animals',
                   icon: Icons.check_circle,
-                  color: AppColors.processorPrimary,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(width: AppTheme.space12),
               Expanded(
-                child: StatsCard(
+                child: _buildStatsCardInWelcome(
                   label: 'Transferred',
                   value: _isLoadingTransferred ? '...' : _transferredCount.toString(),
                   subtitle: 'To Processors',
                   icon: Icons.send,
-                  color: AppColors.info,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -632,6 +619,58 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
       ),
     );
   }
+
+  Widget _buildStatsCardInWelcome({
+    required String label,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+              const SizedBox(width: AppTheme.space8),
+              Text(
+                label,
+                style: AppTypography.labelMedium().copyWith(
+                  color: color.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space4),
+          Text(
+            value,
+            style: AppTypography.headlineSmall().copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: AppTypography.bodySmall().copyWith(
+              color: color.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildQuickActions() {
     final actions = [
@@ -640,6 +679,12 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
         label: 'Register',
         color: AppColors.farmerPrimary,
         route: '/register-animal',
+      ),
+      _QuickAction(
+        icon: Icons.set_meal,
+        label: 'Slaughter',
+        color: AppColors.error,
+        route: '/slaughter-animal',
       ),
       _QuickAction(
         icon: Icons.send,
@@ -652,12 +697,6 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
         label: 'History',
         color: AppColors.info,
         route: '/farmer/livestock-history',
-      ),
-      _QuickAction(
-        icon: Icons.set_meal,
-        label: 'Slaughter',
-        color: AppColors.error,
-        route: '/slaughter-animal',
       ),
     ];
 

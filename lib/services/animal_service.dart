@@ -375,24 +375,38 @@ class AnimalService {
   Future<Map<String, dynamic>> receiveAnimals(
     List<int?> animalIds, {
     List<Map<String, dynamic>>? partReceives,
+    List<Map<String, dynamic>>? animalRejections,
+    List<Map<String, dynamic>>? partRejections,
   }) async {
     try {
       final requestData = <String, dynamic>{};
-      
+
       // Add animal_ids only if there are whole animal receives
       final filteredAnimalIds = animalIds.where((id) => id != null).toList();
       if (filteredAnimalIds.isNotEmpty) {
         requestData['animal_ids'] = filteredAnimalIds;
       }
-      
+
       // Add part_receives if provided (for split carcass workflow)
       if (partReceives != null && partReceives.isNotEmpty) {
         requestData['part_receives'] = partReceives;
         print('SERVICE_RECEIVE_PART_RECEIVES - Part receives: $partReceives');
       }
-      
+
+      // Add animal rejections if provided
+      if (animalRejections != null && animalRejections.isNotEmpty) {
+        requestData['animal_rejections'] = animalRejections;
+        print('SERVICE_RECEIVE_ANIMAL_REJECTIONS - Animal rejections: $animalRejections');
+      }
+
+      // Add part rejections if provided
+      if (partRejections != null && partRejections.isNotEmpty) {
+        requestData['part_rejections'] = partRejections;
+        print('SERVICE_RECEIVE_PART_REJECTIONS - Part rejections: $partRejections');
+      }
+
       print('SERVICE_RECEIVE_REQUEST_DATA - Data: $requestData');
-      
+
       final response = await _dioClient.dio.post(
         '${Constants.animalsEndpoint}receive_animals/',
         data: requestData,

@@ -1,10 +1,15 @@
 enum SlaughterPartType {
   wholeCarcass,
+  leftCarcass,
+  rightCarcass,
   leftSide,
   rightSide,
   head,
   feet,
   internalOrgans,
+  torso,
+  frontLegs,
+  hindLegs,
   other,
 }
 
@@ -13,6 +18,10 @@ extension SlaughterPartTypeExtension on SlaughterPartType {
     switch (this) {
       case SlaughterPartType.wholeCarcass:
         return 'whole_carcass';
+      case SlaughterPartType.leftCarcass:
+        return 'left_carcass';
+      case SlaughterPartType.rightCarcass:
+        return 'right_carcass';
       case SlaughterPartType.leftSide:
         return 'left_side';
       case SlaughterPartType.rightSide:
@@ -23,6 +32,12 @@ extension SlaughterPartTypeExtension on SlaughterPartType {
         return 'feet';
       case SlaughterPartType.internalOrgans:
         return 'internal_organs';
+      case SlaughterPartType.torso:
+        return 'torso';
+      case SlaughterPartType.frontLegs:
+        return 'front_legs';
+      case SlaughterPartType.hindLegs:
+        return 'hind_legs';
       case SlaughterPartType.other:
         return 'other';
     }
@@ -32,6 +47,10 @@ extension SlaughterPartTypeExtension on SlaughterPartType {
     switch (value) {
       case 'whole_carcass':
         return SlaughterPartType.wholeCarcass;
+      case 'left_carcass':
+        return SlaughterPartType.leftCarcass;
+      case 'right_carcass':
+        return SlaughterPartType.rightCarcass;
       case 'left_side':
         return SlaughterPartType.leftSide;
       case 'right_side':
@@ -42,6 +61,12 @@ extension SlaughterPartTypeExtension on SlaughterPartType {
         return SlaughterPartType.feet;
       case 'internal_organs':
         return SlaughterPartType.internalOrgans;
+      case 'torso':
+        return SlaughterPartType.torso;
+      case 'front_legs':
+        return SlaughterPartType.frontLegs;
+      case 'hind_legs':
+        return SlaughterPartType.hindLegs;
       case 'other':
         return SlaughterPartType.other;
       default:
@@ -53,6 +78,10 @@ extension SlaughterPartTypeExtension on SlaughterPartType {
     switch (this) {
       case SlaughterPartType.wholeCarcass:
         return 'Whole Carcass';
+      case SlaughterPartType.leftCarcass:
+        return 'Left Carcass';
+      case SlaughterPartType.rightCarcass:
+        return 'Right Carcass';
       case SlaughterPartType.leftSide:
         return 'Left Side';
       case SlaughterPartType.rightSide:
@@ -63,6 +92,12 @@ extension SlaughterPartTypeExtension on SlaughterPartType {
         return 'Feet';
       case SlaughterPartType.internalOrgans:
         return 'Internal Organs';
+      case SlaughterPartType.torso:
+        return 'Torso';
+      case SlaughterPartType.frontLegs:
+        return 'Front Legs';
+      case SlaughterPartType.hindLegs:
+        return 'Hind Legs';
       case SlaughterPartType.other:
         return 'Other';
     }
@@ -71,6 +106,7 @@ extension SlaughterPartTypeExtension on SlaughterPartType {
 
 class SlaughterPart {
   final int? id;
+  final String? partId;
   final int animalId;
   final SlaughterPartType partType;
   final double weight;
@@ -94,6 +130,7 @@ class SlaughterPart {
 
   SlaughterPart({
     this.id,
+    this.partId,
     required this.animalId,
     required this.partType,
     required this.weight,
@@ -113,6 +150,7 @@ class SlaughterPart {
   factory SlaughterPart.fromMap(Map<String, dynamic> json) {
     return SlaughterPart(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
+      partId: json['part_id'],
       animalId: int.parse(json['animal'].toString()),
       partType: SlaughterPartTypeExtension.fromString(json['part_type']),
       weight: json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString()),
@@ -133,6 +171,7 @@ class SlaughterPart {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'part_id': partId,
       'animal': animalId,
       'part_type': partType.value,
       'weight': weight,
@@ -158,6 +197,7 @@ class SlaughterPart {
       'weight': weight,
       'weight_unit': weightUnit,
       'description': description,
+      'part_id': partId,
     };
   }
 

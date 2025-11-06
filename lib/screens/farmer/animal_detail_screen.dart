@@ -204,7 +204,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             _buildInfoRow(
               Icons.calendar_today,
               'Age',
-              '${_animal?.age.toStringAsFixed(1) ?? 0} years',
+              '${_animal?.age.toStringAsFixed(1) ?? 0} months',
             ),
             const Divider(height: 24),
             _buildInfoRow(
