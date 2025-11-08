@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'utils/app_theme.dart'; // New theme system
 import 'services/network_helper.dart';
-import 'services/navigation_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/meat_trace_provider.dart';
 import 'providers/animal_provider.dart';
@@ -118,6 +117,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  late GoRouter _router;
+  
   @override
   void initState() {
     super.initState();
@@ -127,6 +128,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _router.dispose();
     super.dispose();
   }
 
@@ -136,6 +138,22 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     themeProvider.updateSystemBrightness(brightness == Brightness.dark);
+  }
+
+  // Helper function to get dashboard route based on user role
+  String _getDashboardForRole(String role) {
+    switch (role.toLowerCase()) {
+      case 'farmer':
+        return '/farmer-home';
+      case 'processingunit':
+      case 'processing_unit':
+      case 'processor':
+        return '/processor-home';
+      case 'shop':
+        return '/shop-home';
+      default:
+        return '/farmer-home'; // Default fallback
+    }
   }
 
   @override
@@ -197,6 +215,46 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           // Create the router here so route builders run with a BuildContext
           // that includes the providers placed above (MultiProvider).
           final router = GoRouter(
+            // Listen to auth provider changes to trigger redirect re-evaluation
+            refreshListenable: authProvider,
+            // Global redirect to handle authentication state
+            redirect: (context, state) {
+              final isLoggedIn = authProvider.isLoggedIn;
+              final isInitialized = authProvider.isInitialized;
+              final isGoingToLogin = state.matchedLocation == '/login';
+              final isGoingToSignup = state.matchedLocation.startsWith('/signup') || 
+                                      state.matchedLocation == '/role-selection' ||
+                                      state.matchedLocation == '/onboarding';
+              final isGoingToSplash = state.matchedLocation == '/';
+
+              debugPrint('🛣️ [ROUTER_REDIRECT] Location: ${state.matchedLocation}');
+              debugPrint('   isLoggedIn: $isLoggedIn, isInitialized: $isInitialized');
+
+              // If not initialized yet, allow splash screen
+              if (!isInitialized && !isGoingToSplash) {
+                debugPrint('   ➡️ Redirecting to splash (not initialized)');
+                return '/';
+              }
+
+              // If logged in and trying to access auth screens, redirect to dashboard
+              if (isLoggedIn && (isGoingToLogin || isGoingToSignup || isGoingToSplash)) {
+                final user = authProvider.user;
+                if (user != null) {
+                  final dashboard = _getDashboardForRole(user.role);
+                  debugPrint('   ➡️ Redirecting to dashboard: $dashboard (already logged in)');
+                  return dashboard;
+                }
+              }
+
+              // If not logged in and trying to access protected routes, redirect to login
+              if (!isLoggedIn && !isGoingToLogin && !isGoingToSignup && !isGoingToSplash) {
+                debugPrint('   ➡️ Redirecting to login (not authenticated)');
+                return '/login';
+              }
+
+              debugPrint('   ✅ No redirect needed');
+              return null; // No redirect needed
+            },
             routes: [
               // Initial splash screen with session check
               GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
@@ -429,10 +487,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
           final userRole = authProvider.user?.role;
 
-          // Compute effective theme based on theme mode and system brightness
-          final brightness = themeProvider.themeMode == ThemeMode.system
-              ? MediaQuery.platformBrightnessOf(context)
-              : (themeProvider.themeMode == ThemeMode.dark ? Brightness.dark : Brightness.light);
+          // Get effective theme based on user role
           final effectiveTheme = AppTheme.getThemeForRole(userRole);
 
           // Animation duration respects reduce motion accessibility preference

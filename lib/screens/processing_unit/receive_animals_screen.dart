@@ -61,18 +61,26 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
         // CRITICAL: Only show animals that are actually transferred to a processing unit
         // Check if whole animal is transferred and not received
         final wholeAnimalTransferred = animal.transferredTo != null;
-        final wholeAnimalPending = wholeAnimalTransferred && animal.receivedBy == null;
+        final wholeAnimalPending = wholeAnimalTransferred && 
+                                   animal.receivedBy == null && 
+                                   animal.rejectionStatus != 'rejected';
 
-        // Check if any parts are transferred and not received
+        // Check if any parts are transferred and not received (and not rejected)
         final hasPendingParts = animal.hasSlaughterParts &&
-            animal.slaughterParts.any((p) => p.isTransferred && p.receivedBy == null);
+            animal.slaughterParts.any((p) => 
+              p.isTransferred && 
+              p.receivedBy == null && 
+              p.rejectionStatus != 'rejected'
+            );
 
         final isPending = wholeAnimalPending || hasPendingParts;
         
         if (isPending) {
-          print('  📦 Pending: ${animal.animalId} - transferred_to: ${animal.transferredTo}, received_by: ${animal.receivedBy}');
+          print('  📦 Pending: ${animal.animalId} - transferred_to: ${animal.transferredTo}, received_by: ${animal.receivedBy}, rejection_status: ${animal.rejectionStatus}');
         } else if (animal.transferredTo != null && animal.receivedBy != null) {
           print('  ✅ Already received: ${animal.animalId} - received_by: ${animal.receivedBy}');
+        } else if (animal.rejectionStatus == 'rejected') {
+          print('  ❌ Rejected: ${animal.animalId} - rejection_status: ${animal.rejectionStatus}');
         }
 
         return isPending;
@@ -351,7 +359,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                             ),
                             _buildInfoChip(
                               Icons.calendar_today,
-                              '${animal.age} yrs',
+                              '${animal.age} months',
                             ),
                           ],
                         ),
@@ -438,7 +446,11 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
     }
     
     // For split carcass with parts - show expandable card
-    final transferredParts = animal.slaughterParts.where((p) => p.isTransferred && p.receivedBy == null).toList();
+    final transferredParts = animal.slaughterParts.where((p) => 
+      p.isTransferred && 
+      p.receivedBy == null && 
+      p.rejectionStatus != 'rejected'
+    ).toList();
     final hasAnyPartDecisions = transferredParts.any((part) =>
         _partDecisions.containsKey('${animal.id}_${part.id}'));
 

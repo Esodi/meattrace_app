@@ -187,18 +187,32 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     }
   }
 
+  double _convertToKg(double value, String unit) {
+    switch (unit) {
+      case 'kg':
+        return value;
+      case 'lbs':
+        return value * 0.453592; // 1 lb = 0.453592 kg
+      case 'g':
+        return value / 1000; // 1 g = 0.001 kg
+      default:
+        return value; // Default to kg if unknown unit
+    }
+  }
+
   double _calculateTotalWeight() {
     if (_carcassType == 'whole') {
       // For whole carcass, use the whole carcass weight field
-      return double.tryParse(_wholeCarcassWeightController.text) ?? 0.0;
+      final weight = double.tryParse(_wholeCarcassWeightController.text) ?? 0.0;
+      return _convertToKg(weight, _wholeCarcassUnit);
     }
 
-    // Split carcass - sum all parts
+    // Split carcass - sum all parts (convert to kg first)
     double total = 0.0;
-    total += double.tryParse(_headWeightController.text) ?? 0.0;
-    total += double.tryParse(_feetWeightController.text) ?? 0.0;
-    total += double.tryParse(_leftCarcassWeightController.text) ?? 0.0;
-    total += double.tryParse(_rightCarcassWeightController.text) ?? 0.0;
+    total += _convertToKg(double.tryParse(_headWeightController.text) ?? 0.0, _headUnit);
+    total += _convertToKg(double.tryParse(_feetWeightController.text) ?? 0.0, _feetUnit);
+    total += _convertToKg(double.tryParse(_leftCarcassWeightController.text) ?? 0.0, _leftCarcassUnit);
+    total += _convertToKg(double.tryParse(_rightCarcassWeightController.text) ?? 0.0, _rightCarcassUnit);
 
     return total;
   }

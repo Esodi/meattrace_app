@@ -125,6 +125,11 @@ class SlaughterPart {
   final DateTime? receivedAt;
   final String? receivedByUsername;
   
+  // Rejection fields
+  final String? rejectionStatus;
+  final int? rejectedBy;
+  final DateTime? rejectedAt;
+  
   // Selection and usage tracking
   final bool usedInProduct;
   final bool isSelectedForTransfer;
@@ -145,6 +150,9 @@ class SlaughterPart {
     this.receivedBy,
     this.receivedAt,
     this.receivedByUsername,
+    this.rejectionStatus,
+    this.rejectedBy,
+    this.rejectedAt,
     this.usedInProduct = false,
     this.isSelectedForTransfer = false,
   });
@@ -168,6 +176,9 @@ class SlaughterPart {
       receivedBy: json['received_by'] != null ? int.parse(json['received_by'].toString()) : null,
       receivedAt: json['received_at'] != null ? DateTime.parse(json['received_at']) : null,
       receivedByUsername: json['received_by_username'],
+      rejectionStatus: json['rejection_status'],
+      rejectedBy: json['rejected_by'] != null ? int.parse(json['rejected_by'].toString()) : null,
+      rejectedAt: json['rejected_at'] != null ? DateTime.parse(json['rejected_at']) : null,
       usedInProduct: json['used_in_product'] ?? false,
       isSelectedForTransfer: json['is_selected_for_transfer'] ?? false,
     );
@@ -190,6 +201,9 @@ class SlaughterPart {
       'received_by': receivedBy,
       'received_at': receivedAt?.toIso8601String(),
       'received_by_username': receivedByUsername,
+      'rejection_status': rejectionStatus,
+      'rejected_by': rejectedBy,
+      'rejected_at': rejectedAt?.toIso8601String(),
       'used_in_product': usedInProduct,
       'is_selected_for_transfer': isSelectedForTransfer,
     };
@@ -211,6 +225,7 @@ class SlaughterPart {
   
   bool get isTransferred => transferredTo != null;
   bool get isReceived => receivedBy != null;
+  bool get isRejected => rejectionStatus == 'rejected';
 }
 
 enum CarcassType {
@@ -410,6 +425,12 @@ class Animal {
   final DateTime? receivedAt;
   // Product tracking
   final bool usedInProduct;
+  
+  // Rejection fields
+  final String? rejectionStatus;
+  final int? rejectedBy;
+  final DateTime? rejectedAt;
+  
   // Carcass measurement
   final CarcassMeasurement? carcassMeasurement;
   // Slaughter parts
@@ -450,6 +471,9 @@ class Animal {
     this.receivedBy,
     this.receivedAt,
     this.usedInProduct = false,
+    this.rejectionStatus,
+    this.rejectedBy,
+    this.rejectedAt,
     this.carcassMeasurement,
     this.slaughterParts = const [],
     this.photo,
@@ -536,6 +560,11 @@ class Animal {
             ? DateTime.parse(json['received_at'])
             : null,
         usedInProduct: json['used_in_product'] ?? false,
+        rejectionStatus: json['rejection_status'],
+        rejectedBy: json['rejected_by'] != null ? int.parse(json['rejected_by'].toString()) : null,
+        rejectedAt: json['rejected_at'] != null
+            ? DateTime.parse(json['rejected_at'])
+            : null,
         carcassMeasurement: carcassMeasurement,
         slaughterParts: slaughterParts,
         photo: json['photo'],
@@ -578,6 +607,9 @@ class Animal {
       'received_by': receivedBy,
       'received_at': receivedAt?.toIso8601String(),
       'used_in_product': usedInProduct,
+      'rejection_status': rejectionStatus,
+      'rejected_by': rejectedBy,
+      'rejected_at': rejectedAt?.toIso8601String(),
       'carcass_measurement': carcassMeasurement?.toMap(),
       'slaughter_parts': slaughterParts.map((part) => part.toMap()).toList(),
       'photo': photo,

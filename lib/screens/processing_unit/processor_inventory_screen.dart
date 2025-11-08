@@ -41,14 +41,42 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
       
       // Fetch received animals
       final animalsResponse = await dio.get('/animals/');
-      final receivedAnimals = (animalsResponse.data['results'] as List)
+      
+      // Handle both paginated and non-paginated responses for animals
+      List<dynamic> animalsList;
+      if (animalsResponse.data is Map && animalsResponse.data.containsKey('results')) {
+        // Paginated response
+        animalsList = animalsResponse.data['results'] as List;
+      } else if (animalsResponse.data is List) {
+        // Direct list response
+        animalsList = animalsResponse.data as List;
+      } else {
+        // Empty or unexpected format
+        animalsList = [];
+      }
+      
+      final receivedAnimals = animalsList
           .map((json) => Animal.fromMap(json))
           .where((animal) => animal.receivedBy != null)
           .toList();
       
       // Fetch products
       final productsResponse = await dio.get('/products/');
-      final products = (productsResponse.data['results'] as List)
+      
+      // Handle both paginated and non-paginated responses for products
+      List<dynamic> productsList;
+      if (productsResponse.data is Map && productsResponse.data.containsKey('results')) {
+        // Paginated response
+        productsList = productsResponse.data['results'] as List;
+      } else if (productsResponse.data is List) {
+        // Direct list response
+        productsList = productsResponse.data as List;
+      } else {
+        // Empty or unexpected format
+        productsList = [];
+      }
+      
+      final products = productsList
           .map((json) => Product.fromMap(json))
           .toList();
       
@@ -134,7 +162,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
         },
         backgroundColor: AppColors.processorPrimary,
         icon: Icon(_tabController.index == 0 ? Icons.download : Icons.add),
-        label: Text(_tabController.index == 0 ? 'Receive' : 'Create'),
+        label: Text(_tabController.index == 0 ? '' : ''),
       ),
     );
   }
@@ -165,7 +193,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
               TextButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/receive-animals'),
                 icon: const Icon(Icons.download),
-                label: const Text('Receive Animals'),
+                label: const Text(''),
               ),
           ],
         ),
@@ -282,7 +310,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _buildInfoChip(Icons.calendar_today, '${animal.age} years'),
+                  _buildInfoChip(Icons.calendar_today, '${animal.age} months'),
                   const SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.monitor_weight,

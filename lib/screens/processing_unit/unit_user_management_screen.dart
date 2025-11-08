@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -28,17 +30,17 @@ class _ProcessingUnitUserManagementScreenState
   late TabController _tabController;
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  Timer? _debounce;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     
-    // Load data
+    // Load data with error handling
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<ProcessingUnitManagementProvider>();
-      provider.loadUnitMembers(widget.unitId);
-      provider.loadJoinRequests(widget.unitId);
+      _loadDataWithErrorHandling();
     });
   }
 
@@ -46,13 +48,46 @@ class _ProcessingUnitUserManagementScreenState
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadDataWithErrorHandling() async {
+    try {
+      final provider = context.read<ProcessingUnitManagementProvider>();
+      await provider.loadUnitMembers(widget.unitId);
+      await provider.loadJoinRequests(widget.unitId);
+      
+      if (mounted) {
+        setState(() => _loadError = null);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadError = e.toString());
+      }
+    }
   }
 
   Future<void> _refreshData() async {
     final provider = context.read<ProcessingUnitManagementProvider>();
-    await provider.loadUnitMembers(widget.unitId);
-    await provider.loadJoinRequests(widget.unitId);
+    await Future.wait([
+      provider.loadUnitMembers(widget.unitId),
+      provider.loadJoinRequests(widget.unitId),
+    ]);
+    
+    if (mounted) {
+      setState(() => _loadError = null);
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    // Debounce search input
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() => _searchQuery = value.toLowerCase());
+      }
+    });
   }
 
   @override
@@ -60,6 +95,19 @@ class _ProcessingUnitUserManagementScreenState
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            // Use GoRouter to navigate back to settings
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              // If can't pop, go back to processor dashboard
+              context.go('/processor/dashboard');
+            }
+          },
+          tooltip: 'Back',
+        ),
         title: Text(
           'Unit Members',
           style: AppTypography.headlineMedium(color: Colors.white),
@@ -151,9 +199,7 @@ class _ProcessingUnitUserManagementScreenState
             borderSide: BorderSide(color: AppColors.processorPrimary, width: 2),
           ),
         ),
-        onChanged: (value) {
-          setState(() => _searchQuery = value.toLowerCase());
-        },
+        onChanged: _onSearchChanged,
       ),
     );
   }
@@ -161,14 +207,12 @@ class _ProcessingUnitUserManagementScreenState
   Widget _buildMembersTab() {
     return Consumer<ProcessingUnitManagementProvider>(
       builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return Center(
-            child: CircularProgressIndicator(color: AppColors.processorPrimary),
-          );
+        if (provider.isLoading && provider.members.isEmpty) {
+          return _buildLoadingSkeleton();
         }
 
-        if (provider.error != null) {
-          return _buildErrorState(provider.error!);
+        if (_loadError != null || provider.error != null) {
+          return _buildErrorState(_loadError ?? provider.error!);
         }
 
         final members = _filterMembers(provider.members);
@@ -201,14 +245,12 @@ class _ProcessingUnitUserManagementScreenState
   Widget _buildRequestsTab() {
     return Consumer<ProcessingUnitManagementProvider>(
       builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return Center(
-            child: CircularProgressIndicator(color: AppColors.processorPrimary),
-          );
+        if (provider.isLoading && provider.joinRequests.isEmpty) {
+          return _buildLoadingSkeleton();
         }
 
-        if (provider.error != null) {
-          return _buildErrorState(provider.error!);
+        if (_loadError != null || provider.error != null) {
+          return _buildErrorState(_loadError ?? provider.error!);
         }
 
         final requests = provider.joinRequests;
@@ -587,16 +629,23 @@ class _ProcessingUnitUserManagementScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 80,
-              color: AppColors.textSecondary.withOpacity(0.5),
+            Container(
+              padding: EdgeInsets.all(AppTheme.space24),
+              decoration: BoxDecoration(
+                color: AppColors.processorPrimary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 64,
+                color: AppColors.processorPrimary,
+              ),
             ),
             SizedBox(height: AppTheme.space24),
             Text(
               title,
               style: AppTypography.headlineMedium(
-                color: AppColors.textSecondary,
+                color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -608,6 +657,15 @@ class _ProcessingUnitUserManagementScreenState
               ),
               textAlign: TextAlign.center,
             ),
+            if (_searchQuery.isEmpty) ...[
+              SizedBox(height: AppTheme.space24),
+              CustomButton(
+                label: 'Invite Team Member',
+                onPressed: _showInviteDialog,
+                customColor: AppColors.processorPrimary,
+                icon: Icons.person_add,
+              ),
+            ],
           ],
         ),
       ),
@@ -644,12 +702,88 @@ class _ProcessingUnitUserManagementScreenState
             SizedBox(height: AppTheme.space24),
             CustomButton(
               label: 'Retry',
-              onPressed: _refreshData,
+              onPressed: _loadDataWithErrorHandling,
               customColor: AppColors.processorPrimary,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingSkeleton() {
+    return ListView.builder(
+      padding: EdgeInsets.all(AppTheme.space16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Card(
+          margin: EdgeInsets.only(bottom: AppTheme.space12),
+          child: Padding(
+            padding: EdgeInsets.all(AppTheme.space16),
+            child: Row(
+              children: [
+                // Avatar skeleton
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                SizedBox(width: AppTheme.space16),
+                // Content skeleton
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 16,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      SizedBox(height: AppTheme.space8),
+                      Container(
+                        height: 14,
+                        width: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      SizedBox(height: AppTheme.space8),
+                      Row(
+                        children: [
+                          Container(
+                            height: 20,
+                            width: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          SizedBox(width: AppTheme.space8),
+                          Container(
+                            height: 20,
+                            width: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -889,8 +1023,12 @@ class _ProcessingUnitUserManagementScreenState
                     if (value == null || value.isEmpty) {
                       return 'Please enter an email';
                     }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                      return 'Please enter a valid email';
+                    // Improved email validation regex
+                    final emailRegex = RegExp(
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                    );
+                    if (!emailRegex.hasMatch(value)) {
+                      return 'Please enter a valid email address';
                     }
                     return null;
                   },
@@ -942,6 +1080,28 @@ class _ProcessingUnitUserManagementScreenState
 
   Future<void> _sendInvitation(String email, String role) async {
     final provider = context.read<ProcessingUnitManagementProvider>();
+    
+    // Show loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: AppTheme.space12),
+            Text('Sending invitation...'),
+          ],
+        ),
+        duration: Duration(seconds: 30),
+      ),
+    );
+    
     final success = await provider.inviteUser(
       unitId: widget.unitId,
       email: email,
@@ -949,14 +1109,30 @@ class _ProcessingUnitUserManagementScreenState
     );
     
     if (mounted) {
+      // Hide loading indicator
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      
+      // Show result
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            success
-                ? 'Invitation sent successfully!'
-                : provider.error ?? 'Failed to send invitation',
+          content: Row(
+            children: [
+              Icon(
+                success ? Icons.check_circle : Icons.error,
+                color: Colors.white,
+              ),
+              SizedBox(width: AppTheme.space8),
+              Expanded(
+                child: Text(
+                  success
+                      ? 'Invitation sent to $email!'
+                      : provider.error ?? 'Failed to send invitation',
+                ),
+              ),
+            ],
           ),
           backgroundColor: success ? AppColors.success : AppColors.error,
+          duration: Duration(seconds: 3),
         ),
       );
       
@@ -1112,17 +1288,14 @@ class _ProcessingUnitUserManagementScreenState
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel'),
           ),
-          CustomButton(label: 'Suspend',
+            CustomButton(label: 'Suspend',
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 Navigator.pop(context);
-                // TODO: Implement suspend functionality
-                // This would require adding a suspend method to the provider
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Suspend functionality will be implemented soon'),
-                    backgroundColor: AppColors.warning,
-                  ),
+                await _handleSuspendUser(
+                  member,
+                  reasonController.text.trim(),
+                  provider,
                 );
               }
             },
@@ -1134,17 +1307,58 @@ class _ProcessingUnitUserManagementScreenState
     );
   }
 
-  Future<void> _handleActivateUser(
+  Future<void> _handleSuspendUser(
+    ProcessingUnitUser member,
+    String reason,
+    ProcessingUnitManagementProvider provider,
+  ) async {
+    final success = await provider.suspendMember(
+      unitId: widget.unitId,
+      memberId: member.id,
+      reason: reason,
+    );
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'User suspended successfully!'
+                : provider.error ?? 'Failed to suspend user',
+          ),
+          backgroundColor: success ? AppColors.warning : AppColors.error,
+        ),
+      );
+      
+      if (success) {
+        _refreshData();
+      }
+    }
+  }  Future<void> _handleActivateUser(
     ProcessingUnitUser member,
     ProcessingUnitManagementProvider provider,
   ) async {
-    // TODO: Implement activate functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Activate functionality will be implemented soon'),
-        backgroundColor: AppColors.info,
-      ),
+    final success = await provider.activateMember(
+      unitId: widget.unitId,
+      memberId: member.id,
     );
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'User activated successfully!'
+                : provider.error ?? 'Failed to activate user',
+          ),
+          backgroundColor: success ? AppColors.success : AppColors.error,
+        ),
+      );
+      
+      if (success) {
+        _refreshData();
+      }
+    }
   }
 
   void _showRemoveDialog(

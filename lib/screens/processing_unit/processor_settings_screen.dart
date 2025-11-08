@@ -232,9 +232,9 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                     final processingUnitId = authProvider.user?.processingUnitId;
 
                     if (processingUnitId != null) {
-                      context.goNamed(
-                        'processing-unit-users',
-                        queryParameters: {'unitId': processingUnitId.toString()},
+                      // Use context.push instead of goNamed to maintain navigation stack
+                      context.push(
+                        '/processing-unit/users?unitId=$processingUnitId',
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(

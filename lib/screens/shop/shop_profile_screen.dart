@@ -100,9 +100,18 @@ class ShopProfileScreen extends StatelessWidget {
                   title: 'User Management',
                   subtitle: 'Manage shop users and roles',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User management coming soon')),
-                    );
+                    // Get current shop ID from auth provider
+                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                    final shopId = authProvider.user?.shopId;
+
+                    if (shopId != null) {
+                      // Use context.push to maintain navigation stack
+                      context.push('/shop/users?shopId=$shopId');
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Shop ID not found. Please try again.')),
+                      );
+                    }
                   },
                 ),
               ],

@@ -448,17 +448,30 @@ class _ProductsListScreenState extends State<ProductsListScreen>
   }
 
   String _getStockLabel(Product product) {
-    // This would come from actual stock data
-    final stock = 25; // Placeholder
-    if (stock > 20) return '✓ In Stock';
-    if (stock > 5) return '⚠️ Low Stock';
+    // Check if product has been transferred to a shop
+    if (product.transferredTo != null) {
+      return '📦 Transferred';
+    }
+    
+    // If not transferred, it's in stock at processing unit
+    if (product.quantity > 0) {
+      return '✓ In Stock';
+    }
+    
     return '❌ Out of Stock';
   }
 
   Color _getStockColor(Product product) {
-    final stock = 25; // Placeholder
-    if (stock > 20) return Colors.green;
-    if (stock > 5) return Colors.orange;
-    return Colors.red;
+    // Check if product has been transferred to a shop
+    if (product.transferredTo != null) {
+      return Colors.blue;  // Transferred to shop
+    }
+    
+    // If not transferred, check quantity
+    if (product.quantity > 0) {
+      return Colors.green;  // In stock
+    }
+    
+    return Colors.red;  // Out of stock
   }
 }

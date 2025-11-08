@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/product_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../models/product.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -10,6 +9,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/status_badge.dart';
+import '../../widgets/dialogs/product_rejection_dialog.dart';
 
 /// Receive Products Screen - Shop receives incoming product transfers
 class ReceiveProductsScreen extends StatefulWidget {
@@ -25,6 +25,12 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
 
   // State management for selected products
   final Set<int> _selectedProducts = {};
+  
+  // Track products to receive with quantities
+  final Map<int, double> _receiveQuantities = {};
+  
+  // Track products to reject with quantities and reasons
+  final Map<int, Map<String, dynamic>> _rejections = {};
 
   @override
   void initState() {
@@ -62,9 +68,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
   }
 
   Future<void> _receiveSelectedProducts() async {
-    if (_selectedProducts.isEmpty) {
+    if (_selectedProducts.isEmpty && _rejections.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select products to receive')),
+        const SnackBar(content: Text('Please select products to receive or reject')),
       );
       return;
     }
@@ -73,44 +79,68 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
     try {
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
 
-      // Receive products
-      await productProvider.receiveProducts(_selectedProducts.toList());
+      // Build receives array
+      final List<Map<String, dynamic>> receives = [];
+      for (final productId in _selectedProducts) {
+        // Skip if this product is being rejected
+        if (_rejections.containsKey(productId)) continue;
+        
+        final product = _pendingProducts.firstWhere((p) => p.id == productId);
+        final quantityToReceive = _receiveQuantities[productId] ?? product.quantity.toDouble();
+        
+        receives.add({
+          'product_id': productId,
+          'quantity_received': quantityToReceive,
+        });
+      }
+
+      // Build rejections array
+      final List<Map<String, dynamic>> rejections = [];
+      for (final entry in _rejections.entries) {
+        rejections.add({
+          'product_id': entry.key,
+          'quantity_rejected': entry.value['quantity'],
+          'rejection_reason': entry.value['reason'],
+        });
+      }
+
+      // Call API with both receives and rejections
+      await productProvider.receiveProducts(
+        receives: receives.isNotEmpty ? receives : null,
+        rejections: rejections.isNotEmpty ? rejections : null,
+      );
 
       // Refresh the product list to reflect received status
       await productProvider.fetchProducts();
 
-      // Calculate total items received
-      final totalProducts = _selectedProducts.length;
+      // Calculate totals for feedback
+      final totalReceived = receives.length;
+      final totalRejected = rejections.length;
       
-      // Get details of received products for better feedback
-      final receivedProductNames = _pendingProducts
-          .where((p) => _selectedProducts.contains(p.id))
-          .map((p) => p.name)
-          .take(3)
-          .toList();
-      
-      String message = 'Successfully received $totalProducts product(s)';
-      if (receivedProductNames.isNotEmpty) {
-        message += ': ${receivedProductNames.join(", ")}';
-        if (totalProducts > 3) {
-          message += ' and ${totalProducts - 3} more';
-        }
-      }
-
       if (mounted) {
+        String message = '';
+        if (totalReceived > 0 && totalRejected > 0) {
+          message = 'Received $totalReceived and rejected $totalRejected product(s)';
+        } else if (totalReceived > 0) {
+          message = 'Successfully received $totalReceived product(s)';
+        } else if (totalRejected > 0) {
+          message = 'Successfully rejected $totalRejected product(s)';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: AppColors.success,
+            backgroundColor: totalRejected > 0 ? AppColors.warning : AppColors.success,
             duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'View Inventory',
-              textColor: Colors.white,
-              onPressed: () {
-                // Navigate to inventory screen
-                context.go('/shop-inventory');
-              },
-            ),
+            action: totalReceived > 0
+                ? SnackBarAction(
+                    label: 'View Inventory',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      context.go('/shop-inventory');
+                    },
+                  )
+                : null,
           ),
         );
         context.pop();
@@ -119,7 +149,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error receiving products: $e'),
+            content: Text('Error processing products: $e'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -129,12 +159,71 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
     }
   }
 
+  Future<void> _rejectProduct(Product product) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => ProductRejectionDialog(product: product),
+    );
+
+    if (result != null) {
+      setState(() {
+        // Add to rejections
+        _rejections[product.id!] = {
+          'quantity': result['quantity'],
+          'reason': result['reason'],
+          'reject_all': result['reject_all'],
+        };
+        
+        // If partial rejection, also add to receives for remaining quantity
+        if (!result['reject_all']) {
+          final remainingQuantity = product.quantity.toDouble() - (result['quantity'] as double);
+          if (remainingQuantity > 0) {
+            _selectedProducts.add(product.id!);
+            _receiveQuantities[product.id!] = remainingQuantity;
+          }
+        } else {
+          // Full rejection - remove from selected products
+          _selectedProducts.remove(product.id);
+          _receiveQuantities.remove(product.id);
+        }
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['reject_all'] 
+                ? 'Product marked for rejection' 
+                : 'Partial rejection: ${result['quantity']} units',
+          ),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              setState(() {
+                _rejections.remove(product.id);
+                _selectedProducts.remove(product.id);
+                _receiveQuantities.remove(product.id);
+              });
+            },
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasSelections = _selectedProducts.isNotEmpty;
-    final totalProducts = _selectedProducts.length;
+    final hasSelections = _selectedProducts.isNotEmpty || _rejections.isNotEmpty;
+    final totalToReceive = _selectedProducts.where((id) => !_rejections.containsKey(id)).length;
+    final totalToReject = _rejections.length;
 
-    String selectionText = totalProducts > 0 ? '$totalProducts Selected' : '';
+    String selectionText = '';
+    if (totalToReceive > 0 && totalToReject > 0) {
+      selectionText = '$totalToReceive to receive, $totalToReject to reject';
+    } else if (totalToReceive > 0) {
+      selectionText = '$totalToReceive to receive';
+    } else if (totalToReject > 0) {
+      selectionText = '$totalToReject to reject';
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -223,9 +312,16 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
               ),
               child: SafeArea(
                 child: CustomButton(
-                  label: 'Receive $totalProducts Product(s)',
+                  label: totalToReceive > 0 && totalToReject > 0
+                      ? 'Process All ($totalToReceive + $totalToReject)'
+                      : totalToReceive > 0
+                          ? 'Receive $totalToReceive Product(s)'
+                          : 'Reject $totalToReject Product(s)',
                   onPressed: _isLoading ? null : _receiveSelectedProducts,
                   loading: _isLoading,
+                  customColor: totalToReject > 0 && totalToReceive == 0
+                      ? AppColors.error
+                      : null,
                 ),
               ),
             )
@@ -342,147 +438,280 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
 
   Widget _buildProductCard(Product product) {
     final isSelected = _selectedProducts.contains(product.id);
+    final isRejected = _rejections.containsKey(product.id);
+    final isPartialRejection = isRejected && !(_rejections[product.id]!['reject_all'] as bool);
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.space12),
-      elevation: isSelected ? 4 : 2,
+      elevation: isSelected || isRejected ? 4 : 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         side: BorderSide(
-          color: isSelected
-              ? AppColors.shopPrimary
-              : Colors.transparent,
+          color: isRejected
+              ? AppColors.error
+              : isSelected
+                  ? AppColors.shopPrimary
+                  : Colors.transparent,
           width: 2,
         ),
       ),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            if (isSelected) {
-              _selectedProducts.remove(product.id);
-            } else {
-              _selectedProducts.add(product.id!);
-            }
-          });
-        },
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.space16),
-          child: Row(
-            children: [
-              // Selection Checkbox
-              Checkbox(
-                value: isSelected,
-                onChanged: (value) {
-                  setState(() {
-                    if (value == true) {
-                      _selectedProducts.add(product.id!);
-                    } else {
-                      _selectedProducts.remove(product.id);
-                    }
-                  });
-                },
-                activeColor: AppColors.shopPrimary,
-              ),
-              const SizedBox(width: AppTheme.space12),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.space16),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Selection Checkbox (hidden if rejected fully)
+                if (!isRejected || isPartialRejection)
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedProducts.add(product.id!);
+                        } else {
+                          _selectedProducts.remove(product.id);
+                        }
+                      });
+                    },
+                    activeColor: AppColors.shopPrimary,
+                  )
+                else
+                  const SizedBox(width: 48),
+                const SizedBox(width: AppTheme.space12),
 
-              // Product Icon
+                // Product Icon
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: isRejected
+                        ? AppColors.error.withValues(alpha: 0.1)
+                        : AppColors.shopPrimary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: Icon(
+                    isRejected ? Icons.cancel : Icons.inventory_2,
+                    color: isRejected ? AppColors.error : AppColors.shopPrimary,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.space12),
+
+                // Product Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: AppTypography.bodyLarge().copyWith(
+                                fontWeight: FontWeight.w600,
+                                decoration: isRejected && !isPartialRejection
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.space8,
+                              vertical: AppTheme.space4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.info.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            ),
+                            child: Text(
+                              product.productType,
+                              style: AppTypography.caption().copyWith(
+                                color: AppColors.info,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.space4),
+                      Text(
+                        'Batch: ${product.batchNumber}',
+                        style: AppTypography.bodyMedium().copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.space8),
+                      Wrap(
+                        spacing: AppTheme.space8,
+                        runSpacing: AppTheme.space4,
+                        children: [
+                          _buildInfoChip(
+                            Icons.monitor_weight,
+                            '${product.weight} ${product.weightUnit}',
+                          ),
+                          _buildInfoChip(
+                            Icons.inventory,
+                            '${product.quantity} units',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Status Badge
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    StatusBadge(
+                      label: isRejected
+                          ? (isPartialRejection ? 'Partial Reject' : 'Rejected')
+                          : 'Pending',
+                      color: isRejected ? AppColors.error : AppColors.warning,
+                    ),
+                    if (product.transferredAt != null) ...[
+                      const SizedBox(height: AppTheme.space8),
+                      Text(
+                        _formatDate(product.transferredAt!),
+                        style: AppTypography.caption().copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+
+            // Rejection Info Banner
+            if (isRejected) ...[
+              const SizedBox(height: AppTheme.space12),
               Container(
-                width: 50,
-                height: 50,
+                padding: const EdgeInsets.all(AppTheme.space12),
                 decoration: BoxDecoration(
-                  color: AppColors.shopPrimary.withValues(alpha: 0.1),
+                  color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
                 ),
-                child: Icon(
-                  Icons.inventory_2,
-                  color: AppColors.shopPrimary,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space12),
-
-              // Product Details
-              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            style: AppTypography.bodyLarge().copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: AppColors.error,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.space8,
-                            vertical: AppTheme.space4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.info.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                          ),
-                          child: Text(
-                            product.productType,
-                            style: AppTypography.caption().copyWith(
-                              color: AppColors.info,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        const SizedBox(width: AppTheme.space8),
+                        Text(
+                          'Rejection Details',
+                          style: AppTypography.labelMedium().copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: AppTheme.space8),
+                    Text(
+                      'Quantity: ${_rejections[product.id]!['quantity']} units',
+                      style: AppTypography.bodySmall(),
                     ),
                     const SizedBox(height: AppTheme.space4),
                     Text(
-                      'Batch: ${product.batchNumber ?? 'N/A'}',
-                      style: AppTypography.bodyMedium().copyWith(
-                        color: AppColors.textSecondary,
+                      'Reason: ${_rejections[product.id]!['reason']}',
+                      style: AppTypography.bodySmall(),
+                    ),
+                    if (isPartialRejection) ...[
+                      const SizedBox(height: AppTheme.space4),
+                      Text(
+                        'Accepting: ${(product.quantity.toDouble() - (_rejections[product.id]!['quantity'] as double)).toStringAsFixed(1)} units',
+                        style: AppTypography.bodySmall().copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppTheme.space8),
-                    Wrap(
-                      spacing: AppTheme.space8,
-                      runSpacing: AppTheme.space4,
-                      children: [
-                        _buildInfoChip(
-                          Icons.monitor_weight,
-                          '${product.weight ?? 0} ${product.weightUnit ?? 'kg'}',
-                        ),
-                        _buildInfoChip(
-                          Icons.inventory,
-                          '${product.quantity} units',
-                        ),
-                      ],
-                    ),
+                    ],
                   ],
                 ),
               ),
+            ],
 
-              // Transfer Info
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  StatusBadge(
-                    label: 'Pending',
-                    color: AppColors.warning,
-                  ),
-                  if (product.transferredAt != null) ...[
-                    const SizedBox(height: AppTheme.space8),
-                    Text(
-                      _formatDate(product.transferredAt!),
-                      style: AppTypography.caption().copyWith(
-                        color: AppColors.textTertiary,
+            // Action Buttons
+            const SizedBox(height: AppTheme.space12),
+            Row(
+              children: [
+                if (!isRejected)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _rejectProduct(product),
+                      icon: const Icon(Icons.cancel, size: 18),
+                      label: const Text('Reject'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: BorderSide(color: AppColors.error),
+                        padding: const EdgeInsets.symmetric(vertical: AppTheme.space12),
                       ),
                     ),
-                  ],
+                  )
+                else
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _rejections.remove(product.id);
+                          _selectedProducts.remove(product.id);
+                          _receiveQuantities.remove(product.id);
+                        });
+                      },
+                      icon: const Icon(Icons.undo, size: 18),
+                      label: const Text('Undo Rejection'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: BorderSide(color: AppColors.textSecondary),
+                        padding: const EdgeInsets.symmetric(vertical: AppTheme.space12),
+                      ),
+                    ),
+                  ),
+                if (!isRejected) ...[
+                  const SizedBox(width: AppTheme.space8),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedProducts.remove(product.id);
+                          } else {
+                            _selectedProducts.add(product.id!);
+                          }
+                        });
+                      },
+                      icon: Icon(
+                        isSelected ? Icons.check_circle : Icons.check_circle_outline,
+                        size: 18,
+                      ),
+                      label: Text(isSelected ? 'Selected' : 'Accept'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isSelected
+                            ? AppColors.shopPrimary
+                            : AppColors.shopPrimary.withValues(alpha: 0.1),
+                        foregroundColor: isSelected ? Colors.white : AppColors.shopPrimary,
+                        elevation: isSelected ? 2 : 0,
+                        padding: const EdgeInsets.symmetric(vertical: AppTheme.space12),
+                      ),
+                    ),
+                  ),
                 ],
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );

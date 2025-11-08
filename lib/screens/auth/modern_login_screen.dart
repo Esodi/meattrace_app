@@ -7,7 +7,6 @@ import '../../services/auth_notification_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/custom_icons.dart';
 import '../../widgets/core/logo_with_border.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_text_field.dart';
@@ -77,23 +76,6 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
     super.dispose();
   }
 
-  void _navigateToRoleBasedHome(String role) {
-    switch (role.toLowerCase()) {
-      case 'farmer':
-        context.go('/farmer-home');
-        break;
-      case 'processingunit':
-      case 'processing_unit':
-        context.go('/processor-home');
-        break;
-      case 'shop':
-        context.go('/shop-home');
-        break;
-      default:
-        context.go('/farmer-home');
-    }
-  }
-
   Future<void> _login() async {
     debugPrint('🔐 [LOGIN_SCREEN] Starting login process...');
 
@@ -111,7 +93,6 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
 
     // Capture the context before async operations
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     // Show loading notification using captured ScaffoldMessenger
@@ -163,15 +144,12 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
         AuthNotificationService.showAuthSuccess(context, 'login');
         debugPrint('✅ [LOGIN_SCREEN] Success notification shown');
 
-        // Small delay to show success message before navigation
-        debugPrint('⏱️ [LOGIN_SCREEN] Waiting 500ms before navigation...');
+        // Small delay to show success message
+        debugPrint('⏱️ [LOGIN_SCREEN] Waiting 500ms before letting router redirect...');
         await Future.delayed(const Duration(milliseconds: 500));
 
-        if (mounted) {
-          debugPrint('🏠 [LOGIN_SCREEN] Navigating to role-based home: ${authProvider.user!.role}');
-          _navigateToRoleBasedHome(authProvider.user!.role);
-          debugPrint('✅ [LOGIN_SCREEN] Navigation completed');
-        }
+        debugPrint('🏠 [LOGIN_SCREEN] Router will automatically redirect to dashboard');
+        // No manual navigation needed - the router redirect will handle it
       } else if (mounted) {
         debugPrint('❌ [LOGIN_SCREEN] Login failed, showing error notification');
         // Show detailed error notification
@@ -196,7 +174,6 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       body: Container(

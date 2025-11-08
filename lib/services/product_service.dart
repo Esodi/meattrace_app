@@ -193,12 +193,16 @@ class ProductService {
     }
   }
 
-  Future<Map<String, dynamic>> receiveProducts(List<int> productIds) async {
+  Future<Map<String, dynamic>> receiveProducts({
+    List<Map<String, dynamic>>? receives,
+    List<Map<String, dynamic>>? rejections,
+  }) async {
     try {
       final response = await _dioClient.dio.post(
         '${Constants.productsEndpoint}receive_products/',
         data: {
-          'product_ids': productIds,
+          if (receives != null && receives.isNotEmpty) 'receives': receives,
+          if (rejections != null && rejections.isNotEmpty) 'rejections': rejections,
         },
       );
       return response.data;

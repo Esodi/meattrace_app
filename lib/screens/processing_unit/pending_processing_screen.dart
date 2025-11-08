@@ -391,7 +391,7 @@ class _PendingProcessingScreenState extends State<PendingProcessingScreen> {
                               ),
                             _buildInfoChip(
                               Icons.calendar_today,
-                              '${animal.age} yrs',
+                              '${animal.age} months',
                             ),
                           ],
                         ),

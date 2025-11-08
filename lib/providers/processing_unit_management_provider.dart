@@ -28,22 +28,11 @@ class ProcessingUnitManagementProvider with ChangeNotifier {
   // Check if current user is owner/manager
   bool canManageUsers([int? userId]) {
     if (userId == null || _members.isEmpty) return false;
-    final member = _members.firstWhere(
-      (m) => m.userId == userId,
-      orElse: () => ProcessingUnitUser(
-        id: 0,
-        userId: 0,
-        username: '',
-        email: '',
-        processingUnitId: 0,
-        processingUnitName: '',
-        role: 'worker',
-        permissions: 'read',
-        invitedAt: DateTime.now(),
-        isActive: false,
-        isSuspended: false,
-      ),
-    );
+    
+    // Use where().firstOrNull pattern to safely check if member exists
+    final member = _members.where((m) => m.userId == userId).firstOrNull;
+    if (member == null) return false;
+    
     return member.isOwner || member.isManager;
   }
 
@@ -279,6 +268,68 @@ class ProcessingUnitManagementProvider with ChangeNotifier {
         return true;
       } else {
         _error = response.data['detail'] ?? 'Failed to remove member';
+        return false;
+      }
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Suspend member
+  Future<bool> suspendMember({
+    required int unitId,
+    required int memberId,
+    required String reason,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.post(
+        '/processing-units/$unitId/users/$memberId/suspend/',
+        data: {'reason': reason},
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await loadUnitMembers(unitId);
+        return true;
+      } else {
+        _error = response.data['detail'] ?? 'Failed to suspend member';
+        return false;
+      }
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Activate/Reactivate member
+  Future<bool> activateMember({
+    required int unitId,
+    required int memberId,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.post(
+        '/processing-units/$unitId/users/$memberId/activate/',
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await loadUnitMembers(unitId);
+        return true;
+      } else {
+        _error = response.data['detail'] ?? 'Failed to activate member';
         return false;
       }
     } catch (e) {

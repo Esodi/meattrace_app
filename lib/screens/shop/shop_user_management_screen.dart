@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -60,6 +61,19 @@ class _ShopUserManagementScreenState
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            // Use GoRouter to navigate back to settings/profile
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              // If can't pop, go back to shop dashboard
+              context.go('/shop/dashboard');
+            }
+          },
+          tooltip: 'Back',
+        ),
         title: Text(
           'Shop Staff',
           style: AppTypography.headlineMedium(color: Colors.white),

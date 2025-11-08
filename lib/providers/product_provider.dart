@@ -227,9 +227,15 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> receiveProducts(List<int> productIds) async {
+  Future<Map<String, dynamic>> receiveProducts({
+    List<Map<String, dynamic>>? receives,
+    List<Map<String, dynamic>>? rejections,
+  }) async {
     try {
-      final response = await _productService.receiveProducts(productIds);
+      final response = await _productService.receiveProducts(
+        receives: receives,
+        rejections: rejections,
+      );
       return response;
     } catch (e) {
       _error = e.toString();

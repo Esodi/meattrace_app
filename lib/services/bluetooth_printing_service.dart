@@ -371,26 +371,8 @@ class BluetoothPrintingService {
 
       List<int> bytes = [];
 
-      // Header
-      bytes += generator.text('Nyama Tamu QR Code',
-          styles: PosStyles(align: PosAlign.center, bold: true));
-      bytes += generator.feed(1);
-
-      // Product info
-      bytes += generator.text('Product: $productName',
-          styles: PosStyles(align: PosAlign.center));
-      bytes += generator.text('Batch: $batchNumber',
-          styles: PosStyles(align: PosAlign.center));
-      bytes += generator.feed(1);
-
-      // QR Code
+      // QR Code ONLY - no text, no padding, no margins
       bytes += generator.qrcode(qrData);
-      bytes += generator.feed(2);
-
-      // Footer
-      bytes += generator.text('Scan to verify traceability',
-          styles: PosStyles(align: PosAlign.center));
-      bytes += generator.feed(3);
       bytes += generator.cut();
 
   debugPrint('📤 [BluetoothPrintingService] Sending ${bytes.length} bytes to printer...');

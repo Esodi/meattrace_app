@@ -400,7 +400,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${animal.age.toStringAsFixed(1)} yrs',
+                          '${animal.age.toStringAsFixed(1)} months',
                           style: AppTypography.bodyMedium(
                             color: AppColors.textSecondary,
                           ),

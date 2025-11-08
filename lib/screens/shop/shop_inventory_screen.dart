@@ -364,7 +364,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                           )
                         else
                           Text(
-                            '\$${product.price.toStringAsFixed(2)}',
+                            'TZS ${product.price.toStringAsFixed(2)}',
                             style: AppTypography.titleMedium().copyWith(
                               color: AppColors.shopPrimary,
                               fontWeight: FontWeight.bold,
@@ -731,7 +731,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                           Navigator.of(context).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Price updated to \$${price.toStringAsFixed(2)}'),
+                              content: Text('Price updated to TZS ${price.toStringAsFixed(2)}'),
                               backgroundColor: AppColors.success,
                             ),
                           );
