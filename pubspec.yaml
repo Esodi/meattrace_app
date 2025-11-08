@@ -59,6 +59,9 @@ dependencies:
   image_picker: ^1.0.4
   web_socket_channel: ^3.0.3
   timeago: ^3.7.1
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
+  flutter_local_notifications: ^17.0.0
 
   # Custom fonts for meat-themed design
   # Playfair Display - elegant serif font for app name

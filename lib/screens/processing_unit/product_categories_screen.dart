@@ -172,7 +172,7 @@ class _ProductCategoriesScreenState extends State<ProductCategoriesScreen> with 
             _categories = _fetchCategories();
           });
         },
-        label: Text('Add Category'),
+        label: Text(''),
         icon: Icon(Icons.add),
       ),
     );

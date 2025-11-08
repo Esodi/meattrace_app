@@ -1,15 +1,33 @@
 import 'package:flutter/foundation.dart';
 import '../models/notification.dart';
 import '../services/notification_api_service.dart';
+import '../services/push_notification_service.dart';
 
 class NotificationProvider with ChangeNotifier {
   final NotificationApiService _notificationService = NotificationApiService();
+  PushNotificationService? _pushService; // Make it nullable
 
   List<NotificationModel> _notifications = [];
   int _unreadCount = 0;
   bool _isLoading = false;
   String? _error;
   bool _isInitialized = false;
+
+  NotificationProvider() {
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🔔 NotificationProvider: Constructor START');
+    try {
+      // Don't initialize PushNotificationService in constructor
+      // It requires Firebase which may not be initialized yet
+      debugPrint('✅ NotificationProvider: Constructor completed (push service deferred)');
+    } catch (e, stack) {
+      debugPrint('❌ NotificationProvider: Constructor FAILED');
+      debugPrint('   Error: $e');
+      debugPrint('   Stack: $stack');
+      rethrow;
+    }
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
 
   // Getters
   List<NotificationModel> get notifications => _notifications;
@@ -32,13 +50,29 @@ class NotificationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('🔔 NotificationProvider: Initializing...');
+      
+      // Try to initialize push notifications, but don't fail if Firebase isn't ready
+      try {
+        _pushService = PushNotificationService();
+        await _pushService!.initialize();
+        _pushService!.setNotificationProvider(this);
+        debugPrint('✅ Push notification service initialized');
+      } catch (e) {
+        debugPrint('⚠️ Push notification service not available: $e');
+        debugPrint('   Continuing without push notifications...');
+        // Continue without push notifications - not critical
+      }
+
       await Future.wait([
         _loadNotifications(),
         _loadUnreadCount(),
       ]);
       _error = null;
       _isInitialized = true;
+      debugPrint('✅ NotificationProvider initialized successfully');
     } catch (e) {
+      debugPrint('❌ NotificationProvider initialization failed: $e');
       _error = e.toString();
       _isInitialized = true;
     } finally {
@@ -192,5 +226,49 @@ class NotificationProvider with ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  // Push notification methods
+
+  /// Subscribe to push notification topics
+  Future<void> subscribeToTopics(List<String> topics) async {
+    if (_pushService == null) {
+      debugPrint('⚠️ Push service not available, cannot subscribe to topics');
+      return;
+    }
+    try {
+      for (final topic in topics) {
+        await _pushService!.subscribeToTopic(topic);
+      }
+    } catch (e) {
+      debugPrint('Failed to subscribe to topics: $e');
+    }
+  }
+
+  /// Unsubscribe from push notification topics
+  Future<void> unsubscribeFromTopics(List<String> topics) async {
+    if (_pushService == null) {
+      debugPrint('⚠️ Push service not available, cannot unsubscribe from topics');
+      return;
+    }
+    try {
+      for (final topic in topics) {
+        await _pushService!.unsubscribeFromTopic(topic);
+      }
+    } catch (e) {
+      debugPrint('Failed to unsubscribe from topics: $e');
+    }
+  }
+
+  /// Check if push notifications are enabled
+  Future<bool> arePushNotificationsEnabled() async {
+    if (_pushService == null) return false;
+    return await _pushService!.areNotificationsEnabled();
+  }
+
+  /// Get FCM token
+  Future<String?> getFCMToken() async {
+    if (_pushService == null) return null;
+    return await _pushService!.getToken();
   }
 }

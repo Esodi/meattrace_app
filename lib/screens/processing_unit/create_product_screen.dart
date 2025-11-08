@@ -9,12 +9,12 @@ import 'package:meattrace_app/providers/auth_provider.dart';
 import 'package:meattrace_app/models/product.dart';
 import 'package:meattrace_app/models/animal.dart';
 import 'package:meattrace_app/models/product_category.dart';
-import 'package:meattrace_app/widgets/animations/loading_animations.dart';
 import 'package:meattrace_app/widgets/core/custom_app_bar.dart';
 import 'package:meattrace_app/widgets/core/enhanced_back_button.dart';
 import 'package:meattrace_app/services/bluetooth_printing_service.dart';
 import 'package:meattrace_app/utils/constants.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:meattrace_app/widgets/processing_pipeline.dart';
 
 class CreateProductScreen extends StatefulWidget {
   const CreateProductScreen({super.key});
@@ -37,14 +37,27 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   bool _isPrinting = false;
   List<Product> _createdProducts = [];
 
+  // Processing pipeline state
+  late PipelineManager _pipelineManager;
+  late List<PipelineStage> _pipelineStages;
+
   // Animal selection state
   List<Animal> _availableAnimals = [];
+  List<SlaughterPart> _availableSlaughterParts = [];
   bool _isLoadingAnimals = false;
   String? _animalsError;
+  
+  // Selection mode: 'animal' or 'part'
+  String _selectionMode = 'animal';
+  SlaughterPart? _selectedPart;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize pipeline stages
+    _initializePipeline();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Auto-fill processing unit field with the name of the logged-in processing unit
       final authProvider = context.read<AuthProvider>();
@@ -52,6 +65,41 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       _processingUnitController.text = processingUnitName;
       await _loadData();
     });
+  }
+
+  void _initializePipeline() {
+    _pipelineStages = [
+      PipelineStage(
+        id: 'validation',
+        name: 'Form Validation',
+        description: 'Validating product creation form and inputs',
+      ),
+      PipelineStage(
+        id: 'preparation',
+        name: 'Data Preparation',
+        description: 'Preparing product data for submission',
+      ),
+      PipelineStage(
+        id: 'submission',
+        name: 'Product Creation',
+        description: 'Creating products in the backend system',
+      ),
+      PipelineStage(
+        id: 'completion',
+        name: 'Process Completion',
+        description: 'Finalizing and displaying results',
+      ),
+    ];
+
+    _pipelineManager = PipelineManager(
+      initialStages: _pipelineStages,
+      config: PipelineConfig.adaptive(),
+      onStateChanged: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+    );
   }
 
   Future<void> _loadData() async {
@@ -74,37 +122,101 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     });
 
     try {
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🔍 [CREATE_PRODUCT] Loading available animals and slaughter parts...');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       final animalProvider = context.read<AnimalProvider>();
       final productProvider = context.read<ProductProvider>();
       final authProvider = context.read<AuthProvider>();
 
-      // Get current user's processing unit - assuming it's the user's ID for now
-      // In a real implementation, this would come from user profile or separate service
       final currentUserId = authProvider.user?.id;
       if (currentUserId == null) {
         throw Exception('User not authenticated');
       }
 
-      // Get all products to check which animals have been used
+      print('👤 [CREATE_PRODUCT] Current user ID: $currentUserId');
+      print('📦 [CREATE_PRODUCT] Total animals in provider: ${animalProvider.animals.length}');
+
+      // Get all products to check which animals/parts have been used
       final usedAnimalIds = productProvider.products
           .map((product) => product.animal)
           .toSet();
 
-      // Filter available animals
+      print('🏭 [CREATE_PRODUCT] Total products: ${productProvider.products.length}');
+      print('🔒 [CREATE_PRODUCT] Animals already used in products: ${usedAnimalIds.length} -> $usedAnimalIds');
+
+      // Filter available whole animals (received and not used)
       final availableAnimals = animalProvider.animals.where((animal) {
-        return animal.slaughtered &&
-               animal.receivedBy != null &&
-               animal.receivedBy == currentUserId && // Belongs to current user's processing unit
-               !usedAnimalIds.contains(animal.id); // Not used for product creation
+        final isSlaughtered = animal.slaughtered;
+        final hasReceivedBy = animal.receivedBy != null;
+        final matchesUser = animal.receivedBy == currentUserId;
+        final notUsed = !usedAnimalIds.contains(animal.id);
+        final hasRemainingWeight = animal.remainingWeight != null && animal.remainingWeight! > 0;
+        
+        final isAvailable = isSlaughtered && hasReceivedBy && matchesUser && notUsed && hasRemainingWeight;
+        
+        if (animal.transferredTo != null || animal.receivedBy != null) {
+          print('  🐄 Animal ${animal.animalId}:');
+          print('     - slaughtered: $isSlaughtered');
+          print('     - received_by: ${animal.receivedBy} (matches user: $matchesUser)');
+          print('     - not used: $notUsed');
+          print('     - remaining_weight: ${animal.remainingWeight}');
+          print('     - AVAILABLE: $isAvailable');
+        }
+        
+        return isAvailable;
       }).toList();
+
+      print('✨ [CREATE_PRODUCT] Found ${availableAnimals.length} available whole animals');
+
+      // Load slaughter parts
+      print('🔍 [CREATE_PRODUCT] Fetching slaughter parts...');
+      final allSlaughterParts = await animalProvider.getSlaughterPartsList();
+
+      // Filter slaughter parts for current user and not used
+      final availableSlaughterParts = allSlaughterParts.where((part) {
+        final isReceived = part.receivedBy != null;
+        final matchesUser = part.receivedBy == currentUserId;
+        final notUsed = !part.usedInProduct;
+        final hasRemainingWeight = part.remainingWeight != null && part.remainingWeight! > 0;
+        
+        final isAvailable = isReceived && matchesUser && notUsed && hasRemainingWeight;
+        
+        if (part.receivedBy != null) {
+          print('  🥩 Part ${part.id} (${part.partType.displayName}):');
+          print('     - received_by: ${part.receivedBy} (matches user: $matchesUser)');
+          print('     - not used: $notUsed');
+          print('     - remaining_weight: ${part.remainingWeight}');
+          print('     - AVAILABLE: $isAvailable');
+        }
+        
+        return isAvailable;
+      }).toList();
+
+      print('🥩 [CREATE_PRODUCT] Found ${availableSlaughterParts.length} available slaughter parts');
+      for (var part in availableSlaughterParts) {
+        print('   ✅ Part ID ${part.id}: ${part.partType.displayName} from Animal ${part.animalId}');
+      }
+
+      if (availableAnimals.isEmpty && availableSlaughterParts.isEmpty) {
+        print('⚠️  [CREATE_PRODUCT] NO ANIMALS OR PARTS AVAILABLE!');
+        print('   Possible reasons:');
+        print('   1. No animals/parts have been RECEIVED yet (only transferred)');
+        print('   2. All received animals/parts already used in products');
+        print('   3. Animals/parts received by different user');
+      }
 
       if (mounted) {
         setState(() {
           _availableAnimals = availableAnimals;
+          _availableSlaughterParts = availableSlaughterParts;
           _isLoadingAnimals = false;
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [CREATE_PRODUCT] Error loading animals/parts: $e');
+      print('Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _animalsError = e.toString();
@@ -115,78 +227,170 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   void _showAnimalSelectionDialog() async {
-    final selectedAnimal = await showDialog<Animal>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Animal'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 400,
-          child: _isLoadingAnimals
-              ? const Center(child: CircularProgressIndicator())
-              : _animalsError != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error, color: Colors.red, size: 48),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Error loading animals: $_animalsError',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              _loadAvailableAnimals();
-                            },
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _availableAnimals.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No available animals found.\nAnimals must be slaughtered, received at your processing unit, and not yet used for product creation.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _availableAnimals.length,
-                          itemBuilder: (context, index) {
-                            final animal = _availableAnimals[index];
-                            final isSelected = _selectedAnimal?.id == animal.id;
-                            return ListTile(
-                              title: Text(
-                                animal.animalName != null
-                                    ? '${animal.species} - ${animal.animalName}'
-                                    : '${animal.species} - ${animal.animalId}',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Select Animal or Part'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 500,
+            child: Column(
+              children: [
+                // Toggle between animals and parts
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'animal',
+                      label: Text('Whole Animals'),
+                      icon: Icon(Icons.pets),
+                    ),
+                    ButtonSegment(
+                      value: 'part',
+                      label: Text('Slaughter Parts'),
+                      icon: Icon(Icons.clear_all),
+                    ),
+                  ],
+                  selected: {_selectionMode},
+                  onSelectionChanged: (Set<String> newSelection) {
+                    setDialogState(() {
+                      _selectionMode = newSelection.first;
+                    });
+                    setState(() {
+                      _selectionMode = newSelection.first;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                // List of items
+                Expanded(
+                  child: _isLoadingAnimals
+                      ? const Center(child: CircularProgressIndicator())
+                      : _animalsError != null
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.error, color: Colors.red, size: 48),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Error loading: $_animalsError',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      _loadAvailableAnimals();
+                                    },
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
                               ),
-                              subtitle: Text(
-                                'ID: ${animal.animalId} • Farm: ${animal.abbatoirName}',
-                              ),
-                              trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
-                              onTap: () => Navigator.of(context).pop(animal),
-                            );
-                          },
-                        ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+                            )
+                          : _selectionMode == 'animal'
+                              ? _buildAnimalsList()
+                              : _buildSlaughterPartsList(),
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
       ),
     );
 
-    if (selectedAnimal != null) {
-      setState(() => _selectedAnimal = selectedAnimal);
+    if (result != null) {
+      setState(() {
+        if (result['type'] == 'animal') {
+          _selectedAnimal = result['data'] as Animal;
+          _selectedPart = null;
+          _selectionMode = 'animal';
+        } else {
+          _selectedPart = result['data'] as SlaughterPart;
+          _selectedAnimal = null;
+          _selectionMode = 'part';
+        }
+      });
     }
+  }
+
+  Widget _buildAnimalsList() {
+    if (_availableAnimals.isEmpty) {
+      return const Center(
+        child: Text(
+          'No whole animals available.\n\nAnimals must be:\n• Slaughtered\n• Received at your processing unit\n• Not yet used for product creation\n• Have remaining weight available',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _availableAnimals.length,
+      itemBuilder: (context, index) {
+        final animal = _availableAnimals[index];
+        final isSelected = _selectedAnimal?.id == animal.id;
+        final remainingWeight = animal.remainingWeight ?? animal.liveWeight ?? 0.0;
+        
+        return ListTile(
+          leading: const Icon(Icons.pets),
+          title: Text(
+            animal.animalName != null
+                ? '${animal.species} - ${animal.animalName}'
+                : '${animal.species} - ${animal.animalId}',
+          ),
+          subtitle: Text(
+            'ID: ${animal.animalId} • Farm: ${animal.abbatoirName}\nRemaining: ${remainingWeight.toStringAsFixed(2)} kg',
+          ),
+          trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+          onTap: () => Navigator.of(context).pop({
+            'type': 'animal',
+            'data': animal,
+          }),
+        );
+      },
+    );
+  }
+
+  Widget _buildSlaughterPartsList() {
+    if (_availableSlaughterParts.isEmpty) {
+      return const Center(
+        child: Text(
+          'No slaughter parts available.\n\nParts must be:\n• From a slaughtered animal\n• Received at your processing unit\n• Not yet used for product creation\n• Have remaining weight available',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _availableSlaughterParts.length,
+      itemBuilder: (context, index) {
+        final part = _availableSlaughterParts[index];
+        final isSelected = _selectedPart?.id == part.id;
+        final remainingWeight = part.remainingWeight ?? part.weight;
+        
+        return ListTile(
+          leading: const Icon(Icons.clear_all),
+          title: Text(part.partType.displayName),
+          subtitle: Text(
+            'Total: ${part.weight} ${part.weightUnit} • Remaining: ${remainingWeight.toStringAsFixed(2)} ${part.weightUnit}\nAnimal ID: ${part.animalId}',
+          ),
+          trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+          onTap: () => Navigator.of(context).pop({
+            'type': 'part',
+            'data': part,
+          }),
+        );
+      },
+    );
   }
 
   @override
@@ -224,6 +428,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     _buildBatchNumberField(),
                     SizedBox(height: isTablet ? 24 : 16),
                     _buildSubmitButton(),
+                    // Show pipeline when submitting
+                    if (_isSubmitting) ...[
+                      SizedBox(height: isTablet ? 24 : 16),
+                      ProcessingPipeline(
+                        stages: _pipelineManager.stages,
+                        config: _pipelineManager.config,
+                        onRetry: _retryFailedStages,
+                        onCancel: _cancelSubmission,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -232,25 +446,36 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   Widget _buildAnimalSelection() {
+    String selectionText;
+    if (_selectedAnimal != null) {
+      selectionText = _selectedAnimal!.animalName != null
+          ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
+          : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}';
+    } else if (_selectedPart != null) {
+      selectionText = '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - Animal ${_selectedPart!.animalId}';
+    } else {
+      selectionText = 'Select an animal or slaughter part...';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             const Text(
-              'Select Received & Confirmed Animal',
+              'Select Received Animal/Part',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
             const SizedBox(width: 8),
             Tooltip(
-              message: 'Select the animal from which products will be created. Only slaughtered animals that have been confirmed as received at your processing unit and not yet used for product creation are available.',
+              message: 'Select a whole animal or slaughter part that has been confirmed as received at your processing unit. Only items not yet used for product creation are available.',
               child: const Icon(Icons.help_outline, size: 18),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Semantics(
-          label: 'Select a slaughtered animal for the product',
+          label: 'Select a slaughtered animal or part for the product',
           child: ElevatedButton(
             onPressed: _showAnimalSelectionDialog,
             style: ElevatedButton.styleFrom(
@@ -261,13 +486,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    _selectedAnimal != null
-                        ? (_selectedAnimal!.animalName != null
-                            ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
-                            : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}')
-                        : 'Select an animal...',
+                    selectionText,
                     style: TextStyle(
-                      color: _selectedAnimal != null ? Colors.black : Colors.grey,
+                      color: (_selectedAnimal != null || _selectedPart != null) 
+                          ? Colors.black 
+                          : Colors.grey,
                     ),
                   ),
                 ),
@@ -280,7 +503,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Error loading animals: $_animalsError',
+              'Error loading: $_animalsError',
               style: const TextStyle(color: Colors.red, fontSize: 12),
             ),
           ),
@@ -320,16 +543,20 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     setState(() {
                       if (selected) {
                         _selectedCategories.add(category);
-                        _weightControllers[category.id!] = TextEditingController();
-                        _weightUnits[category.id!] = 'kg';
-                        _quantityControllers[category.id!] = TextEditingController(text: '1');
+                        if (category.id != null) {
+                          _weightControllers[category.id!] = TextEditingController();
+                          _weightUnits[category.id!] = 'kg';
+                          _quantityControllers[category.id!] = TextEditingController(text: '1');
+                        }
                       } else {
                         _selectedCategories.remove(category);
-                        _weightControllers[category.id!]?.dispose();
-                        _weightControllers.remove(category.id!);
-                        _weightUnits.remove(category.id!);
-                        _quantityControllers[category.id!]?.dispose();
-                        _quantityControllers.remove(category.id!);
+                        if (category.id != null) {
+                          _weightControllers[category.id!]?.dispose();
+                          _weightControllers.remove(category.id!);
+                          _weightUnits.remove(category.id!);
+                          _quantityControllers[category.id!]?.dispose();
+                          _quantityControllers.remove(category.id!);
+                        }
                       }
                     });
                   },
@@ -351,6 +578,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   Widget _buildWeightFields() {
+    // Calculate available weight for validation
+    final double maxAvailableWeight = _selectedAnimal != null
+        ? (_selectedAnimal!.remainingWeight ?? _selectedAnimal!.liveWeight ?? 0.0)
+        : _selectedPart != null
+            ? (_selectedPart!.remainingWeight ?? _selectedPart!.weight)
+            : 0.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -362,13 +596,39 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             ),
             const SizedBox(width: 8),
             Tooltip(
-              message: 'Specify the quantity and weight for each selected product category. Values must be positive numbers.',
+              message: 'Specify the quantity and weight for each selected product category. Total weight cannot exceed ${maxAvailableWeight.toStringAsFixed(2)} kg.',
               child: const Icon(Icons.help_outline, size: 18),
             ),
           ],
         ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Available weight: ${maxAvailableWeight.toStringAsFixed(2)} kg',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.blue.shade900,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 8),
         ..._selectedCategories.map((category) {
+          if (category.id == null) return const SizedBox.shrink();
           final weightController = _weightControllers[category.id!]!;
           final quantityController = _quantityControllers[category.id!]!;
           final unit = _weightUnits[category.id!]!;
@@ -422,6 +682,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                             final weight = double.tryParse(value);
                             if (weight == null || weight <= 0) {
                               return 'Enter a valid weight';
+                            }
+                            if (weight > maxAvailableWeight) {
+                              return 'Exceeds available weight (${maxAvailableWeight.toStringAsFixed(2)} kg)';
                             }
                             return null;
                           },
@@ -595,9 +858,27 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       return;
     }
 
+    // Check if an animal or part is selected
+    if (_selectedAnimal == null && _selectedPart == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an animal or slaughter part')),
+      );
+      return;
+    }
+
+    // Reset pipeline and start submission
+    _pipelineManager.reset();
+    _pipelineManager.startStage('validation');
+
+    // Get the animal ID (either from selected animal or from the part's animal)
+    final animalId = _selectedAnimal?.id ?? _selectedPart!.animalId;
+    final sourceName = _selectedAnimal != null
+        ? '${_selectedAnimal!.species} (${_selectedAnimal!.animalId})'
+        : '${_selectedPart!.partType.displayName} from Animal ${_selectedPart!.animalId}';
 
     print('🚀 [CreateProductScreen] Starting product creation process...');
-    print('📊 [CreateProductScreen] Selected animal: ${_selectedAnimal?.species} (ID: ${_selectedAnimal?.id})');
+    print('📊 [CreateProductScreen] Source: $sourceName');
+    print('📊 [CreateProductScreen] Animal ID: $animalId');
     print('📂 [CreateProductScreen] Selected categories: ${_selectedCategories.map((c) => c.name).join(', ')}');
 
     setState(() => _isSubmitting = true);
@@ -617,48 +898,99 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     final processingUnitName = authProvider.user?.processingUnitName ?? _processingUnitController.text;
     final processingUnitId = authProvider.user?.processingUnitId?.toString() ?? _processingUnitController.text;
 
-    for (int i = 0; i < _selectedCategories.length; i++) {
-      final category = _selectedCategories[i];
-      final batchNumber = _selectedCategories.length > 1
-          ? '${baseBatchNumber}_${i + 1}'
-          : baseBatchNumber;
+    try {
+      // Validation stage complete
+      _pipelineManager.completeStage('validation');
+      _pipelineManager.startStage('preparation');
 
-      print('🔄 [CreateProductScreen] Creating product ${i + 1}/${_selectedCategories.length} for category: ${category.name}');
+      // Simulate preparation progress
+      for (double progress = 0.0; progress <= 1.0; progress += 0.2) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        _pipelineManager.updateProgress('preparation', progress);
+      }
 
-      final product = Product(
-        animal: _selectedAnimal!.id!,
-        productType: 'meat', // Must match backend choices
-        createdAt: DateTime.now(),
-        name: '${category.name} from ${_selectedAnimal!.species}',
-        weight: double.parse(_weightControllers[category.id!]!.text),
-        weightUnit: _weightUnits[category.id!]!,
-        quantity: double.parse(_quantityControllers[category.id!]!.text),
-        batchNumber: batchNumber,
-        price: 0.0, // Default
-        description: 'Product created from slaughtered animal',
-        manufacturer: 'Processing Unit $processingUnitName',
-        processingUnit: int.tryParse(processingUnitId) ?? 0,
-        timeline: [],
-      );
+      _pipelineManager.completeStage('preparation');
+      _pipelineManager.startStage('submission');
 
-      print('📦 [CreateProductScreen] Product data: ${product.toMapForCreate()}');
+      for (int i = 0; i < _selectedCategories.length; i++) {
+        final category = _selectedCategories[i];
+        final batchNumber = _selectedCategories.length > 1
+            ? '${baseBatchNumber}_${i + 1}'
+            : baseBatchNumber;
 
-      try {
-        final createdProduct = await provider.createProduct(product);
-        if (createdProduct != null) {
-          print('✅ [CreateProductScreen] Product created successfully: ${createdProduct.name} (Batch: ${createdProduct.batchNumber})');
-          createdProducts.add(createdProduct);
-        } else {
-          final errorMsg = 'Product creation returned null for ${category.name}';
-          print('❌ [CreateProductScreen] $errorMsg');
-          print('🔍 [CreateProductScreen] Provider error: ${provider.error}');
+        // Update progress for current product
+        final progress = (i + 1) / _selectedCategories.length;
+        _pipelineManager.updateProgress('submission', progress);
+
+        print('🔄 [CreateProductScreen] Creating product ${i + 1}/${_selectedCategories.length} for category: ${category.name}');
+
+        final productName = _selectedAnimal != null
+            ? '${category.name} from ${_selectedAnimal!.species}'
+            : '${category.name} from ${_selectedPart!.partType.displayName}';
+
+        final product = Product(
+          animal: animalId,
+          slaughterPartId: _selectedPart?.id, // Include slaughter part ID if selected
+          productType: 'meat', // Must match backend choices
+          createdAt: DateTime.now(),
+          name: productName,
+          weight: double.parse(_weightControllers[category.id!]!.text),
+          weightUnit: _weightUnits[category.id!]!,
+          quantity: double.parse(_quantityControllers[category.id!]!.text),
+          batchNumber: batchNumber,
+          price: 0.0, // Default
+          description: _selectedAnimal != null
+              ? 'Product created from slaughtered animal'
+              : 'Product created from slaughter part: ${_selectedPart!.partType.displayName}',
+          manufacturer: 'Processing Unit $processingUnitName',
+          processingUnit: int.tryParse(processingUnitId) ?? 0,
+          timeline: [],
+          id: null, // Will be set by backend
+        );
+
+        print('📦 [CreateProductScreen] Product data: ${product.toMapForCreate()}');
+
+        try {
+          final createdProduct = await provider.createProduct(product);
+          if (createdProduct != null) {
+            print('✅ [CreateProductScreen] Product created successfully: ${createdProduct.name} (Batch: ${createdProduct.batchNumber})');
+            createdProducts.add(createdProduct);
+          } else {
+            final errorMsg = 'Product creation returned null for ${category.name}';
+            print('❌ [CreateProductScreen] $errorMsg');
+            print('🔍 [CreateProductScreen] Provider error: ${provider.error}');
+            errors.add(errorMsg);
+          }
+        } catch (e) {
+          final errorMsg = 'Exception creating product for ${category.name}: $e';
+          print('💥 [CreateProductScreen] $errorMsg');
           errors.add(errorMsg);
         }
-      } catch (e) {
-        final errorMsg = 'Exception creating product for ${category.name}: $e';
-        print('💥 [CreateProductScreen] $errorMsg');
-        errors.add(errorMsg);
       }
+
+      _pipelineManager.completeStage('submission');
+      _pipelineManager.startStage('completion');
+
+      // Simulate completion progress
+      for (double progress = 0.0; progress <= 1.0; progress += 0.5) {
+        await Future.delayed(const Duration(milliseconds: 50));
+        _pipelineManager.updateProgress('completion', progress);
+      }
+
+      _pipelineManager.completeStage('completion');
+
+      // Reload available animals and parts to reflect updated weights
+      print('🔄 [CreateProductScreen] Reloading available animals/parts after product creation...');
+      await _loadAvailableAnimals();
+      print('✅ [CreateProductScreen] Available list reloaded');
+      
+      // Clear selection to allow creating more products
+      _selectedAnimal = null;
+      _selectedPart = null;
+
+    } catch (e) {
+      print('💥 [CreateProductScreen] Pipeline error: $e');
+      _pipelineManager.failStage('submission', 'Unexpected error during processing: $e');
     }
 
     setState(() {
@@ -709,6 +1041,21 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     } else {
       print('🎉 [CreateProductScreen] All products created successfully');
     }
+  }
+
+  void _retryFailedStages() {
+    // Reset failed stages and retry submission
+    _pipelineManager.reset();
+    _submitForm();
+  }
+
+  void _cancelSubmission() {
+    // Cancel the current submission
+    setState(() => _isSubmitting = false);
+    _pipelineManager.cancelStage('submission');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Product creation cancelled')),
+    );
   }
 
   Future<void> _printSingleProduct(Product product) async {

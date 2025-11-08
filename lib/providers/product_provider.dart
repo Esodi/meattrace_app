@@ -196,9 +196,17 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Map<String, dynamic>> transferProducts(List<int> productIds, int shopId) async {
+  Future<Map<String, dynamic>> transferProducts(
+    List<int> productIds, 
+    int shopId,
+    {Map<int, double>? productQuantities}
+  ) async {
     try {
-      final response = await _productService.transferProducts(productIds, shopId);
+      final response = await _productService.transferProducts(
+        productIds, 
+        shopId,
+        productQuantities: productQuantities,
+      );
       // Refresh products list after transfer
       await fetchProducts();
       return response;

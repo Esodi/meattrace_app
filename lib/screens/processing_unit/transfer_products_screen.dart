@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/product.dart';
 import '../../providers/product_provider.dart';
-import '../../services/dio_client.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/theme.dart';
 import '../../utils/app_typography.dart';
@@ -24,6 +23,7 @@ class TransferProductsScreen extends StatefulWidget {
 class _TransferProductsScreenState extends State<TransferProductsScreen> {
   int _currentStep = 0;
   final List<Product> _selectedProducts = [];
+  final Map<int, double> _productQuantities = {}; // Store custom quantities
   Map<String, dynamic>? _selectedShop;
   bool _isLoading = false;
   bool _isTransferring = false;
@@ -126,7 +126,14 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
       final shopId = _selectedShop!['id'];
       final productIds = _selectedProducts.map((p) => p.id!).toList();
 
-      await productProvider.transferProducts(productIds, shopId);
+      // Prepare quantity map - only include products with custom quantities
+      final Map<int, double>? quantities = _productQuantities.isEmpty ? null : _productQuantities;
+
+      await productProvider.transferProducts(
+        productIds, 
+        shopId,
+        productQuantities: quantities,
+      );
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,8 +163,11 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     setState(() {
       if (_selectedProducts.contains(product)) {
         _selectedProducts.remove(product);
+        _productQuantities.remove(product.id); // Remove custom quantity when deselecting
       } else {
         _selectedProducts.add(product);
+        // Initialize with full quantity
+        _productQuantities[product.id!] = product.quantity;
       }
     });
   }
@@ -166,12 +176,17 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     setState(() {
       _selectedProducts.clear();
       _selectedProducts.addAll(_filteredProducts);
+      // Initialize quantities for all selected products
+      for (var product in _filteredProducts) {
+        _productQuantities[product.id!] = product.quantity;
+      }
     });
   }
 
   void _deselectAllProducts() {
     setState(() {
       _selectedProducts.clear();
+      _productQuantities.clear(); // Clear custom quantities
     });
   }
 
@@ -386,49 +401,185 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
 
   Widget _buildProductCard(Product product) {
     final isSelected = _selectedProducts.contains(product);
+    final currentQuantity = _productQuantities[product.id] ?? product.quantity;
     
     return CustomCard(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.zero,
-      child: CheckboxListTile(
-        value: isSelected,
-        onChanged: (value) => _toggleProductSelection(product),
-        activeColor: AppTheme.primaryGreen,
-        title: Text(
-          product.name,
-          style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              'Batch: ${product.batchNumber}',
-              style: AppTypography.bodySmall(),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          // Product selection row
+          Row(
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: (value) => _toggleProductSelection(product),
+                activeColor: AppTheme.primaryGreen,
+              ),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.inventory_2,
+                  color: AppTheme.primaryGreen,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Batch: ${product.batchNumber}',
+                      style: AppTypography.bodySmall(),
+                    ),
+                    Text(
+                      '${product.productType} • ${product.weight ?? 'N/A'} ${product.weightUnit}',
+                      style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
+                    ),
+                    Text(
+                      'Price: \$${product.price.toStringAsFixed(2)} • Available: ${product.quantity}',
+                      style: AppTypography.bodySmall().copyWith(color: AppTheme.primaryGreen),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          // Quantity adjustment (shown only when selected)
+          if (isSelected) ...[
+            const SizedBox(height: 12),
+            const Divider(),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Transfer Quantity',
+                        style: AppTypography.bodySmall().copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          // Decrease button
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                final newQty = (currentQuantity - 1).clamp(1.0, product.quantity);
+                                _productQuantities[product.id!] = newQty;
+                              });
+                            },
+                            icon: const Icon(Icons.remove_circle_outline),
+                            color: AppTheme.secondaryBurgundy,
+                          ),
+                          
+                          // Quantity input
+                          Expanded(
+                            child: TextField(
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              textAlign: TextAlign.center,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                suffixText: 'of ${product.quantity.toStringAsFixed(0)}',
+                              ),
+                              controller: TextEditingController(
+                                text: currentQuantity.toStringAsFixed(0),
+                              )..selection = TextSelection.fromPosition(
+                                TextPosition(offset: currentQuantity.toStringAsFixed(0).length),
+                              ),
+                              onChanged: (value) {
+                                final parsed = double.tryParse(value);
+                                if (parsed != null && parsed > 0 && parsed <= product.quantity) {
+                                  setState(() {
+                                    _productQuantities[product.id!] = parsed;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          
+                          // Increase button
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                final newQty = (currentQuantity + 1).clamp(1.0, product.quantity);
+                                _productQuantities[product.id!] = newQty;
+                              });
+                            },
+                            icon: const Icon(Icons.add_circle_outline),
+                            color: AppTheme.primaryGreen,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Quick set to max button
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _productQuantities[product.id!] = product.quantity;
+                    });
+                  },
+                  icon: const Icon(Icons.all_inclusive, size: 16),
+                  label: const Text('All'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.primaryGreen,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              '${product.productType} • ${product.weight ?? 'N/A'} ${product.weightUnit}',
-              style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
-            ),
-            Text(
-              'Price: \$${product.price.toStringAsFixed(2)} • Qty: ${product.quantity}',
-              style: AppTypography.bodySmall().copyWith(color: AppTheme.primaryGreen),
-            ),
+            if (currentQuantity < product.quantity) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningOrange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: AppTheme.warningOrange,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Remaining ${(product.quantity - currentQuantity).toStringAsFixed(0)} will stay in inventory',
+                        style: AppTypography.caption().copyWith(
+                          color: AppTheme.warningOrange,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ),
-        secondary: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.inventory_2,
-            color: AppTheme.primaryGreen,
-            size: 28,
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -465,8 +616,6 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
   }
 
   Widget _buildShopCard(Map<String, dynamic> shop) {
-    final isSelected = _selectedShop?['id'] == shop['id'];
-    
     return CustomCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.zero,
@@ -589,62 +738,83 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
         ),
         const SizedBox(height: 12),
 
-        ..._selectedProducts.map((product) => CustomCard(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+        ..._selectedProducts.map((product) {
+          final transferQty = _productQuantities[product.id] ?? product.quantity;
+          final isPartial = transferQty < product.quantity;
+          
+          return CustomCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.inventory_2,
+                    color: AppTheme.primaryGreen,
+                    size: 24,
+                  ),
                 ),
-                child: Icon(
-                  Icons.inventory_2,
-                  color: AppTheme.primaryGreen,
-                  size: 24,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        style: AppTypography.bodyMedium().copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Batch: ${product.batchNumber}',
+                        style: AppTypography.bodySmall().copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      if (isPartial)
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.warningOrange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Partial: ${transferQty.toStringAsFixed(0)} of ${product.quantity.toStringAsFixed(0)}',
+                            style: AppTypography.caption().copyWith(
+                              color: AppTheme.warningOrange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      product.name,
+                      '\$${(product.price * transferQty / product.quantity).toStringAsFixed(2)}',
                       style: AppTypography.bodyMedium().copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryGreen,
                       ),
                     ),
                     Text(
-                      'Batch: ${product.batchNumber}',
-                      style: AppTypography.bodySmall().copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                      '${transferQty.toStringAsFixed(0)} units',
+                      style: AppTypography.bodySmall(),
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '\$${product.price.toStringAsFixed(2)}',
-                    style: AppTypography.bodyMedium().copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryGreen,
-                    ),
-                  ),
-                  Text(
-                    '${product.quantity} units',
-                    style: AppTypography.bodySmall(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        )),
+              ],
+            ),
+          );
+        }),
 
         const SizedBox(height: 16),
 
@@ -700,7 +870,10 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
   }
 
   double _calculateTotalValue() {
-    return _selectedProducts.fold(0.0, (sum, product) => sum + (product.price * product.quantity));
+    return _selectedProducts.fold(0.0, (sum, product) {
+      final transferQty = _productQuantities[product.id] ?? product.quantity;
+      return sum + (product.price * transferQty / product.quantity);
+    });
   }
 
   Widget _buildEmptyState() {

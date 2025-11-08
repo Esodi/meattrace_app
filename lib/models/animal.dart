@@ -110,6 +110,7 @@ class SlaughterPart {
   final int animalId;
   final SlaughterPartType partType;
   final double weight;
+  final double? remainingWeight;
   final String weightUnit;
   final String? description;
   final DateTime createdAt;
@@ -134,6 +135,7 @@ class SlaughterPart {
     required this.animalId,
     required this.partType,
     required this.weight,
+    this.remainingWeight,
     required this.weightUnit,
     this.description,
     required this.createdAt,
@@ -154,6 +156,9 @@ class SlaughterPart {
       animalId: int.parse(json['animal'].toString()),
       partType: SlaughterPartTypeExtension.fromString(json['part_type']),
       weight: json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString()),
+      remainingWeight: json['remaining_weight'] != null 
+          ? (json['remaining_weight'] is num ? (json['remaining_weight'] as num).toDouble() : double.parse(json['remaining_weight'].toString()))
+          : null,
       weightUnit: json['weight_unit'],
       description: json['description'],
       createdAt: DateTime.parse(json['created_at']),
@@ -175,6 +180,7 @@ class SlaughterPart {
       'animal': animalId,
       'part_type': partType.value,
       'weight': weight,
+      'remaining_weight': remainingWeight,
       'weight_unit': weightUnit,
       'description': description,
       'created_at': createdAt.toIso8601String(),
@@ -382,6 +388,7 @@ class Animal {
   final String species;
   final double age;
   final double? liveWeight;
+  final double? remainingWeight;
   final DateTime createdAt;
   final bool slaughtered;
   final DateTime? slaughteredAt;
@@ -401,6 +408,8 @@ class Animal {
   // Receive fields
   final int? receivedBy;
   final DateTime? receivedAt;
+  // Product tracking
+  final bool usedInProduct;
   // Carcass measurement
   final CarcassMeasurement? carcassMeasurement;
   // Slaughter parts
@@ -422,6 +431,7 @@ class Animal {
     required this.species,
     required this.age,
     required this.liveWeight,
+    this.remainingWeight,
     required this.createdAt,
     required this.slaughtered,
     this.slaughteredAt,
@@ -439,6 +449,7 @@ class Animal {
     this.transferredAt,
     this.receivedBy,
     this.receivedAt,
+    this.usedInProduct = false,
     this.carcassMeasurement,
     this.slaughterParts = const [],
     this.photo,
@@ -500,6 +511,7 @@ class Animal {
         species: json['species'],
         age: json['age'] is num ? (json['age'] as num).toDouble() : double.parse(json['age'].toString()),
         liveWeight: json['live_weight'] != null ? (json['live_weight'] is num ? (json['live_weight'] as num).toDouble() : double.parse(json['live_weight'].toString())) : null,
+        remainingWeight: json['remaining_weight'] != null ? (json['remaining_weight'] is num ? (json['remaining_weight'] as num).toDouble() : double.parse(json['remaining_weight'].toString())) : null,
         createdAt: DateTime.parse(json['created_at']),
         slaughtered: json['slaughtered'],
         slaughteredAt: json['slaughtered_at'] != null
@@ -523,6 +535,7 @@ class Animal {
         receivedAt: json['received_at'] != null
             ? DateTime.parse(json['received_at'])
             : null,
+        usedInProduct: json['used_in_product'] ?? false,
         carcassMeasurement: carcassMeasurement,
         slaughterParts: slaughterParts,
         photo: json['photo'],
@@ -548,6 +561,7 @@ class Animal {
       'species': species,
       'age': age,
       'live_weight': liveWeight,
+      'remaining_weight': remainingWeight,
       'created_at': createdAt.toIso8601String(),
       'slaughtered': slaughtered,
       'slaughtered_at': slaughteredAt?.toIso8601String(),
@@ -563,6 +577,7 @@ class Animal {
       'transferred_at': transferredAt?.toIso8601String(),
       'received_by': receivedBy,
       'received_at': receivedAt?.toIso8601String(),
+      'used_in_product': usedInProduct,
       'carcass_measurement': carcassMeasurement?.toMap(),
       'slaughter_parts': slaughterParts.map((part) => part.toMap()).toList(),
       'photo': photo,

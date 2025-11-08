@@ -154,14 +154,25 @@ class AnimalProvider with ChangeNotifier {
         print('    - Animal ID: ${animal.animalId}');
         print('    - Species: ${animal.species}');
         print('    - Slaughtered: ${animal.slaughtered}');
-        print('    - Health Status: ${animal.healthStatus}');
-        print('    - Farmer ID: ${animal.farmer}');
         print('    - Transferred To: ${animal.transferredTo}');
+        print('    - Received By: ${animal.receivedBy} ${animal.receivedBy != null ? "✅ RECEIVED" : "⏳ PENDING"}');
+        print('    - Received At: ${animal.receivedAt}');
+        print('    - Farmer ID: ${animal.farmer}');
         print('    - Created: ${animal.createdAt}');
       }
       if (_animals.length > 10) {
         print('... and ${_animals.length - 10} more animals');
       }
+      
+      // Summary statistics
+      final receivedCount = _animals.where((a) => a.receivedBy != null).length;
+      final pendingCount = _animals.where((a) => a.transferredTo != null && a.receivedBy == null).length;
+      final slaughteredCount = _animals.where((a) => a.slaughtered).length;
+      print('');
+      print('📊 SUMMARY STATISTICS:');
+      print('   ✅ Received animals: $receivedCount');
+      print('   ⏳ Pending receipt: $pendingCount');
+      print('   🔪 Slaughtered: $slaughteredCount');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       
       await _saveToDatabase();
@@ -392,14 +403,27 @@ class AnimalProvider with ChangeNotifier {
     List<Map<String, dynamic>>? partRejections,
   }) async {
     try {
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🌐 [ANIMAL_PROVIDER] Calling receiveAnimals API...');
+      print('  Animal IDs: $animalIds');
+      print('  Part receives: ${partReceives?.length ?? 0}');
+      print('  Animal rejections: ${animalRejections?.length ?? 0}');
+      print('  Part rejections: ${partRejections?.length ?? 0}');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       final response = await _animalService.receiveAnimals(
         animalIds,
         partReceives: partReceives,
         animalRejections: animalRejections,
         partRejections: partRejections,
       );
+      
+      print('✅ [ANIMAL_PROVIDER] receiveAnimals API response: $response');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       return response;
     } catch (e) {
+      print('❌ [ANIMAL_PROVIDER] receiveAnimals error: $e');
       _error = e.toString();
       notifyListeners();
       rethrow;

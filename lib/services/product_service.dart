@@ -148,12 +148,25 @@ class ProductService {
     }
   }
 
-  Future<Map<String, dynamic>> transferProducts(List<int> productIds, int shopId) async {
+  Future<Map<String, dynamic>> transferProducts(
+    List<int> productIds, 
+    int shopId, 
+    {Map<int, double>? productQuantities}
+  ) async {
     try {
+      // Prepare transfer data with quantities
+      List<Map<String, dynamic>> transfers = productIds.map((productId) {
+        final Map<String, dynamic> transfer = {'product_id': productId};
+        if (productQuantities != null && productQuantities.containsKey(productId)) {
+          transfer['quantity'] = productQuantities[productId]!;
+        }
+        return transfer;
+      }).toList();
+
       final response = await _dioClient.dio.post(
         '${Constants.productsEndpoint}transfer/',
         data: {
-          'product_ids': productIds,
+          'transfers': transfers,
           'shop_id': shopId,
         },
       );

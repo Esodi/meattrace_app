@@ -21,6 +21,7 @@ import 'providers/user_management_provider.dart';
 import 'providers/activity_provider.dart';
 import 'providers/processing_unit_management_provider.dart';
 import 'providers/shop_management_provider.dart';
+import 'providers/notification_provider.dart';
 import 'services/api_service.dart';
 
 // Modern UI screens (actively used)
@@ -36,6 +37,7 @@ import 'screens/processing_unit/modern_processor_home_screen.dart';
 import 'screens/processing_unit/products_list_screen.dart';
 import 'screens/processing_unit/product_detail_screen.dart';
 import 'screens/processing_unit/receive_animals_screen.dart';
+import 'screens/processing_unit/pending_processing_screen.dart';
 import 'screens/processing_unit/create_product_screen.dart';
 import 'screens/processing_unit/processor_settings_screen.dart';
 import 'screens/processing_unit/processor_qr_codes_screen.dart';
@@ -68,6 +70,7 @@ import 'screens/farmer/transfer_animals_screen.dart';
 import 'screens/farmer/slaughter_animal_screen.dart';
 import 'screens/farmer/settings_screen.dart';
 import 'screens/farmer/farmer_profile_screen.dart';
+import 'screens/farmer/notification_list_screen.dart';
 import 'screens/common/coming_soon_screen.dart';
 import 'screens/common/user_profile_screen.dart';
 import 'screens/common/settings_screen.dart';
@@ -79,6 +82,24 @@ import 'utils/initialization_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set up global error handlers to catch ALL exceptions
+  FlutterError.onError = (FlutterErrorDetails details) {
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('💥 FLUTTER ERROR CAUGHT IN GLOBAL HANDLER');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('Exception: ${details.exception}');
+    debugPrint('Exception type: ${details.exception.runtimeType}');
+    debugPrint('Library: ${details.library}');
+    debugPrint('Context: ${details.context}');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('Stack trace:');
+    debugPrint(details.stack.toString());
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Call the default error handler too
+    FlutterError.presentError(details);
+  };
 
   // Print network diagnostics for debugging (run in background)
   InitializationHelper.runInBackground(
@@ -140,11 +161,36 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => YieldTrendsProvider()),
         ChangeNotifierProvider(create: (_) => WeatherProvider()),
         ChangeNotifierProvider(create: (_) => UserManagementProvider()),
-        ChangeNotifierProvider(create: (_) => ActivityProvider(ApiService())),
+        ChangeNotifierProvider(
+          create: (context) {
+            debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            debugPrint('🏗️ MAIN.DART - Creating ActivityProvider');
+            debugPrint('   Time: ${DateTime.now()}');
+            debugPrint('   Context: ${context.hashCode}');
+            try {
+              final apiService = ApiService();
+              debugPrint('   ApiService created: ${apiService.hashCode}');
+              
+              final provider = ActivityProvider(apiService);
+              debugPrint('✅ ActivityProvider created successfully: ${provider.hashCode}');
+              debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              return provider;
+            } catch (e, stack) {
+              debugPrint('❌ FAILED to create ActivityProvider!');
+              debugPrint('   Error: $e');
+              debugPrint('   Type: ${e.runtimeType}');
+              debugPrint('   Stack trace:');
+              debugPrint(stack.toString().split('\n').take(10).join('\n'));
+              debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              rethrow;
+            }
+          },
+        ),
         
         // User Management providers
         ChangeNotifierProvider(create: (_) => ProcessingUnitManagementProvider()),
         ChangeNotifierProvider(create: (_) => ShopManagementProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: Consumer2<ThemeProvider, AuthProvider>(
         builder: (context, themeProvider, authProvider, _) {
@@ -239,6 +285,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 path: '/farmer/profile',
                 builder: (context, state) => const FarmerProfileScreen(),
               ),
+              GoRoute(
+                path: '/farmer/notifications',
+                builder: (context, state) => const NotificationListScreen(),
+              ),
               
               // Processor routes
               GoRoute(
@@ -255,6 +305,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               GoRoute(
                 path: '/receive-animals',
                 builder: (context, state) => const ReceiveAnimalsScreen(),
+              ),
+              GoRoute(
+                path: '/pending-processing',
+                builder: (context, state) => const PendingProcessingScreen(),
               ),
               GoRoute(
                 path: '/create-product',
@@ -299,6 +353,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 builder: (context, state) => const ProcessingUnitRegistrationScreen(),
               ),
               GoRoute(
+                name: 'processing-unit-users',
                 path: '/processing-unit/users',
                 builder: (context, state) {
                   final unitId = int.parse(state.uri.queryParameters['unitId'] ?? '0');

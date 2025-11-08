@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../services/api_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -12,6 +14,7 @@ import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_card.dart';
 import '../../widgets/livestock/animal_card.dart';
 import '../../widgets/livestock/activity_timeline.dart';
+import '../../widgets/notification/notification_badge.dart';
 
 /// Modern Farmer Dashboard with Material Design 3
 /// Features: Stats overview, recent animals, quick actions, activity timeline
@@ -23,17 +26,19 @@ class ModernFarmerHomeScreen extends StatefulWidget {
 }
 
 class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
-    with TickerProviderStateMixin, RouteAware {
+    with TickerProviderStateMixin, RouteAware, WidgetsBindingObserver {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
   int _transferredCount = 0;
   bool _isLoadingTransferred = false;
   int _selectedIndex = 0;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _fadeController = AnimationController(
       vsync: this,
@@ -46,72 +51,155 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fadeController.forward();
       _loadData();
+      _startAutoRefresh();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes back to foreground
+      debugPrint('🔄 App resumed - refreshing Farmer Dashboard');
+      _loadData();
+      _startAutoRefresh();
+    } else if (state == AppLifecycleState.paused) {
+      // Pause auto-refresh when app is in background
+      debugPrint('⏸️ App paused - stopping auto-refresh');
+      _autoRefreshTimer?.cancel();
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🔄 [FarmerDashboard] didChangeDependencies CALLED');
+    print('   Time: ${DateTime.now()}');
+    print('   mounted: $mounted');
+    print('   Context: ${context.hashCode}');
+    print('   Stack trace:');
+    print(StackTrace.current.toString().split('\n').take(8).join('\n'));
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     // Refresh data when returning to this screen
-    print('🔄 [FarmerDashboard] didChangeDependencies - Refreshing data');
-    _loadData();
+    // Use post-frame callback to avoid calling setState during build
+    print('� Scheduling data refresh via addPostFrameCallback');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('⏰ PostFrameCallback executing - calling _loadData()');
+      if (mounted) {
+        _loadData();
+      } else {
+        print('⚠️ Widget not mounted, skipping _loadData()');
+      }
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _fadeController.dispose();
+    _autoRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    // Auto-refresh data every 30 seconds for dynamic updates
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        debugPrint('🔄 Auto-refreshing Farmer Dashboard data...');
+        _loadData();
+      }
+    });
   }
 
   Future<void> _loadData() async {
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     print('🏠 FARMER_DASHBOARD - LOAD_DATA START');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-    final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
-    
-    print('📊 Provider state BEFORE fetch:');
-    print('   - animalProvider.animals.length: ${animalProvider.animals.length}');
-    print('   - animalProvider.isLoading: ${animalProvider.isLoading}');
-    print('   - animalProvider.error: ${animalProvider.error}');
-    print('   - activityProvider.activities.length: ${activityProvider.activities.length}');
+    print('   Time: ${DateTime.now()}');
+    print('   Widget mounted: $mounted');
+    print('   Context: ${context.hashCode}');
+    print('   Called from: ${StackTrace.current.toString().split('\n').take(3).join('\n')}');
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    print('📡 Starting parallel fetch of animals, activities, and dashboard...');
     try {
-      final apiService = ApiService();
-      await Future.wait([
-        animalProvider.fetchAnimals(slaughtered: null), // Fetch ALL animals (active + slaughtered)
-        activityProvider.fetchActivities(),
-        apiService.fetchDashboard(), // Fetch dashboard data
-        apiService.fetchActivities(), // Fetch activity data
-      ]);
+      print('🔍 Attempting to get AnimalProvider...');
+      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      print('✅ AnimalProvider obtained successfully');
       
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('✅ FETCH COMPLETE');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('📊 Provider state AFTER fetch:');
+      print('📊 Provider state BEFORE fetch:');
       print('   - animalProvider.animals.length: ${animalProvider.animals.length}');
       print('   - animalProvider.isLoading: ${animalProvider.isLoading}');
       print('   - animalProvider.error: ${animalProvider.error}');
-      print('   - activityProvider.activities.length: ${activityProvider.activities.length}');
+      
+      // Try to get ActivityProvider, but don't fail if it's not available
+      ActivityProvider? activityProvider;
+      try {
+        print('🔍 Attempting to get ActivityProvider...');
+        activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+        print('✅ ActivityProvider obtained successfully');
+        print('   - activityProvider.activities.length: ${activityProvider.activities.length}');
+        print('   - activityProvider.isLoading: ${activityProvider.isLoading}');
+        print('   - activityProvider instance: ${activityProvider.hashCode}');
+      } catch (e, stack) {
+        print('❌ ActivityProvider access FAILED!');
+        print('   Error: $e');
+        print('   Type: ${e.runtimeType}');
+        print('   Stack: ${stack.toString().split('\n').take(10).join('\n')}');
+      }
+      
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      print('📡 Starting parallel fetch of animals, activities, and dashboard...');
+      try {
+        final apiService = ApiService();
+        final futures = <Future>[
+          animalProvider.fetchAnimals(slaughtered: null), // Fetch ALL animals (active + slaughtered)
+          apiService.fetchDashboard(), // Fetch dashboard data
+        ];
+        
+        // Only fetch activities if provider is available
+        if (activityProvider != null) {
+          futures.add(activityProvider.fetchActivities());
+          futures.add(apiService.fetchActivities()); // Fetch activity data
+        }
+        
+        await Future.wait(futures);
+        
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        print('✅ FETCH COMPLETE');
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        print('📊 Provider state AFTER fetch:');
+        print('   - animalProvider.animals.length: ${animalProvider.animals.length}');
+        print('   - animalProvider.isLoading: ${animalProvider.isLoading}');
+        print('   - animalProvider.error: ${animalProvider.error}');
+        if (activityProvider != null) {
+          print('   - activityProvider.activities.length: ${activityProvider.activities.length}');
+        }
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      } catch (e, stackTrace) {
+        print('❌ ERROR in parallel fetch: $e');
+        print('❌ Stack trace: $stackTrace');
+      }
+      
+      print('🔄 Loading transferred count...');
+      await _loadTransferredCount();
+      
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('� FARMER_DASHBOARD - LOAD_DATA COMPLETE');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📊 Final counts:');
+      print('   - Total animals: ${animalProvider.animals.length}');
+      print('   - Transferred count: $_transferredCount');
+      if (activityProvider != null) {
+        print('   - Activities: ${activityProvider.activities.length}');
+      }
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } catch (e, stackTrace) {
-      print('❌ ERROR in parallel fetch: $e');
+      print('❌ CRITICAL ERROR in _loadData: $e');
       print('❌ Stack trace: $stackTrace');
     }
-    
-    print('🔄 Loading transferred count...');
-    await _loadTransferredCount();
-    
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('� FARMER_DASHBOARD - LOAD_DATA COMPLETE');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('📊 Final counts:');
-    print('   - Total animals: ${animalProvider.animals.length}');
-    print('   - Transferred count: $_transferredCount');
-    print('   - Activities: ${activityProvider.activities.length}');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
   Future<void> _loadTransferredCount() async {
@@ -215,14 +303,19 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Notifications',
-            color: AppColors.textPrimary,
-            onPressed: () {
-              // TODO: Navigate to notifications
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications coming soon!')),
+          Consumer<NotificationProvider>(
+            builder: (context, notificationProvider, child) {
+              return NotificationBadge(
+                count: notificationProvider.unreadCount,
+                showZero: false,
+                child: IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  tooltip: 'Notifications',
+                  color: AppColors.textPrimary,
+                  onPressed: () {
+                    context.push('/farmer/notifications');
+                  },
+                ),
               );
             },
           ),
@@ -262,22 +355,55 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.only(top: AppTheme.space24),
-                  child: Consumer<ActivityProvider>(
-                    builder: (context, activityProvider, child) {
-                      if (activityProvider.isLoading && activityProvider.activities.isEmpty) {
+                  child: Builder(
+                    builder: (context) {
+                      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                      print('🎯 ACTIVITY CONSUMER - BUILD START');
+                      print('   Time: ${DateTime.now()}');
+                      print('   Context: ${context.hashCode}');
+                      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                      
+                      try {
+                        print('🔍 Attempting Consumer<ActivityProvider>...');
+                        return Consumer<ActivityProvider>(
+                          builder: (context, activityProvider, child) {
+                            print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                            print('🎨 ACTIVITY CONSUMER - BUILDER CALLED');
+                            print('   Provider instance: ${activityProvider.hashCode}');
+                            print('   isLoading: ${activityProvider.isLoading}');
+                            print('   activities.length: ${activityProvider.activities.length}');
+                            print('   error: ${activityProvider.error}');
+                            print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                            
+                            if (activityProvider.isLoading && activityProvider.activities.isEmpty) {
+                              print('⏭️ Skipping render - provider is loading with no activities');
+                              return const SizedBox.shrink();
+                            }
+                            
+                            print('✅ Rendering ActivityTimeline with ${activityProvider.getRecentActivities(limit: 5).length} activities');
+                            return ActivityTimeline(
+                              activities: activityProvider.getRecentActivities(limit: 5),
+                              onViewAll: () {
+                                // TODO: Navigate to full activity history
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Activity history coming soon!'),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      } catch (e, stack) {
+                        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                        print('❌ ACTIVITY CONSUMER - EXCEPTION CAUGHT!');
+                        print('   Error: $e');
+                        print('   Type: ${e.runtimeType}');
+                        print('   Stack trace:');
+                        print(stack.toString().split('\n').take(15).join('\n'));
+                        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                         return const SizedBox.shrink();
                       }
-                      return ActivityTimeline(
-                        activities: activityProvider.getRecentActivities(limit: 5),
-                        onViewAll: () {
-                          // TODO: Navigate to full activity history
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Activity history coming soon!'),
-                            ),
-                          );
-                        },
-                      );
                     },
                   ),
                 ),

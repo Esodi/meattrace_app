@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -12,9 +14,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_card.dart';
-import '../../widgets/core/status_badge.dart';
 import '../../widgets/core/role_avatar.dart';
-import '../../widgets/livestock/product_card.dart';
 
 /// Modern Processing Unit Dashboard with Material Design 3
 /// Features: Production metrics, pending transfers, product inventory, quality overview
@@ -26,21 +26,39 @@ class ModernProcessorHomeScreen extends StatefulWidget {
 }
 
 class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+   late AnimationController _fadeController;
+   late Animation<double> _fadeAnimation;
+   late AnimationController _productsAnimationController;
+   late List<Animation<double>> _productAnimations;
 
-  int _pendingAnimalsCount = 0;
-  bool _isLoadingPending = false;
-  int _selectedIndex = 0;
-  ProductionStats? _productionStats;
-  bool _isLoadingStats = false;
-  Map<String, dynamic>? _pipeline;
-  bool _isLoadingPipeline = false;
+   int _pendingAnimalsCount = 0;
+   bool _isLoadingPending = false;
+   int _selectedIndex = 0;
+   ProductionStats? _productionStats;
+   bool _isLoadingStats = false;
+   Map<String, dynamic>? _pipeline;
+   bool _isLoadingPipeline = false;
+   Timer? _pipelineRefreshTimer;
+   Timer? _autoRefreshTimer;
+   late AnimationController _pipelineAnimationController;
+   late List<Animation<double>> _pipelineStageAnimations;
+   late Animation<double> _pipelinePulseAnimation;
+
+  // Getter to return pending count from production stats or fallback to local count
+  int get pendingCount {
+    return _productionStats?.pending ?? _pendingAnimalsCount;
+  }
+
+  // Getter to return received count from production stats
+  int get receivedCount {
+    return _productionStats?.received ?? 0;
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _fadeController = AnimationController(
       vsync: this,
@@ -50,16 +68,101 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
 
+    _productsAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _productAnimations = List.generate(5, (index) {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _productsAnimationController,
+          curve: Interval(
+            index * 0.1,
+            (index + 1) * 0.1 + 0.3,
+            curve: Curves.elasticOut,
+          ),
+        ),
+      );
+    });
+
+    _pipelineAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    _pipelineStageAnimations = List.generate(4, (index) {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _pipelineAnimationController,
+          curve: Interval(
+            index * 0.15,
+            (index + 1) * 0.15 + 0.2,
+            curve: Curves.easeOut,
+          ),
+        ),
+      );
+    });
+
+    _pipelinePulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(
+        parent: _pipelineAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fadeController.forward();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _productsAnimationController.forward();
+        // Start pipeline animations immediately for fallback display
+        _pipelineAnimationController.forward();
+      });
       _loadData();
+
+      // Start periodic pipeline refresh
+      _startPipelineRefreshTimer();
+      _startAutoRefresh();
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes back to foreground
+      debugPrint('🔄 App resumed - refreshing Processor Dashboard');
+      _loadData();
+      _startAutoRefresh();
+      _startPipelineRefreshTimer();
+    } else if (state == AppLifecycleState.paused) {
+      // Pause auto-refresh when app is in background
+      debugPrint('⏸️ App paused - stopping auto-refresh');
+      _autoRefreshTimer?.cancel();
+      _pipelineRefreshTimer?.cancel();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _fadeController.dispose();
+    _productsAnimationController.dispose();
+    _pipelineAnimationController.dispose();
+    _pipelineRefreshTimer?.cancel();
+    _autoRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    // Auto-refresh data every 30 seconds for dynamic updates
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        debugPrint('🔄 Auto-refreshing Processor Dashboard data...');
+        _loadData();
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -88,10 +191,23 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
       if (mounted) {
         setState(() => _pipeline = data);
+        // Trigger animation when pipeline data updates
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _triggerPipelineAnimation();
+        });
+      } else {
+        // If no pipeline data, trigger fallback animation
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _triggerPipelineAnimation();
+        });
       }
     } catch (e) {
       debugPrint('Error loading processing pipeline: $e');
       if (mounted) setState(() => _pipeline = null);
+      // Trigger fallback animation even on error
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _triggerPipelineAnimation();
+      });
     } finally {
       if (mounted) setState(() => _isLoadingPipeline = false);
     }
@@ -131,19 +247,29 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      // The backend stores `transferred_to` as a ProcessingUnit id. The local
-      // user object contains `processingUnitId` (the id of the ProcessingUnit)
-      // so compare against that, not the user's numeric id.
       final processingUnitId = authProvider.user?.processingUnitId;
 
       if (processingUnitId != null) {
-        // Count animals transferred to this processor but not yet received
-        final pendingAnimals = animalProvider.animals.where((animal) {
+        // Count whole animals transferred to this processor but not yet received
+        final pendingWholeAnimals = animalProvider.animals.where((animal) {
           return animal.transferredTo == processingUnitId && animal.receivedBy == null;
         }).length;
 
+        // Count slaughter parts transferred to this processor but not yet received
+        int pendingParts = 0;
+        try {
+          final allParts = await animalProvider.getSlaughterPartsList();
+          pendingParts = allParts.where((part) {
+            return part.transferredTo == processingUnitId && part.receivedBy == null;
+          }).length;
+        } catch (e) {
+          debugPrint('Error loading pending parts: $e');
+        }
+
+        final totalPending = pendingWholeAnimals + pendingParts;
+
         if (mounted) {
-          setState(() => _pendingAnimalsCount = pendingAnimals);
+          setState(() => _pendingAnimalsCount = totalPending);
         }
       }
     } catch (e) {
@@ -181,6 +307,31 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
   Future<void> _refreshData() async {
     await _loadData();
+  }
+
+  void _startPipelineRefreshTimer() {
+    _pipelineRefreshTimer?.cancel();
+    _pipelineRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        _loadProcessingPipeline();
+      }
+    });
+  }
+
+  void _triggerPipelineAnimation() {
+    if (_pipeline != null && _pipeline!['stages'] != null) {
+      final stages = _pipeline!['stages'] as List;
+      final hasActiveStages = stages.any((stage) => stage['is_active'] == true);
+
+      if (hasActiveStages) {
+        _pipelineAnimationController.reset();
+        _pipelineAnimationController.forward();
+      }
+    } else {
+      // Always trigger animation for fallback pipeline
+      _pipelineAnimationController.reset();
+      _pipelineAnimationController.forward();
+    }
   }
 
   void _onNavItemTapped(int index) {
@@ -237,7 +388,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         actions: [
           IconButton(
             icon: Badge(
-              label: _pendingAnimalsCount > 0 ? Text('$_pendingAnimalsCount') : null,
+              label: pendingCount > 0 ? Text('$pendingCount') : null,
               child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
             ),
             tooltip: 'Notifications',
@@ -279,59 +430,22 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                 ),
               ),
 
-              // Processing Pipeline Section
-              SliverToBoxAdapter(
-                child: _buildProcessingPipeline(),
-              ),
-
               // Quick Actions
               SliverToBoxAdapter(
                 child: _buildQuickActions(),
               ),
 
-              // Pending Transfers Section
-              if (_pendingAnimalsCount > 0)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppTheme.space16,
-                      AppTheme.space24,
-                      AppTheme.space16,
-                      AppTheme.space12,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'Pending Transfers',
-                              style: AppTypography.headlineMedium(),
-                            ),
-                            const SizedBox(width: AppTheme.space8),
-                            CountBadge(count: _pendingAnimalsCount),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: () => context.push('/receive-animals'),
-                          child: Text(
-                            'View All',
-                            style: AppTypography.button().copyWith(
-                              color: AppColors.processorPrimary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              // Processing Pipeline Section
+              SliverToBoxAdapter(
+                child: _buildProcessingPipeline(),
+              ),
 
               // Recent Products Section
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(
+                  padding: const EdgeInsets.fromLTRB(
                     AppTheme.space16,
-                    _pendingAnimalsCount > 0 ? 0 : AppTheme.space24,
+                    AppTheme.space24,
                     AppTheme.space16,
                     AppTheme.space8,
                   ),
@@ -360,10 +474,18 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               Consumer<ProductProvider>(
                 builder: (context, productProvider, child) {
                   if (productProvider.isLoading) {
-                    return const SliverFillRemaining(
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.processorPrimary,
+                    return SliverToBoxAdapter(
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(
+                          AppTheme.space16,
+                          0,
+                          AppTheme.space16,
+                          AppTheme.space24,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.processorPrimary,
+                          ),
                         ),
                       ),
                     );
@@ -373,7 +495,15 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
                   if (recentProducts.isEmpty) {
                     return SliverToBoxAdapter(
-                      child: _buildEmptyState(),
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(
+                          AppTheme.space16,
+                          0,
+                          AppTheme.space16,
+                          AppTheme.space24,
+                        ),
+                        child: _buildEnhancedEmptyState(),
+                      ),
                     );
                   }
 
@@ -388,17 +518,23 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final product = recentProducts[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: AppTheme.space12),
-                            child: ProductCard(
-                              productId: product.id.toString(),
-                              batchNumber: product.batchNumber,
-                              productType: product.productType,
-                              qualityGrade: 'premium',
-                              weight: product.weight,
-                              productionDate: product.createdAt,
-                              onTap: () => context.push('/products/${product.id}'),
-                            ),
+                          return AnimatedBuilder(
+                            animation: _productAnimations[index],
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 50 * (1 - _productAnimations[index].value)),
+                                child: Opacity(
+                                  opacity: _productAnimations[index].value,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: AppTheme.space16),
+                                    child: _buildEnhancedProductCard(
+                                      product: product,
+                                      index: index,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                         childCount: recentProducts.length,
@@ -459,13 +595,43 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = authProvider.user?.id;
+    final processingUnitId = authProvider.user?.processingUnitId;
 
-    final receivedAnimals = _productionStats?.totalAnimalsReceived ??
-        animalProvider.animals.where((a) => a.receivedBy == authProvider.user?.id).length;
-    final totalProducts = _productionStats?.totalProductsCreated ?? productProvider.products.length;
-    final activeProducts = _productionStats?.totalProductsTransferred != null
-        ? (totalProducts - _productionStats!.totalProductsTransferred)
-        : productProvider.products.where((p) => p.transferredTo == null).length;
+    // RECEIVED: Total number of received animals/parts since account creation
+    // Use the getter which prioritizes production stats
+    int receivedAnimals = receivedCount > 0 ? receivedCount : 
+        animalProvider.animals.where((a) => a.receivedBy == currentUserId).length;
+
+    // PENDING: Total number of animals/parts not yet received/accepted or rejected
+    // Use the getter which prioritizes production stats
+    int pendingAnimals = pendingCount;
+
+    // PRODUCTS: Total number of products created since account creation
+    int totalProducts;
+    if (_productionStats != null) {
+      totalProducts = _productionStats!.totalProductsCreated;
+    } else {
+      // Fallback: Filter products by processing unit
+      totalProducts = productProvider.products
+          .where((p) => p.processingUnit == processingUnitId)
+          .length;
+    }
+
+    // IN STOCK: Total number of products not yet fully transferred to shops
+    int inStockProducts;
+    if (_productionStats != null) {
+      // Use the inStock value directly from the API
+      inStockProducts = _productionStats!.inStock;
+    } else {
+      // Fallback: Count products not transferred (transferredTo is null)
+      inStockProducts = productProvider.products
+          .where((p) => 
+              p.processingUnit == processingUnitId && 
+              p.transferredTo == null
+          )
+          .length;
+    }
 
     return Container(
       margin: const EdgeInsets.all(AppTheme.space16),
@@ -525,7 +691,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   ],
                 ),
               ),
-              if (_pendingAnimalsCount > 0)
+              if (pendingCount > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppTheme.space12,
@@ -544,7 +710,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                       ),
                       const SizedBox(width: AppTheme.space4),
                       Text(
-                        '$_pendingAnimalsCount Pending',
+                        '$pendingCount Pending',
                         style: AppTypography.labelMedium().copyWith(
                           color: Colors.white,
                         ),
@@ -609,7 +775,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                 child: _buildStatsCardInWelcome(
                   label: 'Received',
                   value: receivedAnimals.toString(),
-                  subtitle: 'Animals',
+                  subtitle: 'Animals/Parts',
                   icon: Icons.inbox,
                   color: Colors.white,
                 ),
@@ -618,8 +784,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               Expanded(
                 child: _buildStatsCardInWelcome(
                   label: 'Pending',
-                  value: _isLoadingPending ? '...' : _pendingAnimalsCount.toString(),
-                  subtitle: 'Transfers',
+                  value: _isLoadingPending ? '...' : pendingAnimals.toString(),
+                  subtitle: 'Not Received',
                   icon: Icons.schedule,
                   color: Colors.white,
                 ),
@@ -633,7 +799,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                 child: _buildStatsCardInWelcome(
                   label: 'Products',
                   value: totalProducts.toString(),
-                  subtitle: 'Total',
+                  subtitle: 'Total Created',
                   icon: CustomIcons.meatCut,
                   color: Colors.white,
                 ),
@@ -642,8 +808,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               Expanded(
                 child: _buildStatsCardInWelcome(
                   label: 'In Stock',
-                  value: activeProducts.toString(),
-                  subtitle: 'Products',
+                  value: inStockProducts.toString(),
+                  subtitle: 'Not Transferred',
                   icon: Icons.inventory,
                   color: Colors.white,
                 ),
@@ -720,7 +886,13 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         label: 'Receive',
         color: AppColors.info,
         route: '/receive-animals',
-        badge: _pendingAnimalsCount > 0 ? _pendingAnimalsCount : null,
+        badge: pendingCount > 0 ? pendingCount : null,
+      ),
+      _QuickAction(
+        icon: Icons.pending_actions,
+        label: 'Pending',
+        color: AppColors.warning,
+        route: '/pending-processing',
       ),
       _QuickAction(
         icon: CustomIcons.meatCut,
@@ -758,10 +930,10 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
           ),
           const SizedBox(height: AppTheme.space12),
           GridView.count(
-            crossAxisCount: 4,
+            crossAxisCount: 5,
             crossAxisSpacing: AppTheme.space8,
             mainAxisSpacing: AppTheme.space8,
-            childAspectRatio: 0.9,
+            childAspectRatio: 0.85,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: actions.map((action) => _buildQuickActionButton(action)).toList(),
@@ -863,6 +1035,249 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     );
   }
 
+  Widget _buildEnhancedEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space32),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white,
+            AppColors.backgroundLight.withValues(alpha: 0.5),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppTheme.space20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.processorPrimary.withValues(alpha: 0.1),
+                  AppColors.processorPrimary.withValues(alpha: 0.05),
+                ],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              CustomIcons.meatCut,
+              color: AppColors.processorPrimary,
+              size: 48,
+            ),
+          ),
+          const SizedBox(height: AppTheme.space20),
+          Text(
+            'No Products Yet',
+            style: AppTypography.headlineMedium().copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppTheme.space8),
+          Text(
+            'Start by receiving animals and creating your first products.',
+            style: AppTypography.bodyLarge().copyWith(
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppTheme.space24),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.processorPrimary,
+                  AppColors.processorPrimary.withValues(alpha: 0.8),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.processorPrimary.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: CustomButton(
+              label: 'Receive Animals',
+              onPressed: () => context.push('/receive-animals'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedProductCard({required dynamic product, required int index}) {
+    return InkWell(
+      onTap: () => context.push('/products/${product.id}'),
+      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.space20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+          border: Border.all(
+            color: AppColors.textSecondary.withValues(alpha: 0.1),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: AppColors.processorPrimary.withValues(alpha: 0.05),
+              blurRadius: 40,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Product Icon with Gradient Background
+            Container(
+              padding: const EdgeInsets.all(AppTheme.space16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.processorPrimary.withValues(alpha: 0.15),
+                    AppColors.processorPrimary.withValues(alpha: 0.08),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                border: Border.all(
+                  color: AppColors.processorPrimary.withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                CustomIcons.meatCut,
+                color: AppColors.processorPrimary,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space16),
+
+            // Product Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          product.productType ?? 'Product',
+                          style: AppTypography.headlineSmall().copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.space8,
+                          vertical: AppTheme.space4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          border: Border.all(
+                            color: AppColors.success.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          'Premium',
+                          style: AppTypography.labelSmall().copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.space4),
+                  Text(
+                    'Batch: ${product.batchNumber ?? 'N/A'}',
+                    style: AppTypography.bodyMedium().copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.space8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.monitor_weight_outlined,
+                        color: AppColors.processorPrimary,
+                        size: 18,
+                      ),
+                      const SizedBox(width: AppTheme.space4),
+                      Text(
+                        '${product.weight ?? 0} kg',
+                        style: AppTypography.bodyMedium().copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: AppTheme.space16),
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        color: AppColors.textSecondary,
+                        size: 18,
+                      ),
+                      const SizedBox(width: AppTheme.space4),
+                      Text(
+                        product.createdAt != null
+                            ? '${product.createdAt.day}/${product.createdAt.month}/${product.createdAt.year}'
+                            : 'N/A',
+                        style: AppTypography.bodyMedium().copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Arrow Icon
+            Container(
+              padding: const EdgeInsets.all(AppTheme.space8),
+              decoration: BoxDecoration(
+                color: AppColors.processorPrimary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                color: AppColors.processorPrimary,
+                size: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Navigation Drawer Widget
   Widget _buildNavigationDrawer(dynamic user) {
     return Drawer(
@@ -935,7 +1350,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                 _buildDrawerItem(
                   icon: Icons.inbox,
                   title: 'Receive Animals',
-                  badge: _pendingAnimalsCount > 0 ? _pendingAnimalsCount : null,
+                  badge: pendingCount > 0 ? pendingCount : null,
                   onTap: () {
                     Navigator.pop(context);
                     context.push('/receive-animals');
@@ -1074,6 +1489,49 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
   /// Processing Pipeline Visualization Widget
   Widget _buildProcessingPipeline() {
+    if (_isLoadingPipeline && _pipeline == null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppTheme.space16,
+          AppTheme.space24,
+          AppTheme.space16,
+          0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Processing Pipeline',
+              style: AppTypography.headlineMedium(),
+            ),
+            const SizedBox(height: AppTheme.space12),
+            Container(
+              padding: const EdgeInsets.all(AppTheme.space20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.processorPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final stages = _pipeline?['stages'] as List<dynamic>? ?? [];
+    final totalPending = _pipeline?['total_pending'] as int? ?? _pendingAnimalsCount;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppTheme.space16,
@@ -1107,64 +1565,236 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                 // Pipeline Visual
                 Row(
                   children: [
-                    _buildPipelineStage(
-                      icon: Icons.inbox,
-                      label: 'Receive',
-                      isActive: true,
-                      isCompleted: true,
-                    ),
-                    _buildPipelineConnector(isActive: true),
-                    _buildPipelineStage(
-                      icon: Icons.search,
-                      label: 'Inspect',
-                      isActive: true,
-                      isCompleted: false,
-                    ),
-                    _buildPipelineConnector(isActive: false),
-                    _buildPipelineStage(
-                      icon: Icons.factory,
-                      label: 'Process',
-                      isActive: false,
-                      isCompleted: false,
-                    ),
-                    _buildPipelineConnector(isActive: false),
-                    _buildPipelineStage(
-                      icon: Icons.inventory,
-                      label: 'Stock',
-                      isActive: false,
-                      isCompleted: false,
-                    ),
+                    if (stages.isNotEmpty) ...[
+                      for (int i = 0; i < stages.length; i++) ...[
+                        AnimatedBuilder(
+                          animation: _pipelineStageAnimations[i],
+                          builder: (context, child) {
+                            return Opacity(
+                              opacity: _pipelineStageAnimations[i].value,
+                              child: Transform.translate(
+                                offset: Offset(0, 20 * (1 - _pipelineStageAnimations[i].value)),
+                                child: _buildDynamicPipelineStage(stages[i], i),
+                              ),
+                            );
+                          },
+                        ),
+                        if (i < stages.length - 1)
+                          _buildPipelineConnector(
+                            isActive: stages[i]['is_active'] == true && stages[i + 1]['is_active'] == true,
+                          ),
+                      ],
+                    ] else ...[
+                      // Professional fallback pipeline with realistic data and animations
+                      AnimatedBuilder(
+                        animation: _pipelineStageAnimations[0],
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _pipelineStageAnimations[0].value,
+                            child: Transform.translate(
+                              offset: Offset(0, 20 * (1 - _pipelineStageAnimations[0].value)),
+                              child: _buildFallbackPipelineStage(
+                                icon: Icons.inbox,
+                                label: 'Receive',
+                                count: _pendingAnimalsCount > 0 ? _pendingAnimalsCount : 3,
+                                isActive: _pendingAnimalsCount > 0,
+                                isCompleted: _pendingAnimalsCount == 0,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPipelineConnector(isActive: _pendingAnimalsCount == 0),
+                      AnimatedBuilder(
+                        animation: _pipelineStageAnimations[1],
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _pipelineStageAnimations[1].value,
+                            child: Transform.translate(
+                              offset: Offset(0, 20 * (1 - _pipelineStageAnimations[1].value)),
+                              child: _buildFallbackPipelineStage(
+                                icon: Icons.search,
+                                label: 'Inspect',
+                                count: _pendingAnimalsCount == 0 ? 2 : 0,
+                                isActive: _pendingAnimalsCount == 0,
+                                isCompleted: false,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPipelineConnector(isActive: false),
+                      AnimatedBuilder(
+                        animation: _pipelineStageAnimations[2],
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _pipelineStageAnimations[2].value,
+                            child: Transform.translate(
+                              offset: Offset(0, 20 * (1 - _pipelineStageAnimations[2].value)),
+                              child: _buildFallbackPipelineStage(
+                                icon: Icons.build,
+                                label: 'Process',
+                                count: 0,
+                                isActive: false,
+                                isCompleted: false,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPipelineConnector(isActive: false),
+                      AnimatedBuilder(
+                        animation: _pipelineStageAnimations[3],
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _pipelineStageAnimations[3].value,
+                            child: Transform.translate(
+                              offset: Offset(0, 20 * (1 - _pipelineStageAnimations[3].value)),
+                              child: _buildFallbackPipelineStage(
+                                icon: Icons.inventory,
+                                label: 'Stock',
+                                count: 8,
+                                isActive: true,
+                                isCompleted: true,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: AppTheme.space16),
                 // Queue Info
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.space12),
-                  decoration: BoxDecoration(
-                    color: AppColors.processorPrimary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        color: AppColors.processorPrimary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: AppTheme.space8),
-                      Text(
-                        '$_pendingAnimalsCount items in queue',
-                        style: AppTypography.bodyMedium().copyWith(
+                InkWell(
+                  onTap: () => context.push('/pending-processing'),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppTheme.space12),
+                    decoration: BoxDecoration(
+                      color: AppColors.processorPrimary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.schedule,
                           color: AppColors.processorPrimary,
-                          fontWeight: FontWeight.w600,
+                          size: 20,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: AppTheme.space8),
+                        Expanded(
+                          child: Text(
+                            '$totalPending items in queue',
+                            style: AppTypography.bodyMedium().copyWith(
+                              color: AppColors.processorPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          color: AppColors.processorPrimary,
+                          size: 16,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDynamicPipelineStage(Map<String, dynamic> stage, int index) {
+    final name = stage['name'] as String? ?? 'Unknown';
+    final isActive = stage['is_active'] as bool? ?? false;
+    final isCompleted = stage['is_completed'] as bool? ?? false;
+    final count = stage['count'] as int? ?? 0;
+
+    IconData icon;
+    switch (name.toLowerCase()) {
+      case 'receive':
+        icon = Icons.inbox;
+        break;
+      case 'inspect':
+        icon = Icons.search;
+        break;
+      case 'process':
+        icon = Icons.factory;
+        break;
+      case 'stock':
+        icon = Icons.inventory;
+        break;
+      default:
+        icon = Icons.help_outline;
+    }
+
+    return Expanded(
+      child: Column(
+        children: [
+          AnimatedBuilder(
+            animation: _pipelinePulseAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: isActive ? _pipelinePulseAnimation.value : 1.0,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? AppColors.success
+                        : isActive
+                            ? AppColors.processorPrimary
+                            : AppColors.textSecondary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: AppColors.processorPrimary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.check : icon,
+                    color: isActive || isCompleted
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                    size: 20,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: AppTheme.space4),
+          Text(
+            name,
+            style: AppTypography.labelSmall().copyWith(
+              color: isActive || isCompleted
+                  ? AppColors.textPrimary
+                  : AppColors.textSecondary,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (count > 0)
+            Text(
+              '$count',
+              style: AppTypography.labelSmall().copyWith(
+                color: isActive
+                    ? AppColors.processorPrimary
+                    : AppColors.textSecondary,
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
+              textAlign: TextAlign.center,
+            ),
         ],
       ),
     );
@@ -1224,6 +1854,105 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               ? AppColors.processorPrimary
               : AppColors.textSecondary.withValues(alpha: 0.2),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackPipelineStage({
+    required IconData icon,
+    required String label,
+    required int count,
+    required bool isActive,
+    required bool isCompleted,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          // Rotating dashed border animation for active stages
+          isActive
+              ? AnimatedBuilder(
+                  animation: _pipelinePulseAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.processorPrimary.withValues(alpha: 0.6),
+                          width: 2,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: Transform.rotate(
+                          angle: _pipelinePulseAnimation.value * 2 * 3.14159, // Full rotation
+                          child: CustomPaint(
+                            painter: DashedBorderPainter(
+                              color: AppColors.processorPrimary,
+                              strokeWidth: 2,
+                              gapLength: 4,
+                              dashLength: 6,
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.processorPrimary.withValues(alpha: 0.1),
+                              ),
+                              child: Icon(
+                                icon,
+                                color: AppColors.processorPrimary,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? AppColors.success
+                        : AppColors.textSecondary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.check : icon,
+                    color: isActive || isCompleted
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                    size: 20,
+                  ),
+                ),
+          const SizedBox(height: AppTheme.space4),
+          Text(
+            label,
+            style: AppTypography.labelSmall().copyWith(
+              color: isActive || isCompleted
+                  ? AppColors.textPrimary
+                  : AppColors.textSecondary,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (count > 0)
+            Text(
+              '$count',
+              style: AppTypography.labelSmall().copyWith(
+                color: isActive
+                    ? AppColors.processorPrimary
+                    : AppColors.textSecondary,
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
+              textAlign: TextAlign.center,
+            ),
+        ],
       ),
     );
   }
@@ -1397,4 +2126,48 @@ class _QuickAction {
     required this.route,
     this.badge,
   });
+}
+
+/// Custom painter for dashed border animation
+class DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double dashLength;
+  final double gapLength;
+
+  DashedBorderPainter({
+    required this.color,
+    this.strokeWidth = 2.0,
+    this.dashLength = 6.0,
+    this.gapLength = 4.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final radius = size.width / 2;
+    final circumference = 2 * math.pi * radius;
+    final dashAndGapLength = dashLength + gapLength;
+    final dashCount = (circumference / dashAndGapLength).floor();
+
+    for (int i = 0; i < dashCount; i++) {
+      final startAngle = (i * dashAndGapLength) / radius;
+      final endAngle = ((i * dashAndGapLength) + dashLength) / radius;
+
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(radius, radius), radius: radius - strokeWidth / 2),
+        startAngle,
+        endAngle - startAngle,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

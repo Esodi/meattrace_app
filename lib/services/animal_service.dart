@@ -6,7 +6,7 @@ import '../utils/constants.dart';
 import 'dio_client.dart';
 
 // Add slaughter parts endpoint constant
-const String slaughterPartsEndpoint = 'slaughter-parts/';
+const String slaughterPartsEndpoint = '/slaughter-parts/';
 
 class AnimalService {
   static final AnimalService _instance = AnimalService._internal();

@@ -13,7 +13,32 @@ class ActivityProvider with ChangeNotifier {
   String? _error;
   DateTime? _lastFetchTime;
 
-  ActivityProvider(this._apiService);
+  ActivityProvider(this._apiService) {
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━XXXXXX━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🎯 ActivityProvider: Constructor START');
+    debugPrint('   - ApiService instance: ${_apiService.hashCode}');
+    debugPrint('   - Provider instance: ${this.hashCode}');
+    debugPrint('   - Thread: ${DateTime.now().millisecondsSinceEpoch}');
+    
+    try {
+      // Initialize with empty state to prevent provider creation errors
+      _activities = [];
+      _isLoading = false;
+      _error = null;
+      _lastFetchTime = null;
+      
+      debugPrint('✅ ActivityProvider: Constructor completed successfully');
+      debugPrint('   - _activities.length: ${_activities.length}');
+      debugPrint('   - _isLoading: $_isLoading');
+    } catch (e, stack) {
+      debugPrint('❌ ActivityProvider: Constructor FAILED');
+      debugPrint('   Error: $e');
+      debugPrint('   Stack trace:');
+      debugPrint('$stack');
+      rethrow;
+    }
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
 
   // Getters
   List<Activity> get activities => _activities;
@@ -25,6 +50,8 @@ class ActivityProvider with ChangeNotifier {
   Future<void> fetchActivities({bool forceRefresh = false}) async {
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     print('📅 ACTIVITY_PROVIDER - FETCH_ACTIVITIES START');
+    print('   Provider instance: ${this.hashCode}');
+    print('   Called from: ${StackTrace.current.toString().split('\n').take(3).join('\n')}');
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     print('📋 Parameters:');
     print('   - forceRefresh: $forceRefresh');
@@ -32,7 +59,7 @@ class ActivityProvider with ChangeNotifier {
     print('   - _activities.length: ${_activities.length}');
     print('   - _isLoading: $_isLoading');
     print('   - _lastFetchTime: $_lastFetchTime');
-    
+
     // Don't fetch if already loading
     if (_isLoading) {
       print('⏭️ Already loading, skipping fetch');
@@ -53,8 +80,17 @@ class ActivityProvider with ChangeNotifier {
 
     _isLoading = true;
     _error = null;
-    notifyListeners();
-    print('🔔 notifyListeners() called - isLoading set to true');
+    print('🔔 About to call notifyListeners() - Setting isLoading=true');
+    print('   Current ChangeNotifier state: hasListeners=${hasListeners}');
+    try {
+      notifyListeners();
+      print('✅ notifyListeners() completed successfully');
+    } catch (e, stack) {
+      print('❌ notifyListeners() FAILED!');
+      print('   Error: $e');
+      print('   Stack: ${stack.toString().split('\n').take(5).join('\n')}');
+      rethrow;
+    }
 
     try {
       print('📡 Calling API: /activities/recent/');
@@ -63,7 +99,7 @@ class ActivityProvider with ChangeNotifier {
       print('✅ API Response received');
       print('📦 Response data type: ${data.runtimeType}');
       final List<dynamic> activitiesList = data['activities'] ?? data ?? [];
-      
+
       print('📦 Activities list length: ${activitiesList.length}');
 
       _activities = activitiesList
@@ -71,7 +107,7 @@ class ActivityProvider with ChangeNotifier {
           .toList();
 
       print('✅ Activities parsed and assigned. Count: ${_activities.length}');
-      
+
       // Log first few activities
       for (var i = 0; i < _activities.length && i < 3; i++) {
         final activity = _activities[i];
@@ -96,7 +132,17 @@ class ActivityProvider with ChangeNotifier {
       print('💾 Loaded ${_activities.length} activities from cache');
     } finally {
       _isLoading = false;
-      notifyListeners();
+      print('🔔 About to call notifyListeners() - Setting isLoading=false (finally block)');
+      print('   Current ChangeNotifier state: hasListeners=${hasListeners}');
+      try {
+        notifyListeners();
+        print('✅ notifyListeners() completed successfully (finally block)');
+      } catch (e, stack) {
+        print('❌ notifyListeners() FAILED in finally block!');
+        print('   Error: $e');
+        print('   Stack: ${stack.toString().split('\n').take(5).join('\n')}');
+        rethrow;
+      }
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       print('🏁 ACTIVITY_PROVIDER - FETCH_ACTIVITIES COMPLETE');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -104,7 +150,6 @@ class ActivityProvider with ChangeNotifier {
       print('   - _activities.length: ${_activities.length}');
       print('   - _isLoading: $_isLoading');
       print('   - _error: $_error');
-      print('🔔 notifyListeners() called - UI will rebuild');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
   }
@@ -231,6 +276,9 @@ class ActivityProvider with ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error loading activities from cache: $e');
+      // Don't rethrow - ensure we have a valid state even if cache fails
+      _activities = [];
+      _lastFetchTime = null;
     }
   }
 

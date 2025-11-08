@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -36,7 +37,7 @@ class ModernShopHomeScreen extends StatefulWidget {
 }
 
 class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late int _selectedIndex;
@@ -45,10 +46,12 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
   bool _isLoadingPending = false;
   double _totalSales = 0.0;
   bool _isLoadingSales = false;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     
     _selectedIndex = widget.initialIndex;
 
@@ -64,14 +67,45 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
       _fadeController.forward();
       if (_selectedIndex == 0) {
         _loadData();
+        _startAutoRefresh();
       }
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes back to foreground
+      debugPrint('🔄 App resumed - refreshing Shop Dashboard');
+      if (_selectedIndex == 0) {
+        _loadData();
+        _startAutoRefresh();
+      }
+    } else if (state == AppLifecycleState.paused) {
+      // Pause auto-refresh when app is in background
+      debugPrint('⏸️ App paused - stopping auto-refresh');
+      _autoRefreshTimer?.cancel();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _fadeController.dispose();
+    _autoRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    // Auto-refresh data every 30 seconds for dynamic updates
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _selectedIndex == 0) {
+        debugPrint('🔄 Auto-refreshing Shop Dashboard data...');
+        _loadData();
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -214,6 +248,11 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                 ),
               ),
 
+              // Quick Actions
+              SliverToBoxAdapter(
+                child: _buildQuickActions(),
+              ),
+
               // Inventory Overview
               SliverToBoxAdapter(
                 child: Consumer<ProductProvider>(
@@ -221,11 +260,6 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                     return _buildInventoryOverview(productProvider);
                   },
                 ),
-              ),
-
-              // Quick Actions
-              SliverToBoxAdapter(
-                child: _buildQuickActions(),
               ),
 
               // Featured Products Section
@@ -426,7 +460,16 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
               : const ShopProfileScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (index) {
+          setState(() => _selectedIndex = index);
+          // Restart auto-refresh when switching to Dashboard tab
+          if (index == 0) {
+            _loadData();
+            _startAutoRefresh();
+          } else {
+            _autoRefreshTimer?.cancel();
+          }
+        },
         selectedItemColor: AppColors.shopPrimary,
         unselectedItemColor: AppColors.textSecondary,
         type: BottomNavigationBarType.fixed,

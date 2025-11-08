@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class User {
   final int id;
   final String username;
@@ -36,38 +38,73 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+      debugPrint('🔍 [USER_FROM_JSON] Starting User.fromJson parsing');
+      debugPrint('🔍 [USER_FROM_JSON] Raw JSON keys: ${json.keys}');
+      debugPrint('🔍 [USER_FROM_JSON] Raw JSON: $json');
+
       List<ProcessingUnitMembership>? memberships;
       if (json['processing_unit_memberships'] != null) {
+          debugPrint('🔍 [USER_FROM_JSON] Processing memberships...');
           memberships = (json['processing_unit_memberships'] as List)
               .map((m) => ProcessingUnitMembership.fromJson(m))
               .toList();
       }
 
-      // Handle nested structure returned by backend (user/profile keys)
+      // Handle different response structures:
+      // 1. Auth endpoint returns data under 'user' key
+      // 2. Profile endpoint returns data under 'profile' key
+      // 3. Direct user data (fallback)
       final userData = json['user'] ?? json['profile'] ?? json;
-      final profileData = json['profile'] ?? json['user'] ?? json;
-      
+      final profileData = json['user'] ?? json['profile'] ?? json;
+
+      debugPrint('🔍 [USER_FROM_JSON] userData keys: ${userData.keys}');
+      debugPrint('🔍 [USER_FROM_JSON] profileData keys: ${profileData.keys}');
+
+      // Check for null values that could cause String errors
+      debugPrint('🔍 [USER_FROM_JSON] Checking critical fields:');
+      debugPrint('🔍 [USER_FROM_JSON] userData["username"]: ${userData['username']} (type: ${userData['username']?.runtimeType})');
+      debugPrint('🔍 [USER_FROM_JSON] userData["email"]: ${userData['email']} (type: ${userData['email']?.runtimeType})');
+      debugPrint('🔍 [USER_FROM_JSON] profileData["role"]: ${profileData['role']} (type: ${profileData['role']?.runtimeType})');
+
+      // Check processing unit data
+      if (profileData['processing_unit'] != null) {
+          debugPrint('🔍 [USER_FROM_JSON] processing_unit present: ${profileData['processing_unit']}');
+          if (profileData['processing_unit'] is Map) {
+              final puMap = profileData['processing_unit'] as Map;
+              debugPrint('🔍 [USER_FROM_JSON] processing_unit["name"]: ${puMap['name']} (type: ${puMap['name']?.runtimeType})');
+          }
+      }
+
+      // Check shop data
+      if (profileData['shop'] != null) {
+          debugPrint('🔍 [USER_FROM_JSON] shop present: ${profileData['shop']}');
+          if (profileData['shop'] is Map) {
+              final shopMap = profileData['shop'] as Map;
+              debugPrint('🔍 [USER_FROM_JSON] shop["name"]: ${shopMap['name']} (type: ${shopMap['name']?.runtimeType})');
+          }
+      }
+
       return User(
           id: int.parse(userData['id'].toString()),
-          username: userData['username'],
-          email: userData['email'],
-          firstName: userData['first_name'],
-          lastName: userData['last_name'],
+          username: userData['username']?.toString() ?? '',
+          email: userData['email']?.toString() ?? '',
+          firstName: userData['first_name']?.toString(),
+          lastName: userData['last_name']?.toString(),
           isActive: userData['is_active'] ?? true,
           dateJoined: userData['date_joined'] != null ? DateTime.parse(userData['date_joined']) : null,
           lastLogin: userData['last_login'] != null ? DateTime.parse(userData['last_login']) : null,
-          role: profileData['role'] ?? 'Farmer',
+          role: profileData['role']?.toString() ?? 'Farmer',
           processingUnitId: profileData['processing_unit'] != null && profileData['processing_unit'] is Map
               ? int.tryParse(profileData['processing_unit']['id'].toString())
               : null,
           processingUnitName: profileData['processing_unit'] != null && profileData['processing_unit'] is Map
-              ? profileData['processing_unit']['name'].toString()
+              ? profileData['processing_unit']['name']?.toString()
               : null,
           shopId: profileData['shop'] != null && profileData['shop'] is Map
               ? int.tryParse(profileData['shop']['id'].toString())
               : null,
           shopName: profileData['shop'] != null && profileData['shop'] is Map
-              ? profileData['shop']['name'].toString()
+              ? profileData['shop']['name']?.toString()
               : null,
           processingUnitMemberships: memberships,
       );
@@ -133,12 +170,19 @@ class ProcessingUnitMembership {
   });
 
   factory ProcessingUnitMembership.fromJson(Map<String, dynamic> json) {
+    debugPrint('🔍 [MEMBERSHIP_FROM_JSON] Processing membership: $json');
+
+    // Check for null String fields that could cause errors
+    debugPrint('🔍 [MEMBERSHIP_FROM_JSON] processing_unit_name: ${json['processing_unit_name']} (type: ${json['processing_unit_name']?.runtimeType})');
+    debugPrint('🔍 [MEMBERSHIP_FROM_JSON] role: ${json['role']} (type: ${json['role']?.runtimeType})');
+    debugPrint('🔍 [MEMBERSHIP_FROM_JSON] permissions: ${json['permissions']} (type: ${json['permissions']?.runtimeType})');
+
     return ProcessingUnitMembership(
       id: json['id'],
       processingUnitId: json['processing_unit_id'] ?? json['processing_unit'],
-      processingUnitName: json['processing_unit_name'],
-      role: json['role'],
-      permissions: json['permissions'],
+      processingUnitName: json['processing_unit_name']?.toString() ?? 'Unknown Processing Unit',
+      role: json['role']?.toString() ?? 'worker',
+      permissions: json['permissions']?.toString() ?? 'read',
       granularPermissions: json['granular_permissions'],
       isActive: json['is_active'] ?? true,
       isSuspended: json['is_suspended'] ?? false,
