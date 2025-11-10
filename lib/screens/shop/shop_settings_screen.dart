@@ -20,7 +20,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
   bool _notificationsEnabled = true;
   bool _emailNotifications = false;
   bool _autoConfirmOrders = false;
-  String _defaultPaymentMethod = 'Cash';
+  String _defaultPaymentMethod = 'cash'; // lowercase to match backend
 
   @override
   Widget build(BuildContext context) {
@@ -245,14 +245,11 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                     final shopId = authProvider.user?.shopId;
 
                     if (shopId != null) {
-                      context.goNamed(
-                        'shop-users',
-                        queryParameters: {'shopId': shopId.toString()},
-                      );
+                      context.push('/shop/users?shopId=$shopId');
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Shop not found'),
+                          content: Text('Shop not found. Please ensure you are logged in as a shop owner.'),
                           backgroundColor: AppColors.error,
                         ),
                       );
@@ -474,7 +471,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
           children: [
             RadioListTile<String>(
               title: Text('Cash'),
-              value: 'Cash',
+              value: 'cash',
               groupValue: _defaultPaymentMethod,
               onChanged: (value) {
                 setState(() => _defaultPaymentMethod = value!);
@@ -483,7 +480,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
             ),
             RadioListTile<String>(
               title: Text('Card'),
-              value: 'Card',
+              value: 'card',
               groupValue: _defaultPaymentMethod,
               onChanged: (value) {
                 setState(() => _defaultPaymentMethod = value!);
@@ -492,7 +489,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
             ),
             RadioListTile<String>(
               title: Text('Mobile Money'),
-              value: 'Mobile Money',
+              value: 'mobile_money',
               groupValue: _defaultPaymentMethod,
               onChanged: (value) {
                 setState(() => _defaultPaymentMethod = value!);

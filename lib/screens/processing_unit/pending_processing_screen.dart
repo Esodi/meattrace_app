@@ -175,7 +175,7 @@ class _PendingProcessingScreenState extends State<PendingProcessingScreen> {
               onPressed: () => context.push('/create-product'),
               backgroundColor: AppColors.processorPrimary,
               icon: const Icon(Icons.add_box),
-              label: const Text('Create Product'),
+              label: const Text(''),
             )
           : null,
     );

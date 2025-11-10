@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'dio_client.dart';
+import 'storage_service.dart';
 import '../utils/constants.dart';
 
 class AuthService {
@@ -147,6 +148,12 @@ class AuthService {
       debugPrint('🔐 [FLUTTER_AUTH] Attempting registration for user: $username with role: $role');
       debugPrint('🌐 [FLUTTER_AUTH] Using base URL: ${Constants.baseUrl}');
 
+      // Clear any existing local data before registration
+      debugPrint('🗑️ [FLUTTER_AUTH] Clearing existing local data before registration...');
+      final storageService = StorageService();
+      await storageService.clearAllLocalData();
+      debugPrint('   ✓ Local data cleared');
+
       final Map<String, dynamic> requestData = {
         'username': username,
         'email': email,
@@ -218,8 +225,20 @@ class AuthService {
 
   Future<void> logout() async {
     try {
+      debugPrint('🚪 [AUTH_SERVICE] Starting logout process...');
+      
+      // 1. Clear authentication tokens
       await _dioClient.clearAuthTokens();
+      debugPrint('   ✓ Auth tokens cleared');
+      
+      // 2. Clear all local storage (cached data)
+      final storageService = StorageService();
+      await storageService.clearAllLocalData();
+      debugPrint('   ✓ Local data cleared');
+      
+      debugPrint('✅ [AUTH_SERVICE] Logout completed successfully');
     } catch (e) {
+      debugPrint('❌ [AUTH_SERVICE] Logout error: $e');
       throw Exception('Logout failed: $e');
     }
   }

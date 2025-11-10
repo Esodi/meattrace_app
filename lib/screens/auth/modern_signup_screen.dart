@@ -282,19 +282,26 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
   }
 
   void _navigateToRoleBasedHome(String role) {
-    switch (role.toLowerCase()) {
-      case 'farmer':
-        context.go('/farmer-home');
-        break;
-      case 'processingunit':
-        context.go('/processor-home');
-        break;
-      case 'shop':
-        context.go('/shop-home');
-        break;
-      default:
-        // Fallback to login if role is unknown
-        context.go('/login');
+    final normalizedRole = role.toLowerCase();
+    debugPrint('🚀 [SIGNUP] Navigating to home for role: "$role" (normalized: "$normalizedRole")');
+    
+    // Handle all possible role variations
+    if (normalizedRole == 'farmer') {
+      debugPrint('   ➡️ Going to: /farmer-home');
+      context.go('/farmer-home');
+    } else if (normalizedRole == 'processingunit' || 
+               normalizedRole == 'processing_unit' ||
+               normalizedRole == 'processor') {
+      debugPrint('   ➡️ Going to: /processor-home');
+      context.go('/processor-home');
+    } else if (normalizedRole == 'shop' || 
+               normalizedRole == 'shopowner' || 
+               normalizedRole == 'shop_owner') {
+      debugPrint('   ➡️ Going to: /shop-home');
+      context.go('/shop-home');
+    } else {
+      debugPrint('   ⚠️ Unknown role "$role", going to login');
+      context.go('/login');
     }
   }
 

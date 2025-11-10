@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../providers/animal_provider.dart';
+import '../../providers/user_context_provider.dart';
 import '../../models/animal.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -78,6 +79,10 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final userContext = Provider.of<UserContextProvider>(context);
+    final userRole = userContext.currentUser?.role;
+    final primaryColor = AppColors.getPrimaryColorForRole(userRole);
+    
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: _isLoading
@@ -86,11 +91,11 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
               ? _buildErrorState()
               : CustomScrollView(
                   slivers: [
-                    _buildAppBar(),
+                    _buildAppBar(primaryColor, userRole),
                     SliverToBoxAdapter(
                       child: FadeTransition(
                         opacity: _fadeAnimation,
-                        child: _buildContent(),
+                        child: _buildContent(primaryColor),
                       ),
                     ),
                   ],
@@ -98,45 +103,68 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(Color primaryColor, String? userRole) {
     return SliverAppBar(
       expandedHeight: 280,
       pinned: true,
-      backgroundColor: AppColors.farmerPrimary,
+      backgroundColor: primaryColor,
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
           _animal?.animalName ?? _animal?.animalId ?? '',
           style: AppTypography.headlineSmall(color: Colors.white),
         ),
-        background: _buildHeaderImage(),
+        background: _buildHeaderImage(primaryColor),
       ),
       actions: [
         IconButton(
           icon: const Icon(Icons.home_outlined),
           tooltip: 'Home',
-          onPressed: () => context.go('/farmer-home'),
+          onPressed: () {
+            // Navigate to appropriate home based on role
+            switch (userRole?.toLowerCase()) {
+              case 'farmer':
+              case 'abattoir':
+                context.go('/farmer-home');
+                break;
+              case 'processing_unit':
+              case 'processingunit':
+              case 'processor':
+                context.go('/processor-home');
+                break;
+              case 'shop':
+              case 'retail':
+                context.go('/shop-home');
+                break;
+              default:
+                context.go('/');
+            }
+          },
         ),
         PopupMenuButton<String>(
           onSelected: _handleMenuAction,
           itemBuilder: (context) => [
             const PopupMenuItem(value: 'edit', child: Text('Edit Details')),
-            const PopupMenuItem(value: 'slaughter', child: Text('Mark as Slaughtered')),
-            const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
+            // Only show slaughter option if not already slaughtered
+            if (_animal?.slaughtered != true)
+              const PopupMenuItem(value: 'slaughter', child: Text('Mark as Slaughtered')),
+            // Only show delete option if not slaughtered
+            if (_animal?.slaughtered != true)
+              const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildHeaderImage() {
+  Widget _buildHeaderImage(Color primaryColor) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.farmerPrimary,
-            AppColors.farmerPrimary.withValues(alpha: 0.7),
+            primaryColor,
+            primaryColor.withValues(alpha: 0.7),
           ],
         ),
       ),
@@ -167,7 +195,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(Color primaryColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -177,7 +205,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         const SizedBox(height: 16),
         _buildHealthSection(),
         const SizedBox(height: 16),
-        _buildTimelineSection(),
+        _buildTimelineSection(primaryColor),
         const SizedBox(height: 16),
         _buildActionsSection(),
         const SizedBox(height: 32),
@@ -299,7 +327,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     );
   }
 
-  Widget _buildTimelineSection() {
+  Widget _buildTimelineSection(Color primaryColor) {
     final items = <Map<String, dynamic>>[];
     
     if (_animal?.slaughtered == true && _animal?.slaughteredAt != null) {
@@ -335,6 +363,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
                 entry.value['title'] as String,
                 entry.value['date'] as String,
                 entry.key == 0,
+                primaryColor,
               );
             }),
           ],
@@ -343,7 +372,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     );
   }
 
-  Widget _buildTimelineItem(String title, String date, bool isFirst) {
+  Widget _buildTimelineItem(String title, String date, bool isFirst, Color primaryColor) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -353,7 +382,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
               width: 20,
               height: 20,
               decoration: BoxDecoration(
-                color: isFirst ? AppColors.farmerPrimary : Colors.grey,
+                color: isFirst ? primaryColor : Colors.grey,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: Colors.white,

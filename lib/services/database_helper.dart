@@ -491,6 +491,34 @@ class DatabaseHelper {
     await db.delete('animals');
   }
 
+  Future<void> clearProducts() async {
+    final db = await database;
+    await db.delete('products');
+  }
+
+  Future<void> clearInventory() async {
+    final db = await database;
+    await db.delete('inventory');
+  }
+
+  Future<void> clearCategories() async {
+    final db = await database;
+    await db.delete('product_categories');
+  }
+
+  /// Clear all user data from database (animals, products, inventory, etc.)
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('animals');
+      await txn.delete('products');
+      await txn.delete('inventory');
+      await txn.delete('shop_receipts');
+      await txn.delete('orders');
+      // Keep product_categories as they are system-wide
+    });
+  }
+
   Future<List<Animal>> getSlaughteredAnimals() async {
     final db = await database;
     final maps = await db.query(

@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/user_context_provider.dart';
 import '../../models/product.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_card.dart';
-import '../../widgets/core/status_badge.dart';
 
 /// Product Detail View - Complete information about a single product
 class ProductDetailScreen extends StatefulWidget {
@@ -89,18 +90,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userContext = Provider.of<UserContextProvider>(context);
+    final userRole = userContext.currentUser?.role;
+    final primaryColor = AppColors.getPrimaryColorForRole(userRole);
+    
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: _isLoading
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    color: AppColors.processorPrimary,
+                    color: primaryColor,
                   ),
-                  SizedBox(height: 16),
-                  Text('Loading product details...'),
+                  const SizedBox(height: 16),
+                  const Text('Loading product details...'),
                 ],
               ),
             )
@@ -110,28 +115,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ? _buildErrorState()
                   : RefreshIndicator(
                       onRefresh: _refreshProduct,
-                      color: AppColors.processorPrimary,
+                      color: primaryColor,
                       child: CustomScrollView(
                         slivers: [
-                          _buildAppBar(),
-                          SliverToBoxAdapter(child: _buildContent()),
+                          _buildAppBar(primaryColor),
+                          SliverToBoxAdapter(child: _buildContent(primaryColor)),
                         ],
                       ),
                     ),
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(Color primaryColor) {
     return SliverAppBar(
       expandedHeight: 280,
       pinned: true,
-      backgroundColor: AppColors.processorPrimary,
+      backgroundColor: primaryColor,
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
           _product?.name ?? '',
           style: AppTypography.headlineSmall(color: Colors.white),
         ),
-        background: _buildHeaderImage(),
+        background: _buildHeaderImage(primaryColor),
       ),
       actions: [
         IconButton(
@@ -152,10 +157,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildHeaderImage() {
+  Widget _buildHeaderImage(Color primaryColor) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.processorPrimary,
+        color: primaryColor,
       ),
       child: Center(
         child: Icon(
@@ -167,19 +172,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(Color primaryColor) {
     return Column(
       children: [
         _buildQRSection(),
         const SizedBox(height: 16),
-        _buildBasicInfoSection(),
+        _buildBasicInfoSection(primaryColor),
         const SizedBox(height: 16),
-        _buildTraceabilitySection(),
+        _buildTraceabilitySection(primaryColor),
       ],
     );
   }
 
   Widget _buildQRSection() {
+    // Use the actual QR code data from the product, fallback to batch number or product ID
+    final String qrData = _product?.qrCode ?? 
+                          _product?.batchNumber ?? 
+                          'PRODUCT-${_product?.id ?? 'UNKNOWN'}';
+    
     return CustomCard(
       margin: const EdgeInsets.all(16),
       child: Padding(
@@ -189,35 +199,89 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             Text('Product QR Code', style: AppTypography.headlineSmall()),
             const SizedBox(height: 16),
             Container(
-              width: 180,
-              height: 180,
+              width: 200,
+              height: 200,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                color: Colors.white,
+                border: Border.all(color: Colors.grey.shade300, width: 2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(
-                child: Icon(CustomIcons.MEATTRACE_ICON, size: 140),
-              ),
+              padding: const EdgeInsets.all(16),
+              child: _product?.qrCode != null && _product!.qrCode!.isNotEmpty
+                  ? QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 200,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: Colors.black,
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: Colors.black,
+                      ),
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.qr_code_2,
+                            size: 80,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No QR Code',
+                            style: AppTypography.bodyMedium(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
             const SizedBox(height: 12),
             Text(
               _product?.batchNumber ?? 'No batch',
-              style: AppTypography.bodyLarge(),
+              style: AppTypography.bodyLarge().copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
+            if (_product?.qrCode != null && _product!.qrCode!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'ID: ${_product?.id ?? 'N/A'}',
+                style: AppTypography.bodySmall(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton.icon(
                   onPressed: () {
-                    // Print QR
+                    // TODO: Implement print QR functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Print functionality coming soon'),
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.print),
                   label: const Text('Print'),
                 ),
                 TextButton.icon(
                   onPressed: () {
-                    // Share QR
+                    // TODO: Implement share QR functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Share functionality coming soon'),
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.share),
                   label: const Text('Share'),
@@ -230,7 +294,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildBasicInfoSection() {
+  Widget _buildBasicInfoSection(Color primaryColor) {
     final bool isAnimalPart = _product?.slaughterPartId != null || 
                               _product?.animalAnimalId != null;
     
@@ -249,10 +313,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.processorPrimary.withOpacity(0.1),
+                  color: primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.processorPrimary,
+                    color: primaryColor,
                     width: 2,
                   ),
                 ),
@@ -264,7 +328,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.processorPrimary,
+                            color: primaryColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -281,7 +345,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               Text(
                                 'Animal Tag',
                                 style: AppTypography.labelMedium().copyWith(
-                                  color: AppColors.processorPrimary,
+                                  color: primaryColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -289,7 +353,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               Text(
                                 _product!.animalAnimalId!,
                                 style: AppTypography.headlineSmall().copyWith(
-                                  color: AppColors.processorPrimary,
+                                  color: primaryColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -388,7 +452,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildTraceabilitySection() {
+  Widget _buildTraceabilitySection(Color primaryColor) {
     // Build traceability timeline based on available product data
     final List<Map<String, dynamic>> traceSteps = [];
     
@@ -512,6 +576,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   step['title'] as String,
                   step['location'] as String,
                   step['icon'] as IconData,
+                  primaryColor,
                   isFirst: index == 0,
                   isLast: index == traceSteps.length - 1,
                 );
@@ -525,7 +590,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _buildTraceStep(
     String title,
     String location,
-    IconData icon, {
+    IconData icon,
+    Color primaryColor, {
     bool isFirst = false,
     bool isLast = false,
   }) {
@@ -539,13 +605,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               height: 40,
               decoration: BoxDecoration(
                 color: isFirst
-                    ? AppColors.processorPrimary
-                    : AppColors.processorPrimary.withOpacity(0.5),
+                    ? primaryColor
+                    : primaryColor.withOpacity(0.5),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.processorPrimary.withOpacity(0.2),
+                    color: primaryColor.withOpacity(0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -567,8 +633,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      AppColors.processorPrimary.withOpacity(0.5),
-                      AppColors.processorPrimary.withOpacity(0.2),
+                      primaryColor.withOpacity(0.5),
+                      primaryColor.withOpacity(0.2),
                     ],
                   ),
                 ),

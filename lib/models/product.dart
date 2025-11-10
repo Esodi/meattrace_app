@@ -12,7 +12,6 @@ class ProductTimelineEvent {
   });
 
   factory ProductTimelineEvent.fromMap(Map<String, dynamic> json) {
-    print('ProductTimelineEvent.fromMap: stage value: ${json['stage']}, type: ${json['stage']?.runtimeType}');
     return ProductTimelineEvent(
       timestamp: DateTime.parse(json['timestamp']),
       location: json['location'],
@@ -98,12 +97,6 @@ class Product {
   });
 
   factory Product.fromMap(Map<String, dynamic> json) {
-    print('Product.fromMap: Raw JSON keys: ${json.keys.toList()}');
-    print('Product.fromMap: processing_unit_name: ${json['processing_unit_name']}');
-    print('Product.fromMap: animal_animal_id: ${json['animal_animal_id']}');
-    print('Product.fromMap: animal_species: ${json['animal_species']}');
-    print('Product.fromMap: received_by_shop_name: ${json['received_by_shop_name']}');
-
     return Product(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       processingUnit: json['processing_unit'].toString(),

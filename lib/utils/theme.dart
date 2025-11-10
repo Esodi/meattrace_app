@@ -327,6 +327,8 @@ class AppTheme {
       case 'processor':
         return isDark ? _processorDarkTheme : _processorTheme;
       case 'shop':
+      case 'shopowner':
+      case 'shop_owner':
       case 'retail':
         return isDark ? _shopDarkTheme : _shopTheme;
       default:

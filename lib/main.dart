@@ -17,6 +17,7 @@ import 'providers/scan_provider.dart';
 import 'providers/yield_trends_provider.dart';
 import 'providers/weather_provider.dart';
 import 'providers/user_management_provider.dart';
+import 'providers/user_context_provider.dart';
 import 'providers/activity_provider.dart';
 import 'providers/processing_unit_management_provider.dart';
 import 'providers/shop_management_provider.dart';
@@ -142,17 +143,27 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   // Helper function to get dashboard route based on user role
   String _getDashboardForRole(String role) {
-    switch (role.toLowerCase()) {
-      case 'farmer':
-        return '/farmer-home';
-      case 'processingunit':
-      case 'processing_unit':
-      case 'processor':
-        return '/processor-home';
-      case 'shop':
-        return '/shop-home';
-      default:
-        return '/farmer-home'; // Default fallback
+    final normalizedRole = role.toLowerCase();
+    
+    debugPrint('🛣️ [DASHBOARD_ROUTING] Getting dashboard for role: "$role" (normalized: "$normalizedRole")');
+    
+    // Handle all possible role variations
+    if (normalizedRole == 'farmer') {
+      debugPrint('   ➡️ Routing to: /farmer-home');
+      return '/farmer-home';
+    } else if (normalizedRole == 'processingunit' || 
+               normalizedRole == 'processing_unit' || 
+               normalizedRole == 'processor') {
+      debugPrint('   ➡️ Routing to: /processor-home');
+      return '/processor-home';
+    } else if (normalizedRole == 'shop' || 
+               normalizedRole == 'shopowner' || 
+               normalizedRole == 'shop_owner') {
+      debugPrint('   ➡️ Routing to: /shop-home');
+      return '/shop-home';
+    } else {
+      debugPrint('   ⚠️ Unknown role "$role", defaulting to: /farmer-home');
+      return '/farmer-home'; // Default fallback
     }
   }
 
@@ -165,6 +176,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         // Critical providers - loaded immediately
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => UserContextProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
 
         // Non-critical providers - lazy loaded in background

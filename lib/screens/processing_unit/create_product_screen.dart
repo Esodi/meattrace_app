@@ -138,29 +138,23 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       print('👤 [CREATE_PRODUCT] Current user ID: $currentUserId');
       print('📦 [CREATE_PRODUCT] Total animals in provider: ${animalProvider.animals.length}');
 
-      // Get all products to check which animals/parts have been used
-      final usedAnimalIds = productProvider.products
-          .map((product) => product.animal)
-          .toSet();
-
       print('🏭 [CREATE_PRODUCT] Total products: ${productProvider.products.length}');
-      print('🔒 [CREATE_PRODUCT] Animals already used in products: ${usedAnimalIds.length} -> $usedAnimalIds');
 
-      // Filter available whole animals (received and not used)
+      // Filter available whole animals (received and has remaining weight)
+      // Note: We don't check if animal was "used" - we only check remaining_weight
+      // This allows creating multiple products from the same animal until weight is depleted
       final availableAnimals = animalProvider.animals.where((animal) {
         final isSlaughtered = animal.slaughtered;
         final hasReceivedBy = animal.receivedBy != null;
         final matchesUser = animal.receivedBy == currentUserId;
-        final notUsed = !usedAnimalIds.contains(animal.id);
         final hasRemainingWeight = animal.remainingWeight != null && animal.remainingWeight! > 0;
         
-        final isAvailable = isSlaughtered && hasReceivedBy && matchesUser && notUsed && hasRemainingWeight;
+        final isAvailable = isSlaughtered && hasReceivedBy && matchesUser && hasRemainingWeight;
         
         if (animal.transferredTo != null || animal.receivedBy != null) {
           print('  🐄 Animal ${animal.animalId}:');
           print('     - slaughtered: $isSlaughtered');
           print('     - received_by: ${animal.receivedBy} (matches user: $matchesUser)');
-          print('     - not used: $notUsed');
           print('     - remaining_weight: ${animal.remainingWeight}');
           print('     - AVAILABLE: $isAvailable');
         }
@@ -174,19 +168,19 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       print('🔍 [CREATE_PRODUCT] Fetching slaughter parts...');
       final allSlaughterParts = await animalProvider.getSlaughterPartsList();
 
-      // Filter slaughter parts for current user and not used
+      // Filter slaughter parts for current user and has remaining weight
+      // Note: We don't check usedInProduct - we only check remaining_weight
+      // This allows creating multiple products from the same part until weight is depleted
       final availableSlaughterParts = allSlaughterParts.where((part) {
         final isReceived = part.receivedBy != null;
         final matchesUser = part.receivedBy == currentUserId;
-        final notUsed = !part.usedInProduct;
         final hasRemainingWeight = part.remainingWeight != null && part.remainingWeight! > 0;
         
-        final isAvailable = isReceived && matchesUser && notUsed && hasRemainingWeight;
+        final isAvailable = isReceived && matchesUser && hasRemainingWeight;
         
         if (part.receivedBy != null) {
           print('  🥩 Part ${part.id} (${part.partType.displayName}):');
           print('     - received_by: ${part.receivedBy} (matches user: $matchesUser)');
-          print('     - not used: $notUsed');
           print('     - remaining_weight: ${part.remainingWeight}');
           print('     - AVAILABLE: $isAvailable');
         }
@@ -203,7 +197,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         print('⚠️  [CREATE_PRODUCT] NO ANIMALS OR PARTS AVAILABLE!');
         print('   Possible reasons:');
         print('   1. No animals/parts have been RECEIVED yet (only transferred)');
-        print('   2. All received animals/parts already used in products');
+        print('   2. All received animals/parts have remaining_weight = 0 (fully used)');
         print('   3. Animals/parts received by different user');
       }
 

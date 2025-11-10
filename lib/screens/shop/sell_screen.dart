@@ -31,8 +31,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _customerPhoneController = TextEditingController();
   
-  // Payment method
-  String _paymentMethod = 'Cash';
+  // Payment method (lowercase to match backend)
+  String _paymentMethod = 'cash';
   
   bool _isProcessing = false;
   
@@ -112,11 +112,16 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         content: Text('${product.name} added to cart'),
         backgroundColor: AppColors.success,
         duration: const Duration(seconds: 1),
+        action: SnackBarAction(
+          label: 'View Cart',
+          textColor: Colors.white,
+          onPressed: () => _tabController.animateTo(1),
+        ),
       ),
     );
     
-    // Switch to cart tab
-    _tabController.animateTo(1);
+    // Don't auto-switch to cart tab - let user continue adding products
+    // User can manually switch to cart tab when ready
   }
   
   void _removeFromCart(int productId) {
@@ -295,10 +300,14 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
               const SizedBox(height: AppTheme.space12),
               CustomDropdownField<String>(
                 value: _paymentMethod,
-                items: ['Cash', 'Card', 'Mobile Money'].map((method) {
+                items: [
+                  {'value': 'cash', 'label': 'Cash'},
+                  {'value': 'card', 'label': 'Card'},
+                  {'value': 'mobile_money', 'label': 'Mobile Money'},
+                ].map((method) {
                   return DropdownMenuItem(
-                    value: method,
-                    child: Text(method),
+                    value: method['value'],
+                    child: Text(method['label']!),
                   );
                 }).toList(),
                 onChanged: (value) {

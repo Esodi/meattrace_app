@@ -221,7 +221,7 @@ class SlaughterPart {
     };
   }
 
-  String get displayName => '${partType.displayName} (${weight.toStringAsFixed(2)} ${weightUnit})';
+  String get displayName => '${partType.displayName} (${weight.toStringAsFixed(2)} $weightUnit)';
   
   bool get isTransferred => transferredTo != null;
   bool get isReceived => receivedBy != null;
@@ -282,9 +282,6 @@ class CarcassMeasurement {
   });
 
   factory CarcassMeasurement.fromMap(Map<String, dynamic> json) {
-    print('🔧 CarcassMeasurement.fromMap - START');
-    print('   Raw measurements: ${json['measurements']}');
-    
     // Properly convert nested measurements map
     Map<String, Map<String, dynamic>> measurementsMap = {};
     if (json['measurements'] != null) {
@@ -292,14 +289,11 @@ class CarcassMeasurement {
       rawMeasurements.forEach((key, value) {
         if (value is Map) {
           // Convert nested map properly
-          measurementsMap[key] = Map<String, dynamic>.from(value as Map);
+          measurementsMap[key] = Map<String, dynamic>.from(value);
         } else {
-          print('⚠️  Skipping non-map measurement: $key = $value');
         }
       });
     }
-    print('   Converted measurements: $measurementsMap');
-    
     return CarcassMeasurement(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       animalId: int.parse(json['animal'].toString()),
@@ -487,17 +481,12 @@ class Animal {
   factory Animal.fromMap(Map<String, dynamic> json) {
     try {
       final animalId = json['animal_id'] ?? 'UNKNOWN';
-      print('🟢 Animal.fromMap - Parsing animal: $animalId');
-      print('🟢   - Species: ${json['species']}, Age: ${json['age']}, Slaughtered: ${json['slaughtered']}');
-      
       // Safely parse carcass_measurement
       CarcassMeasurement? carcassMeasurement;
       if (json['carcass_measurement'] != null) {
         if (json['carcass_measurement'] is Map) {
-          print('🟢   - Has carcass_measurement (Map)');
           carcassMeasurement = CarcassMeasurement.fromMap(json['carcass_measurement'] as Map<String, dynamic>);
         } else {
-          print('⚠️   - carcass_measurement is ${json['carcass_measurement'].runtimeType}, expected Map');
         }
       }
 
@@ -505,23 +494,18 @@ class Animal {
       List<SlaughterPart> slaughterParts = [];
       if (json['slaughter_parts'] != null) {
         if (json['slaughter_parts'] is List) {
-          print('🟢   - Has ${(json['slaughter_parts'] as List).length} slaughter_parts');
           for (var part in json['slaughter_parts'] as List) {
             if (part is Map) {
               try {
                 slaughterParts.add(SlaughterPart.fromMap(part as Map<String, dynamic>));
               } catch (e) {
-                print('⚠️   - Failed to parse slaughter part: $e');
               }
             }
           }
         } else {
-          print('⚠️   - slaughter_parts is ${json['slaughter_parts'].runtimeType}, expected List');
         }
       }
 
-      print('✅ Animal.fromMap - Successfully parsed: $animalId');
-      
       // Parse lifecycle status
       AnimalLifecycleStatus? lifecycleStatus;
       if (json['lifecycle_status'] != null) {
@@ -575,9 +559,6 @@ class Animal {
         isSemiTransferredStatus: json['is_semi_transferred_status'],
       );
     } catch (e, stackTrace) {
-      print('❌ Error in Animal.fromMap: $e');
-      print('Stack trace: $stackTrace');
-      print('Problematic JSON: $json');
       rethrow;
     }
   }

@@ -17,7 +17,7 @@ class ActivityProvider with ChangeNotifier {
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━XXXXXX━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     debugPrint('🎯 ActivityProvider: Constructor START');
     debugPrint('   - ApiService instance: ${_apiService.hashCode}');
-    debugPrint('   - Provider instance: ${this.hashCode}');
+    debugPrint('   - Provider instance: ${hashCode}');
     debugPrint('   - Thread: ${DateTime.now().millisecondsSinceEpoch}');
     
     try {
@@ -48,109 +48,38 @@ class ActivityProvider with ChangeNotifier {
 
   /// Fetch activities from backend
   Future<void> fetchActivities({bool forceRefresh = false}) async {
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('📅 ACTIVITY_PROVIDER - FETCH_ACTIVITIES START');
-    print('   Provider instance: ${this.hashCode}');
-    print('   Called from: ${StackTrace.current.toString().split('\n').take(3).join('\n')}');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('📋 Parameters:');
-    print('   - forceRefresh: $forceRefresh');
-    print('📊 Current state:');
-    print('   - _activities.length: ${_activities.length}');
-    print('   - _isLoading: $_isLoading');
-    print('   - _lastFetchTime: $_lastFetchTime');
-
-    // Don't fetch if already loading
     if (_isLoading) {
-      print('⏭️ Already loading, skipping fetch');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       return;
     }
 
-    // Don't fetch if we have recent data (less than 5 minutes old) and not forcing refresh
     if (!forceRefresh &&
         _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!).inMinutes < 5 &&
         _activities.isNotEmpty) {
-      final minutesAgo = DateTime.now().difference(_lastFetchTime!).inMinutes;
-      print('⏭️ Using cached data (fetched $minutesAgo minutes ago)');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       return;
     }
 
     _isLoading = true;
     _error = null;
-    print('🔔 About to call notifyListeners() - Setting isLoading=true');
-    print('   Current ChangeNotifier state: hasListeners=${hasListeners}');
     try {
       notifyListeners();
-      print('✅ notifyListeners() completed successfully');
-    } catch (e, stack) {
-      print('❌ notifyListeners() FAILED!');
-      print('   Error: $e');
-      print('   Stack: ${stack.toString().split('\n').take(5).join('\n')}');
-      rethrow;
-    }
 
-    try {
-      print('📡 Calling API: /activities/recent/');
       final data = await _apiService.fetchActivities();
-
-      print('✅ API Response received');
-      print('📦 Response data type: ${data.runtimeType}');
       final List<dynamic> activitiesList = data['activities'] ?? data ?? [];
-
-      print('📦 Activities list length: ${activitiesList.length}');
 
       _activities = activitiesList
           .map((json) => Activity.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      print('✅ Activities parsed and assigned. Count: ${_activities.length}');
-
-      // Log first few activities
-      for (var i = 0; i < _activities.length && i < 3; i++) {
-        final activity = _activities[i];
-        print('  [$i] ${activity.type} - ${activity.title}');
-      }
-
       _lastFetchTime = DateTime.now();
       await _saveActivitiesToCache();
-      print('💾 Activities saved to cache');
     } catch (e, stackTrace) {
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('❌ ACTIVITY_PROVIDER ERROR');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('❌ Error: $e');
-      print('❌ Stack trace: $stackTrace');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       debugPrint('Error fetching activities: $e');
       _error = 'Network error: $e';
-      // Load from cache on error
-      print('🔄 Loading from cache...');
       await _loadActivitiesFromCache();
-      print('💾 Loaded ${_activities.length} activities from cache');
     } finally {
       _isLoading = false;
-      print('🔔 About to call notifyListeners() - Setting isLoading=false (finally block)');
-      print('   Current ChangeNotifier state: hasListeners=${hasListeners}');
-      try {
-        notifyListeners();
-        print('✅ notifyListeners() completed successfully (finally block)');
-      } catch (e, stack) {
-        print('❌ notifyListeners() FAILED in finally block!');
-        print('   Error: $e');
-        print('   Stack: ${stack.toString().split('\n').take(5).join('\n')}');
-        rethrow;
-      }
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🏁 ACTIVITY_PROVIDER - FETCH_ACTIVITIES COMPLETE');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('📊 Final state:');
-      print('   - _activities.length: ${_activities.length}');
-      print('   - _isLoading: $_isLoading');
-      print('   - _error: $_error');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      notifyListeners();
     }
   }
 

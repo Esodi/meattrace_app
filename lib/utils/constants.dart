@@ -1,8 +1,9 @@
 class Constants {
   // API Configuration - Fixed base URL for backend
+  // Production server:
   // static const String baseUrl = 'https://dev.shambabora.co.tz/api/v2';
   
-  // For Physical Device via Bluetooth Network:
+  // For Physical Device via Bluetooth Network (LOCAL TESTING):
   static const String baseUrl = 'http://192.168.44.223:8000/api/v2';
   
   // Alternative IPs (uncomment the one you need):

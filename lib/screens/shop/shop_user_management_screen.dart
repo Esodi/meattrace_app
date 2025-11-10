@@ -126,7 +126,7 @@ class _ShopUserManagementScreenState
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showInviteDialog,
         icon: Icon(Icons.person_add),
-        label: Text('Invite Staff'),
+        label: Text(''),
         backgroundColor: AppColors.shopPrimary,
       ),
     );
@@ -883,7 +883,7 @@ class _ShopUserManagementScreenState
             children: [
               Icon(Icons.person_add, color: AppColors.shopPrimary),
               SizedBox(width: AppTheme.space8),
-              Text('Invite Staff Member'),
+              Text(''),
             ],
           ),
           content: Form(

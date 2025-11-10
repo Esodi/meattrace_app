@@ -134,8 +134,8 @@ class User {
       : username;
 
   bool get isFarmer => role == 'Farmer';
-  bool get isProcessingUnit => role == 'ProcessingUnit';
-  bool get isShop => role == 'Shop';
+  bool get isProcessingUnit => role == 'ProcessingUnit' || role == 'Processor';
+  bool get isShop => role == 'Shop' || role == 'ShopOwner';
 }
 
 class ProcessingUnitMembership {

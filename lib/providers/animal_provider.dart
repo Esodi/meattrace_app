@@ -100,27 +100,11 @@ class AnimalProvider with ChangeNotifier {
   }
 
   Future<void> fetchAnimals({String? species, bool? slaughtered, String? search, int? page}) async {
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('🐄 ANIMAL_PROVIDER - FETCH_ANIMALS START');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('� Parameters:');
-    print('   - species: $species');
-    print('   - slaughtered: $slaughtered');
-    print('   - search: $search');
-    print('   - page: $page');
-    print('📊 Current state BEFORE fetch:');
-    print('   - _animals.length: ${_animals.length}');
-    print('   - _isLoading: $_isLoading');
-    print('   - _error: $_error');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
     _isLoading = true;
     _error = null;
     notifyListeners();
-    print('🔔 notifyListeners() called - isLoading set to true');
 
     try {
-      print('� Calling AnimalService.getAnimals...');
       final result = await _animalService.getAnimals(
         species: species,
         slaughtered: slaughtered,
@@ -128,81 +112,17 @@ class AnimalProvider with ChangeNotifier {
         page: page,
         ordering: '-created_at', // Order by newest first
       );
-      
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('✅ ANIMAL_SERVICE RESPONSE RECEIVED');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('� Result type: ${result.runtimeType}');
-      print('📦 Result keys: ${result.keys.toList()}');
-      if (result.containsKey('results')) {
-        print('📦 Results type: ${result['results'].runtimeType}');
-        print('📦 Results count: ${(result['results'] as List).length}');
-      }
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+
       _animals = result['results'] as List<Animal>;
-      print('✅ Animals assigned to _animals list. New count: ${_animals.length}');
-      
-      // Log each animal in detail
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🐮 DETAILED ANIMAL LIST');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      for (var i = 0; i < _animals.length && i < 10; i++) {
-        final animal = _animals[i];
-        print('[$i] Animal Details:');
-        print('    - ID: ${animal.id}');
-        print('    - Animal ID: ${animal.animalId}');
-        print('    - Species: ${animal.species}');
-        print('    - Slaughtered: ${animal.slaughtered}');
-        print('    - Transferred To: ${animal.transferredTo}');
-        print('    - Received By: ${animal.receivedBy} ${animal.receivedBy != null ? "✅ RECEIVED" : "⏳ PENDING"}');
-        print('    - Received At: ${animal.receivedAt}');
-        print('    - Farmer ID: ${animal.farmer}');
-        print('    - Created: ${animal.createdAt}');
-      }
-      if (_animals.length > 10) {
-        print('... and ${_animals.length - 10} more animals');
-      }
-      
-      // Summary statistics
-      final receivedCount = _animals.where((a) => a.receivedBy != null).length;
-      final pendingCount = _animals.where((a) => a.transferredTo != null && a.receivedBy == null).length;
-      final slaughteredCount = _animals.where((a) => a.slaughtered).length;
-      print('');
-      print('📊 SUMMARY STATISTICS:');
-      print('   ✅ Received animals: $receivedCount');
-      print('   ⏳ Pending receipt: $pendingCount');
-      print('   🔪 Slaughtered: $slaughteredCount');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+
       await _saveToDatabase();
-      print('💾 Animals saved to database');
-      print('✅ FETCH_ANIMALS SUCCESS - Total animals: ${_animals.length}');
-    } catch (e, stackTrace) {
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('❌ ANIMAL_PROVIDER ERROR');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('❌ Error: $e');
-      print('❌ Stack trace:');
-      print(stackTrace);
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    } catch (e) {
       _error = e.toString();
       // Load offline data if API fails
-      print('🔄 Loading offline data as fallback...');
       await _loadOfflineData();
-      print('� Loaded offline data. Animals count: ${_animals.length}');
     } finally {
       _isLoading = false;
       notifyListeners();
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🏁 ANIMAL_PROVIDER - FETCH_ANIMALS COMPLETE');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('� Final state:');
-      print('   - _animals.length: ${_animals.length}');
-      print('   - _isLoading: $_isLoading');
-      print('   - _error: $_error');
-      print('🔔 notifyListeners() called - UI will rebuild');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
   }
 
@@ -224,12 +144,9 @@ class AnimalProvider with ChangeNotifier {
     try {
       Animal? createdAnimal;
       if (isOnline) {
-        print('AnimalProvider.createAnimal - Creating animal online');
         createdAnimal = await _animalService.createAnimal(animal, photo: photo);
-        print('AnimalProvider.createAnimal - Animal created: ${createdAnimal.animalId}');
         _animals.add(createdAnimal);
         await _saveToDatabase();
-        print('AnimalProvider.createAnimal - Animal added to local list. Total animals: ${_animals.length}');
         notifyListeners(); // Notify listeners immediately after adding
       } else {
         // Save offline with synced = false
@@ -256,13 +173,9 @@ class AnimalProvider with ChangeNotifier {
       notifyListeners();
       return createdAnimal;
     } catch (e) {
-      print('AnimalProvider.createAnimal - API call failed: $e');
-      print('Animal data: species=${animal.species}, age=${animal.age}, abbatoir=${animal.abbatoirName}');
-      print('Connectivity status: ${isOnline ? "online" : "offline"}');
       _error = e.toString();
       // If API fails, try saving offline
       if (e is NetworkException || e is NoInternetException) {
-        print('Network error detected, saving offline');
         final offlineAnimal = Animal(
           id: DateTime.now().millisecondsSinceEpoch,
           farmer: animal.farmer,
@@ -282,11 +195,9 @@ class AnimalProvider with ChangeNotifier {
         _animals.add(offlineAnimal);
         await _dbHelper.insertAnimals([offlineAnimal], synced: false);
         _error = 'Saved offline. Will sync when online.';
-        print('Animal saved offline successfully');
         notifyListeners();
         return offlineAnimal;
       }
-      print('Non-network error, not saving offline');
       notifyListeners();
       return null;
     } finally {
@@ -333,49 +244,34 @@ class AnimalProvider with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> transferAnimals(
-    List<int?> animalIds, 
+    List<int?> animalIds,
     int processingUnitId, {
     List<Map<String, dynamic>>? partTransfers,
   }) async {
     // Store original state for rollback
     final originalAnimals = List<Animal>.from(_animals);
-    
-    try {
-      print('PROVIDER_TRANSFER_START - Animal IDs: $animalIds, Processing Unit ID: $processingUnitId');
-      if (partTransfers != null && partTransfers.isNotEmpty) {
-        print('PROVIDER_TRANSFER_PARTS - Part transfers: $partTransfers');
-      }
-      print('PROVIDER_TRANSFER_ANIMAL_COUNT - Count: ${animalIds.length}');
-      print('PROVIDER_TRANSFER_FILTERED_IDS - Filtered: ${animalIds.where((id) => id != null).toList()}');
 
+    try {
       // OPTIMISTIC UPDATE: Immediately update UI before API call
       final transferredIds = animalIds.where((id) => id != null).cast<int>().toSet();
       _animals = _animals.where((animal) => !transferredIds.contains(animal.id)).toList();
-      print('PROVIDER_TRANSFER_OPTIMISTIC_UPDATE - Removed ${transferredIds.length} animals from local list');
       notifyListeners(); // Update UI immediately
-      
+
       // Make API call in background
       final response = await _animalService.transferAnimals(
-        animalIds, 
+        animalIds,
         processingUnitId,
         partTransfers: partTransfers,
       );
-      print('PROVIDER_TRANSFER_SUCCESS - Response: $response');
 
       // Refresh from server to get accurate state
-      print('PROVIDER_TRANSFER_REFRESH_START - Refreshing animal list');
       await fetchAnimals();
-      print('PROVIDER_TRANSFER_REFRESH_COMPLETE - Animal list refreshed');
       return response;
     } catch (e) {
-      print('PROVIDER_TRANSFER_ERROR - Exception: $e');
-      print('PROVIDER_TRANSFER_ERROR_TYPE - Type: ${e.runtimeType}');
-      
       // ROLLBACK: Restore original state on error
       _animals = originalAnimals;
-      print('PROVIDER_TRANSFER_ROLLBACK - Restored original animal list');
       notifyListeners(); // Update UI with rolled-back state
-      
+
       _error = e.toString();
       rethrow;
     }
@@ -403,27 +299,15 @@ class AnimalProvider with ChangeNotifier {
     List<Map<String, dynamic>>? partRejections,
   }) async {
     try {
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🌐 [ANIMAL_PROVIDER] Calling receiveAnimals API...');
-      print('  Animal IDs: $animalIds');
-      print('  Part receives: ${partReceives?.length ?? 0}');
-      print('  Animal rejections: ${animalRejections?.length ?? 0}');
-      print('  Part rejections: ${partRejections?.length ?? 0}');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
       final response = await _animalService.receiveAnimals(
         animalIds,
         partReceives: partReceives,
         animalRejections: animalRejections,
         partRejections: partRejections,
       );
-      
-      print('✅ [ANIMAL_PROVIDER] receiveAnimals API response: $response');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+
       return response;
     } catch (e) {
-      print('❌ [ANIMAL_PROVIDER] receiveAnimals error: $e');
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -508,7 +392,7 @@ class AnimalProvider with ChangeNotifier {
       _feetWeight = measurement.measurements['feet_weight']?['value'];
       _wholeCarcassWeight = measurement.measurements['whole_carcass_weight']?['value'];
 
-      final createdMeasurement = await _animalService.createCarcassMeasurement(measurement);
+      await _animalService.createCarcassMeasurement(measurement);
 
       // Find the animal in the local list and update it
       final index = _animals.indexWhere((a) => a.id == measurement.animalId);
@@ -622,11 +506,3 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 }
-
-
-
-
-
-
-
-

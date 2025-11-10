@@ -186,6 +186,8 @@ class AppColors {
       case 'processor':
         return processorPrimary;
       case 'shop':
+      case 'shopowner':
+      case 'shop_owner':
       case 'retail':
         return shopPrimary;
       default:
@@ -205,6 +207,8 @@ class AppColors {
       case 'processor':
         return processorLight;
       case 'shop':
+      case 'shopowner':
+      case 'shop_owner':
       case 'retail':
         return shopLight;
       default:
@@ -224,6 +228,8 @@ class AppColors {
       case 'processor':
         return processorDark;
       case 'shop':
+      case 'shopowner':
+      case 'shop_owner':
       case 'retail':
         return shopDark;
       default:
@@ -243,6 +249,8 @@ class AppColors {
       case 'processor':
         return processorGradient;
       case 'shop':
+      case 'shopowner':
+      case 'shop_owner':
       case 'retail':
         return shopGradient;
       default:

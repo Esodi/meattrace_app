@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/product.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/theme.dart';
 import '../../utils/app_typography.dart';
@@ -48,22 +49,46 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     setState(() => _isLoading = true);
     try {
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Get current user's processing unit ID
+      final currentProcessingUnitId = authProvider.user?.processingUnitId;
       
       print('[TRANSFER_PRODUCTS] Starting data load...');
+      print('[TRANSFER_PRODUCTS] Current processing unit ID: $currentProcessingUnitId');
       
       // Fetch products
       try {
         await productProvider.fetchProducts();
         print('[TRANSFER_PRODUCTS] Total products fetched: ${productProvider.products.length}');
         
-        // Filter available products (not already transferred)
+        // Filter available products (not already transferred AND belongs to current processing unit)
         final availableProducts = productProvider.products
-            .where((product) => product.transferredTo == null)
+            .where((product) {
+              final notTransferred = product.transferredTo == null;
+              
+              // Handle processingUnit being either int or string
+              int? productPuId;
+              if (product.processingUnit is int) {
+                productPuId = product.processingUnit as int;
+              } else if (product.processingUnit is String) {
+                productPuId = int.tryParse(product.processingUnit as String);
+              }
+              
+              final belongsToCurrentUnit = currentProcessingUnitId == null || 
+                  productPuId == currentProcessingUnitId;
+              
+              if (!belongsToCurrentUnit) {
+                print('[TRANSFER_PRODUCTS] ⚠️  Filtering out ${product.name} - belongs to PU $productPuId, not $currentProcessingUnitId');
+              }
+              
+              return notTransferred && belongsToCurrentUnit;
+            })
             .toList();
         
-        print('[TRANSFER_PRODUCTS] Available products (not transferred): ${availableProducts.length}');
+        print('[TRANSFER_PRODUCTS] Available products (not transferred, current PU only): ${availableProducts.length}');
         for (var product in availableProducts) {
-          print('[TRANSFER_PRODUCTS] - ${product.name} (ID: ${product.id}, Batch: ${product.batchNumber})');
+          print('[TRANSFER_PRODUCTS] - ${product.name} (ID: ${product.id}, Batch: ${product.batchNumber}, PU: ${product.processingUnit})');
         }
         
         setState(() {

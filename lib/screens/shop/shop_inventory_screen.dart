@@ -344,22 +344,23 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                         if (product.price == 0)
                           ElevatedButton.icon(
                             onPressed: () => _showAddPriceDialog(product),
-                            icon: const Icon(Icons.attach_money, size: 16),
+                            icon: const Icon(Icons.attach_money, size: 22),
                             label: Text(
                               'Add Price',
-                              style: AppTypography.labelSmall().copyWith(
+                              style: AppTypography.bodyMedium().copyWith(
                                 color: Colors.white,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.shopPrimary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: AppTheme.space12,
-                                vertical: AppTheme.space8,
+                                horizontal: AppTheme.space20,
+                                vertical: AppTheme.space16,
                               ),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              minimumSize: const Size(140, 48),
+                              tapTargetSize: MaterialTapTargetSize.padded,
                             ),
                           )
                         else

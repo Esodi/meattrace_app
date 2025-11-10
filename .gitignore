@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Build outputs
+/build/
+**/build/
+
+# Analysis and optimization files
+analysis_options.yaml
+optimize.txt
+devtools_options.yaml
+
+# Generated documentation
+*.md
+!README.md
+
