@@ -5,6 +5,8 @@ import '../../utils/app_theme.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../providers/shop_management_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/user_context_provider.dart';
 import '../../models/shop_user.dart';
 import '../../models/join_request.dart';
 import '../../widgets/core/custom_button.dart';
@@ -37,10 +39,61 @@ class _ShopUserManagementScreenState
     
     // Load data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<ShopManagementProvider>();
-      provider.loadShopMembers(widget.shopId);
-      provider.loadJoinRequests(widget.shopId);
+      _initializeProvider();
+      _loadDataWithErrorHandling();
     });
+  }
+
+  void _initializeProvider() {
+    // Set current user ID in provider for permission checks
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<ShopManagementProvider>();
+
+    if (authProvider.user != null) {
+      provider.setCurrentUserId(authProvider.user!.id);
+      debugPrint('✅ [SHOP_USER_MGMT] Set current user ID: ${authProvider.user!.id}');
+
+      // Check if user has shop role - redirect if not
+      final userContext = context.read<UserContextProvider>();
+      // Use permission-based gating so admins and staff with manage permission can access
+      if (!userContext.canManageUsers()) {
+        debugPrint('❌ [SHOP_USER_MGMT] User cannot manage shop users (role: ${authProvider.user!.role}). Redirecting...');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Access denied. Only shop owners or staff with permissions can manage shop users.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            // Redirect to appropriate dashboard based on role
+            final dashboard = _getDashboardForRole(authProvider.user!.role);
+            context.go(dashboard);
+          }
+        });
+        return;
+      }
+    } else {
+      debugPrint('⚠️ [SHOP_USER_MGMT] No current user found in AuthProvider');
+    }
+  }
+
+  String _getDashboardForRole(String role) {
+    final normalizedRole = role.toLowerCase();
+
+    if (normalizedRole == 'farmer') {
+      return '/farmer-home';
+    } else if (normalizedRole == 'processingunit' ||
+               normalizedRole == 'processing_unit' ||
+               normalizedRole == 'processor') {
+      return '/processor-home';
+    } else if (normalizedRole == 'shop' ||
+               normalizedRole == 'shopowner' ||
+               normalizedRole == 'shop_owner') {
+      return '/shop-home';
+    } else {
+      return '/farmer-home'; // Default fallback
+    }
   }
 
   @override
@@ -50,8 +103,24 @@ class _ShopUserManagementScreenState
     super.dispose();
   }
 
+  Future<void> _loadDataWithErrorHandling() async {
+    try {
+      final provider = context.read<ShopManagementProvider>();
+      // CRITICAL: Load members FIRST before join requests
+      // This ensures permission checks work correctly when rendering request cards
+      await provider.loadShopMembers(widget.shopId);
+      debugPrint('✅ [SHOP_USER_MGMT] Members loaded: ${provider.members.length}');
+      
+      await provider.loadJoinRequests(widget.shopId);
+      debugPrint('✅ [SHOP_USER_MGMT] Join requests loaded: ${provider.joinRequests.length}');
+    } catch (e) {
+      debugPrint('❌ [SHOP_USER_MGMT] Error loading data: $e');
+    }
+  }
+
   Future<void> _refreshData() async {
     final provider = context.read<ShopManagementProvider>();
+    // Load members first, then join requests (sequential, not parallel)
     await provider.loadShopMembers(widget.shopId);
     await provider.loadJoinRequests(widget.shopId);
   }
@@ -225,7 +294,7 @@ class _ShopUserManagementScreenState
           return _buildErrorState(provider.error!);
         }
 
-        final requests = provider.joinRequests;
+        final requests = provider.pendingJoinRequests;
 
         if (requests.isEmpty) {
           return _buildEmptyState(
@@ -404,7 +473,18 @@ class _ShopUserManagementScreenState
   }
 
   Widget _buildRequestCard(JoinRequest request, ShopManagementProvider provider) {
-    final canManage = provider.canManageUsers();
+    final authProvider = context.read<AuthProvider>();
+    final currentUserId = authProvider.user?.id;
+    final canManage = provider.canManageUsers(currentUserId);
+    
+    // DEBUG: Log permission check result
+    debugPrint('🔍 [SHOP_REQUEST_CARD] Building card for ${request.username}');
+    debugPrint('🔍 [SHOP_REQUEST_CARD] Current user ID = $currentUserId');
+    debugPrint('🔍 [SHOP_REQUEST_CARD] canManage = $canManage');
+    debugPrint('🔍 [SHOP_REQUEST_CARD] Members count = ${provider.members.length}');
+    if (provider.members.isNotEmpty) {
+      debugPrint('🔍 [SHOP_REQUEST_CARD] Sample member: userId=${provider.members.first.userId}, role=${provider.members.first.role}');
+    }
     
     return Card(
       margin: EdgeInsets.only(bottom: AppTheme.space12),
@@ -499,32 +579,30 @@ class _ShopUserManagementScreenState
               ),
             ),
             
-            if (canManage) ...[
-              SizedBox(height: AppTheme.space16),
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomButton(
-                      label: 'Reject',
-                      onPressed: () => _handleRejectRequest(request, provider),
-                      variant: ButtonVariant.secondary,
-                      customColor: AppColors.error,
-                      size: ButtonSize.small,
-                    ),
+            SizedBox(height: AppTheme.space16),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    label: 'Reject',
+                    onPressed: canManage ? () => _handleRejectRequest(request, provider) : null,
+                    variant: ButtonVariant.secondary,
+                    customColor: canManage ? AppColors.error : AppColors.textSecondary,
+                    size: ButtonSize.small,
                   ),
-                  SizedBox(width: AppTheme.space12),
-                  Expanded(
-                    child: CustomButton(
-                      label: 'Approve',
-                      onPressed: () => _handleApproveRequest(request, provider),
-                      variant: ButtonVariant.primary,
-                      customColor: AppColors.success,
-                      size: ButtonSize.small,
-                    ),
+                ),
+                SizedBox(width: AppTheme.space12),
+                Expanded(
+                  child: CustomButton(
+                    label: 'Approve',
+                    onPressed: canManage ? () => _handleApproveRequest(request, provider) : null,
+                    variant: ButtonVariant.primary,
+                    customColor: canManage ? AppColors.success : AppColors.textSecondary,
+                    size: ButtonSize.small,
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ],
         ),
       ),

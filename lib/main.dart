@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'utils/app_theme.dart'; // New theme system
 import 'services/network_helper.dart';
 import 'providers/auth_provider.dart';
+import 'providers/auth_progress_provider.dart';
 import 'providers/meat_trace_provider.dart';
 import 'providers/animal_provider.dart';
 import 'providers/product_provider.dart';
@@ -32,6 +33,7 @@ import 'screens/auth/processing_unit_signup_screen.dart';
 import 'screens/auth/shop_signup_screen.dart';
 import 'screens/auth/role_selection_screen.dart';
 import 'screens/auth/onboarding_screen.dart';
+import 'screens/auth/pending_approval_screen.dart';
 
 import 'screens/processing_unit/modern_processor_home_screen.dart';
 import 'screens/processing_unit/products_list_screen.dart';
@@ -175,8 +177,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       providers: [
         // Critical providers - loaded immediately
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserContextProvider()),
+        ChangeNotifierProvider(create: (context) => AuthProvider(context.read<UserContextProvider>())),
+        ChangeNotifierProvider(create: (_) => AuthProgressProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
 
         // Non-critical providers - lazy loaded in background
@@ -234,10 +237,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               final isLoggedIn = authProvider.isLoggedIn;
               final isInitialized = authProvider.isInitialized;
               final isGoingToLogin = state.matchedLocation == '/login';
-              final isGoingToSignup = state.matchedLocation.startsWith('/signup') || 
+              final isGoingToSignup = state.matchedLocation.startsWith('/signup') ||
                                       state.matchedLocation == '/role-selection' ||
                                       state.matchedLocation == '/onboarding';
               final isGoingToSplash = state.matchedLocation == '/';
+              final isGoingToPendingApproval = state.matchedLocation == '/pending-approval';
 
               debugPrint('🛣️ [ROUTER_REDIRECT] Location: ${state.matchedLocation}');
               debugPrint('   isLoggedIn: $isLoggedIn, isInitialized: $isInitialized');
@@ -246,6 +250,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               if (!isInitialized && !isGoingToSplash) {
                 debugPrint('   ➡️ Redirecting to splash (not initialized)');
                 return '/';
+              }
+
+              // If logged in, check for pending join request
+              if (isLoggedIn) {
+                final user = authProvider.user;
+                if (user != null && user.hasPendingJoinRequest) {
+                  // User has pending join request - show pending approval screen
+                  if (!isGoingToPendingApproval) {
+                    debugPrint('   ➡️ Redirecting to pending-approval (has pending join request)');
+                    return '/pending-approval';
+                  }
+                  // Already on pending approval screen, no redirect needed
+                  debugPrint('   ✅ On pending-approval screen');
+                  return null;
+                }
               }
 
               // If logged in and trying to access auth screens, redirect to dashboard
@@ -274,6 +293,28 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               // Modern UI routes (actively used)
               GoRoute(path: '/login', builder: (context, state) => const ModernLoginScreen()),
               GoRoute(
+                path: '/pending-approval',
+                builder: (context, state) {
+                  final user = authProvider.user;
+                  if (user == null || !user.hasPendingJoinRequest) {
+                    // Redirect to login if no pending request
+                    return const ModernLoginScreen();
+                  }
+                  
+                  final isShop = user.pendingJoinRequestShopName != null;
+                  final entityName = isShop 
+                      ? (user.pendingJoinRequestShopName ?? 'Unknown Shop')
+                      : (user.pendingJoinRequestUnitName ?? 'Unknown Unit');
+                      
+                  return PendingApprovalScreen(
+                    entityName: entityName,
+                    requestedRole: user.pendingJoinRequestRole ?? 'worker',
+                    requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+                    isShop: isShop,
+                  );
+                },
+              ),
+              GoRoute(
                 path: '/signup',
                 builder: (context, state) {
                   final role = state.uri.queryParameters['role'];
@@ -285,10 +326,37 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               GoRoute(path: '/role-selection', builder: (context, state) => const RoleSelectionScreen()),
               GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
               GoRoute(path: '/farmer-home', builder: (context, state) => const ModernFarmerHomeScreen()),
-              GoRoute(path: '/processor-home', builder: (context, state) => const ModernProcessorHomeScreen()),
+              GoRoute(
+                path: '/processor-home',
+                builder: (context, state) {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final user = authProvider.user;
+                  if (user != null && user.hasPendingJoinRequest) {
+                    debugPrint('   ➡️ User has pending join request - intercepting /processor-home and showing pending approval screen');
+                    return PendingApprovalScreen(
+                      entityName: user.pendingJoinRequestUnitName ?? 'Unknown Unit',
+                      requestedRole: user.pendingJoinRequestRole ?? 'worker',
+                      requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+                      isShop: false,
+                    );
+                  }
+                  return const ModernProcessorHomeScreen();
+                },
+              ),
               GoRoute(
                 path: '/shop-home',
                 builder: (context, state) {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final user = authProvider.user;
+                  if (user != null && user.hasPendingJoinRequest) {
+                    debugPrint('   ➡️ User has pending join request - intercepting /shop-home and showing pending approval screen');
+                    return PendingApprovalScreen(
+                      entityName: user.pendingJoinRequestShopName ?? 'Unknown Shop',
+                      requestedRole: user.pendingJoinRequestRole ?? 'worker',
+                      requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+                      isShop: true,
+                    );
+                  }
                   final index = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
                   return ModernShopHomeScreen(initialIndex: index);
                 },

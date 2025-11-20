@@ -40,7 +40,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     'Sheep': 'sheep',
     'Goat': 'goat',
   };
-  final List<String> _statusOptions = ['All', 'Healthy', 'Slaughtered', 'Transferred', 'Semi-Transferred'];
+  final List<String> _statusOptions = ['All', 'Rejected', 'Healthy', 'Slaughtered', 'Transferred', 'Semi-Transferred'];
 
   @override
   void initState() {
@@ -144,6 +144,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
       // Status filter - using lifecycle status
       if (_selectedStatus != 'All') {
         final lifecycleStatus = animal.computedLifecycleStatus;
+        if (_selectedStatus == 'Rejected' && lifecycleStatus != AnimalLifecycleStatus.rejected) return false;
         if (_selectedStatus == 'Healthy' && lifecycleStatus != AnimalLifecycleStatus.healthy) return false;
         if (_selectedStatus == 'Slaughtered' && lifecycleStatus != AnimalLifecycleStatus.slaughtered) return false;
         if (_selectedStatus == 'Transferred' && lifecycleStatus != AnimalLifecycleStatus.transferred) return false;
@@ -657,6 +658,8 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
   String _getStatusLabel(Animal animal) {
     final status = animal.computedLifecycleStatus;
     switch (status) {
+      case AnimalLifecycleStatus.rejected:
+        return 'Rejected';
       case AnimalLifecycleStatus.healthy:
         return 'Healthy';
       case AnimalLifecycleStatus.slaughtered:
@@ -671,6 +674,8 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
   Color _getStatusColor(Animal animal) {
     final status = animal.computedLifecycleStatus;
     switch (status) {
+      case AnimalLifecycleStatus.rejected:
+        return Colors.red;
       case AnimalLifecycleStatus.healthy:
         return Colors.green;
       case AnimalLifecycleStatus.slaughtered:

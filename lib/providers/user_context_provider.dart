@@ -14,9 +14,9 @@ class UserContextProvider with ChangeNotifier {
 
   bool get isLoggedIn => _currentUser != null;
   bool get isAdmin => _currentUser?.role.toLowerCase() == 'admin';
-  bool get isFarmer => _currentUser?.role.toLowerCase() == 'farmer';
-  bool get isProcessingUnit => _currentUser?.role.toLowerCase() == 'processingunit' || _currentUser?.role.toLowerCase() == 'processing_unit';
-  bool get isShop => _currentUser?.role.toLowerCase() == 'shop';
+  bool get isFarmer => _currentUser?.isFarmer ?? false;
+  bool get isProcessingUnit => _currentUser?.isProcessingUnit ?? false;
+  bool get isShop => _currentUser?.isShop ?? false;
 
   // Permission checks
   bool hasPermission(String permission, {int? processingUnitId}) {

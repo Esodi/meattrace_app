@@ -474,6 +474,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUserId = authProvider.user?.id;
     final processingUnitId = authProvider.user?.processingUnitId;
+    final processingUnitName = authProvider.user?.processingUnitName ?? 'Processing Unit';
 
     // RECEIVED: Total number of received animals/parts since account creation
     // Use the getter which prioritizes production stats
@@ -563,6 +564,15 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                       username,
                       style: AppTypography.headlineLarge().copyWith(
                         color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      processingUnitName,
+                      style: AppTypography.bodyLarge().copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],

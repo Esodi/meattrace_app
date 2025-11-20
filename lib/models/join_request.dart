@@ -42,18 +42,18 @@ class JoinRequest {
   factory JoinRequest.fromJson(Map<String, dynamic> json) {
     final createdAt = json['created_at'] != null ? DateTime.parse(json['created_at']) : null;
     return JoinRequest(
-      id: json['id'],
-      user: json['user'],
+      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
+      user: json['user'] != null ? (json['user'] is int ? json['user'] : int.parse(json['user'].toString())) : null,
       username: json['username'],
       email: json['email'],
       requestType: json['request_type'],
       status: json['status'],
-      processingUnit: json['processing_unit'],
-      shop: json['shop'],
+      processingUnit: json['processing_unit'] != null ? (json['processing_unit'] is int ? json['processing_unit'] : int.parse(json['processing_unit'].toString())) : null,
+      shop: json['shop'] != null ? (json['shop'] is int ? json['shop'] : int.parse(json['shop'].toString())) : null,
       requestedRole: json['requested_role'],
       message: json['message'],
       qualifications: json['qualifications'],
-      reviewedBy: json['reviewed_by'],
+      reviewedBy: json['reviewed_by'] != null ? (json['reviewed_by'] is int ? json['reviewed_by'] : int.parse(json['reviewed_by'].toString())) : null,
       responseMessage: json['response_message'],
       reviewedAt: json['reviewed_at'] != null ? DateTime.parse(json['reviewed_at']) : null,
       expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,

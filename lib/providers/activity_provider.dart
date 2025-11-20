@@ -244,6 +244,7 @@ class ActivityProvider with ChangeNotifier {
     final activity = Activity(
       type: ActivityType.transfer,
       title: 'Transferred $count animal${count > 1 ? 's' : ''} to $processorName',
+      description: 'Successfully transferred $count animal${count > 1 ? 's' : ''} to $processorName for processing',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'transfer',
@@ -295,6 +296,7 @@ class ActivityProvider with ChangeNotifier {
     final activity = Activity(
       type: ActivityType.transfer,
       title: 'Transferred $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partTransferCount part transfer${partTransferCount > 1 ? 's' : ''} to $processorName',
+      description: 'Mixed transfer: $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partTransferCount carcass part${partTransferCount > 1 ? 's' : ''} sent to $processorName',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'transfer',
@@ -318,6 +320,7 @@ class ActivityProvider with ChangeNotifier {
     final activity = Activity(
       type: ActivityType.transfer,
       title: 'Received $count animal${count > 1 ? 's' : ''}',
+      description: 'Received and inspected $count animal${count > 1 ? 's' : ''} at processing facility',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'receive',
@@ -366,6 +369,7 @@ class ActivityProvider with ChangeNotifier {
     final activity = Activity(
       type: ActivityType.transfer,
       title: 'Received $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partReceiveCount part receive${partReceiveCount > 1 ? 's' : ''}',
+      description: 'Mixed reception: $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partReceiveCount carcass part${partReceiveCount > 1 ? 's' : ''} received at facility',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'receive',

@@ -520,6 +520,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentShopId = authProvider.user?.shopId;
+    final shopName = authProvider.user?.shopName ?? 'Shop';
 
     final shopProducts = productProvider.products.where((p) => p.receivedBy == currentShopId).toList();
     final totalProducts = shopProducts.length;
@@ -583,6 +584,15 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                       username,
                       style: AppTypography.headlineLarge().copyWith(
                         color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      shopName,
+                      style: AppTypography.bodyLarge().copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],

@@ -20,6 +20,13 @@ class User {
   // Processing unit membership info (aggregated from ProcessingUnitUser)
   final List<ProcessingUnitMembership>? processingUnitMemberships;
 
+  // Pending join request information
+  final bool hasPendingJoinRequest;
+  final String? pendingJoinRequestUnitName;
+  final String? pendingJoinRequestShopName;
+  final String? pendingJoinRequestRole;
+  final DateTime? pendingJoinRequestDate;
+
   User({
     required this.id,
     required this.username,
@@ -35,6 +42,11 @@ class User {
     this.shopId,
     this.shopName,
     this.processingUnitMemberships,
+    this.hasPendingJoinRequest = false,
+    this.pendingJoinRequestUnitName,
+    this.pendingJoinRequestShopName,
+    this.pendingJoinRequestRole,
+    this.pendingJoinRequestDate,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -51,11 +63,37 @@ class User {
       }
 
       // Handle different response structures:
-      // 1. Auth endpoint returns data under 'user' key
-      // 2. Profile endpoint returns data under 'profile' key
-      // 3. Direct user data (fallback)
-      final userData = json['user'] ?? json['profile'] ?? json;
-      final profileData = json['user'] ?? json['profile'] ?? json;
+      // 1. Profile endpoint returns UserProfile data directly at root with user_username, user_email fields
+      // 2. Auth endpoint may return nested 'user' object
+      // 3. Other endpoints may return nested 'profile' object
+      
+      // Check if this is a UserProfile response (has user_username field)
+      final isProfileResponse = json.containsKey('user_username');
+      
+      Map<String, dynamic> userData;
+      Map<String, dynamic> profileData;
+      
+      if (isProfileResponse) {
+          // Profile endpoint response - data is at root level
+          debugPrint('🔍 [USER_FROM_JSON] Detected UserProfile response format');
+          userData = json;
+          profileData = json;
+      } else if (json['user'] != null && json['user'] is Map) {
+          // Nested user object
+          debugPrint('🔍 [USER_FROM_JSON] Detected nested user object format');
+          userData = json['user'] as Map<String, dynamic>;
+          profileData = json['profile'] ?? json['user'];
+      } else if (json['profile'] != null && json['profile'] is Map) {
+          // Nested profile object
+          debugPrint('🔍 [USER_FROM_JSON] Detected nested profile object format');
+          userData = json['profile'] as Map<String, dynamic>;
+          profileData = json['profile'] as Map<String, dynamic>;
+      } else {
+          // Direct user data (fallback)
+          debugPrint('🔍 [USER_FROM_JSON] Using direct JSON format');
+          userData = json;
+          profileData = json;
+      }
 
       debugPrint('🔍 [USER_FROM_JSON] userData keys: ${userData.keys}');
       debugPrint('🔍 [USER_FROM_JSON] profileData keys: ${profileData.keys}');
@@ -63,7 +101,9 @@ class User {
       // Check for null values that could cause String errors
       debugPrint('🔍 [USER_FROM_JSON] Checking critical fields:');
       debugPrint('🔍 [USER_FROM_JSON] userData["username"]: ${userData['username']} (type: ${userData['username']?.runtimeType})');
+      debugPrint('🔍 [USER_FROM_JSON] userData["user_username"]: ${userData['user_username']} (type: ${userData['user_username']?.runtimeType})');
       debugPrint('🔍 [USER_FROM_JSON] userData["email"]: ${userData['email']} (type: ${userData['email']?.runtimeType})');
+      debugPrint('🔍 [USER_FROM_JSON] userData["user_email"]: ${userData['user_email']} (type: ${userData['user_email']?.runtimeType})');
       debugPrint('🔍 [USER_FROM_JSON] profileData["role"]: ${profileData['role']} (type: ${profileData['role']?.runtimeType})');
 
       // Check processing unit data
@@ -84,29 +124,77 @@ class User {
           }
       }
 
+      // Parse processing unit - handle both nested object and flat ID formats
+      int? processingUnitId;
+      String? processingUnitName;
+      
+      if (profileData['processing_unit'] != null) {
+          if (profileData['processing_unit'] is Map) {
+              // Nested object format: {id: 1, name: "Unit Name"}
+              processingUnitId = int.tryParse(profileData['processing_unit']['id'].toString());
+              processingUnitName = profileData['processing_unit']['name']?.toString();
+          } else {
+              // Flat ID format: processing_unit: 1, processing_unit_name: "Unit Name"
+              processingUnitId = int.tryParse(profileData['processing_unit'].toString());
+              processingUnitName = profileData['processing_unit_name']?.toString();
+          }
+      }
+      
+      // Parse shop - handle both nested object and flat ID formats
+      int? shopId;
+      String? shopName;
+      
+      if (profileData['shop'] != null) {
+          if (profileData['shop'] is Map) {
+              // Nested object format: {id: 1, name: "Shop Name"}
+              shopId = int.tryParse(profileData['shop']['id'].toString());
+              shopName = profileData['shop']['name']?.toString();
+          } else {
+              // Flat ID format: shop: 1, shop_name: "Shop Name"
+              shopId = int.tryParse(profileData['shop'].toString());
+              shopName = profileData['shop_name']?.toString();
+          }
+      }
+
+      // Parse pending join request information (robust parsing: boolean, string 'true', numeric 1 etc.)
+      final rawHasPending = profileData['has_pending_join_request'];
+      debugPrint('🔍 [USER_FROM_JSON] raw has_pending_join_request: $rawHasPending (type: ${rawHasPending?.runtimeType})');
+      final hasPendingJoinRequest = rawHasPending == true || rawHasPending == 'true' || rawHasPending == 1 || rawHasPending == '1';
+      String? pendingJoinRequestUnitName;
+      String? pendingJoinRequestShopName;
+      String? pendingJoinRequestRole;
+      DateTime? pendingJoinRequestDate;
+
+      if (hasPendingJoinRequest && profileData['pending_join_request'] != null) {
+          final pendingRequest = profileData['pending_join_request'] as Map<String, dynamic>;
+          pendingJoinRequestUnitName = pendingRequest['processing_unit_name']?.toString();
+          pendingJoinRequestShopName = pendingRequest['shop_name']?.toString();
+          pendingJoinRequestRole = pendingRequest['requested_role']?.toString();
+          if (pendingRequest['created_at'] != null) {
+              pendingJoinRequestDate = DateTime.parse(pendingRequest['created_at']);
+          }
+      }
+
       return User(
           id: int.parse(userData['id'].toString()),
-          username: userData['username']?.toString() ?? '',
-          email: userData['email']?.toString() ?? '',
+          username: userData['user_username']?.toString() ?? userData['username']?.toString() ?? '',
+          email: userData['user_email']?.toString() ?? userData['email']?.toString() ?? '',
           firstName: userData['first_name']?.toString(),
           lastName: userData['last_name']?.toString(),
           isActive: userData['is_active'] ?? true,
           dateJoined: userData['date_joined'] != null ? DateTime.parse(userData['date_joined']) : null,
           lastLogin: userData['last_login'] != null ? DateTime.parse(userData['last_login']) : null,
           role: profileData['role']?.toString() ?? 'Farmer',
-          processingUnitId: profileData['processing_unit'] != null && profileData['processing_unit'] is Map
-              ? int.tryParse(profileData['processing_unit']['id'].toString())
-              : null,
-          processingUnitName: profileData['processing_unit'] != null && profileData['processing_unit'] is Map
-              ? profileData['processing_unit']['name']?.toString()
-              : null,
-          shopId: profileData['shop'] != null && profileData['shop'] is Map
-              ? int.tryParse(profileData['shop']['id'].toString())
-              : null,
-          shopName: profileData['shop'] != null && profileData['shop'] is Map
-              ? profileData['shop']['name']?.toString()
-              : null,
+          processingUnitId: processingUnitId,
+          processingUnitName: processingUnitName,
+          shopId: shopId,
+          shopName: shopName,
           processingUnitMemberships: memberships,
+          hasPendingJoinRequest: hasPendingJoinRequest,
+          pendingJoinRequestUnitName: pendingJoinRequestUnitName,
+          pendingJoinRequestShopName: pendingJoinRequestShopName,
+          pendingJoinRequestRole: pendingJoinRequestRole,
+          pendingJoinRequestDate: pendingJoinRequestDate,
       );
   }
 
@@ -126,6 +214,11 @@ class User {
       'shop_id': shopId,
       'shop_name': shopName,
       'processing_unit_memberships': processingUnitMemberships?.map((m) => m.toJson()).toList(),
+      'has_pending_join_request': hasPendingJoinRequest,
+      'pending_join_request_unit_name': pendingJoinRequestUnitName,
+      'pending_join_request_shop_name': pendingJoinRequestShopName,
+      'pending_join_request_role': pendingJoinRequestRole,
+      'pending_join_request_date': pendingJoinRequestDate?.toIso8601String(),
     };
   }
 
@@ -133,9 +226,15 @@ class User {
       ? '$firstName $lastName'
       : username;
 
-  bool get isFarmer => role == 'Farmer';
-  bool get isProcessingUnit => role == 'ProcessingUnit' || role == 'Processor';
-  bool get isShop => role == 'Shop' || role == 'ShopOwner';
+  // Make role checks resilient to different capitalizations and backend role strings
+  bool get isFarmer => role.toLowerCase().contains('farm');
+
+  bool get isProcessingUnit {
+    final r = role.toLowerCase();
+    return r == 'processingunit' || r == 'processing_unit' || r == 'processor' || r.contains('process');
+  }
+
+  bool get isShop => role.toLowerCase().contains('shop');
 }
 
 class ProcessingUnitMembership {

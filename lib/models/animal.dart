@@ -340,6 +340,7 @@ class CarcassMeasurement {
 }
 
 enum AnimalLifecycleStatus {
+  rejected,
   healthy,
   slaughtered,
   transferred,
@@ -349,6 +350,8 @@ enum AnimalLifecycleStatus {
 extension AnimalLifecycleStatusExtension on AnimalLifecycleStatus {
   String get value {
     switch (this) {
+      case AnimalLifecycleStatus.rejected:
+        return 'REJECTED';
       case AnimalLifecycleStatus.healthy:
         return 'HEALTHY';
       case AnimalLifecycleStatus.slaughtered:
@@ -362,6 +365,8 @@ extension AnimalLifecycleStatusExtension on AnimalLifecycleStatus {
 
   String get displayName {
     switch (this) {
+      case AnimalLifecycleStatus.rejected:
+        return 'Rejected';
       case AnimalLifecycleStatus.healthy:
         return 'Healthy';
       case AnimalLifecycleStatus.slaughtered:
@@ -375,6 +380,8 @@ extension AnimalLifecycleStatusExtension on AnimalLifecycleStatus {
 
   static AnimalLifecycleStatus fromString(String value) {
     switch (value.toUpperCase()) {
+      case 'REJECTED':
+        return AnimalLifecycleStatus.rejected;
       case 'HEALTHY':
         return AnimalLifecycleStatus.healthy;
       case 'SLAUGHTERED':
@@ -622,12 +629,17 @@ class Animal {
     if (lifecycleStatus != null) return lifecycleStatus!;
     
     // Fallback computation - MUST match backend priority order
-    // Priority 1: Check if whole animal is transferred
+    // Priority 1: Check if animal is rejected (highest priority)
+    if (rejectionStatus == 'rejected') {
+      return AnimalLifecycleStatus.rejected;
+    }
+    
+    // Priority 2: Check if whole animal is transferred
     if (transferredTo != null) {
       return AnimalLifecycleStatus.transferred;
     }
     
-    // Priority 2: Check for partial or complete part transfers
+    // Priority 3: Check for partial or complete part transfers
     if (hasSlaughterParts) {
       final transferredParts = slaughterParts.where((p) => p.transferredTo != null).toList();
       if (transferredParts.isNotEmpty) {
@@ -642,7 +654,7 @@ class Animal {
       }
     }
     
-    // Priority 3: Check if slaughtered (but not transferred)
+    // Priority 4: Check if slaughtered (but not transferred)
     if (slaughtered) {
       return AnimalLifecycleStatus.slaughtered;
     }

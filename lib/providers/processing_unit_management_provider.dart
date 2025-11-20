@@ -14,6 +14,8 @@ class ProcessingUnitManagementProvider with ChangeNotifier {
   List<ProcessingUnit> _availableUnits = [];
   bool _isLoading = false;
   String? _error;
+  int? _currentUserId; // Track current user ID for permission checks
+  bool _membersLoaded = false; // Track if members have been loaded at least once
 
   // Getters
   ProcessingUnit? get currentUnit => _currentUnit;
@@ -24,13 +26,25 @@ class ProcessingUnitManagementProvider with ChangeNotifier {
   List<ProcessingUnit> get availableUnits => _availableUnits;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  int? get currentUserId => _currentUserId;
+  bool get membersLoaded => _membersLoaded;
+
+  // Setter for current user ID
+  void setCurrentUserId(int userId) {
+    _currentUserId = userId;
+    debugPrint('✅ [PROVIDER] Current user ID set to: $_currentUserId');
+    notifyListeners();
+  }
 
   // Check if current user is owner/manager
   bool canManageUsers([int? userId]) {
-    if (userId == null || _members.isEmpty) return false;
+    // Use provided userId or fall back to stored current user ID
+    final userIdToCheck = userId ?? _currentUserId;
+    
+    if (userIdToCheck == null || _members.isEmpty) return false;
     
     // Use where().firstOrNull pattern to safely check if member exists
-    final member = _members.where((m) => m.userId == userId).firstOrNull;
+    final member = _members.where((m) => m.userId == userIdToCheck).firstOrNull;
     if (member == null) return false;
     
     return member.isOwner || member.isManager;
@@ -144,6 +158,7 @@ class ProcessingUnitManagementProvider with ChangeNotifier {
             ? response.data 
             : response.data['results'] ?? [];
         _members = data.map((json) => ProcessingUnitUser.fromJson(json)).toList();
+        _membersLoaded = true; // Mark that members have been loaded
       }
     } catch (e) {
       _error = e.toString();
@@ -160,7 +175,9 @@ class ProcessingUnitManagementProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.get('/processing-units/$unitId/join-requests/');
+      // Add timestamp to prevent caching and ensure fresh data
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final response = await _apiService.get('/processing-units/$unitId/join-requests/?_t=$timestamp');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data is List 

@@ -206,6 +206,8 @@ class _ShopSignupScreenState extends State<ShopSignupScreen>
           'Shop',
           additionalData: {
             'shop_id': _selectedShop?.id,
+            'requested_role': 'worker', // Default role
+            'message': 'I would like to join this shop',
           },
         );
 

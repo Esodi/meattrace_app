@@ -93,7 +93,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
         if (mounted && !_hasNavigated) {
           _hasNavigated = true;
-          _navigateToRoleBasedHome(authProvider.user!.role);
+          // If user has a pending join request, ensure they are directed to pending approval screen
+          if (authProvider.user!.hasPendingJoinRequest) {
+            debugPrint('⏳ [SPLASH_SCREEN] User has pending join request, navigating to pending approval screen');
+            context.go('/pending-approval');
+          } else {
+            _navigateToRoleBasedHome(authProvider.user!.role);
+          }
         }
       } else {
         // No valid session - redirect to login

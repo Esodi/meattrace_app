@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../models/animal.dart';
 import '../../providers/animal_provider.dart';
+import '../../services/bluetooth_scale_service.dart';
+import '../../widgets/dialogs/scale_connection_dialog.dart';
+import '../../widgets/bluetooth_weight_display.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../widgets/core/custom_text_field.dart';
@@ -37,12 +41,17 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   // Form state
   String? _selectedSpecies;
   DateTime _selectedDate = DateTime.now();
-  double _weightValue = 50;
+  double _weightValue = 0;
   String _selectedGender = 'male';
   String _selectedHealthStatus = 'healthy';
   File? _selectedImage;
   bool _isLoading = false;
   bool _useManualWeightInput = false;
+
+  // Bluetooth Scale
+  final BluetoothScaleService _scaleService = BluetoothScaleService();
+  StreamSubscription? _weightSubscription;
+  bool _isScaleConnected = false;
 
   // Species options with icons - values must match backend choices
   final List<Map<String, dynamic>> _speciesOptions = [
@@ -62,12 +71,96 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
 
   @override
   void dispose() {
+    _weightSubscription?.cancel();
     _tagIdController.dispose();
     _breedController.dispose();
     _weightController.dispose();
     _abbatoirController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _connectScale() async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => const ScaleConnectionDialog(),
+    );
+
+    if (result == true) {
+      setState(() {
+        _isScaleConnected = true;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Scale connected successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _readWeightFromScale() async {
+    if (!_scaleService.isConnected) {
+      _connectScale();
+      return;
+    }
+
+    print('👆 [RegisterScreen] Reading weight from scale...');
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Reading from scale... Please ensure weight is stable.'),
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    bool gotWeight = false;
+    
+    try {
+      print('👆 [RegisterScreen] Attempting manual read...');
+      await _scaleService.readWeight();
+    } catch (e) {
+      print('⚠️ [RegisterScreen] Manual read failed: $e');
+    }
+    
+    StreamSubscription? singleRead;
+    singleRead = _scaleService.weightStream.listen((weight) {
+      print('✅ [RegisterScreen] Received weight: $weight kg');
+      if (!gotWeight) {
+        gotWeight = true;
+        setState(() {
+          _weightValue = weight;
+          _weightController.text = weight.toStringAsFixed(2);
+        });
+        singleRead?.cancel();
+        
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Weight: ${weight.toStringAsFixed(2)} kg'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+    
+    Future.delayed(const Duration(seconds: 10), () {
+      if (!gotWeight) {
+        print('⏱️ [RegisterScreen] Timeout waiting for weight');
+        singleRead?.cancel();
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No weight received. Ensure weight is on scale and stable.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
   }
 
   void _updateWeightFromText(String value) {
@@ -798,97 +891,21 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           const SizedBox(height: 16),
 
           // Weight Input Mode Toggle
-          Row(
-            children: [
-              Text(
-                'Live Weight (kg)',
-                style: AppTypography.labelLarge(color: AppColors.textPrimary),
-              ),
-              const Spacer(),
-              Text(
-                'Manual Input',
-                style: AppTypography.bodySmall(color: AppColors.textSecondary),
-              ),
-              Switch(
-                value: _useManualWeightInput,
-                onChanged: (value) {
-                  setState(() {
-                    _useManualWeightInput = value;
-                    if (value) {
-                      _weightController.text = _weightValue.toStringAsFixed(1);
-                    }
-                  });
-                },
-                activeColor: AppColors.farmerPrimary,
-              ),
-            ],
+          Text(
+            'Live Weight *',
+            style: AppTypography.labelLarge(color: AppColors.textPrimary),
           ),
-          const SizedBox(height: 16),
-
-          // Weight Input (Slider or Manual)
-          if (_useManualWeightInput) ...[
-            CustomTextField(
-              controller: _weightController,
-              label: 'Enter Weight',
-              hint: 'e.g., 250.5',
-              prefixIcon: const Icon(Icons.monitor_weight),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-              ],
-              onChanged: _updateWeightFromText,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Weight is required';
-                }
-                final weight = double.tryParse(value);
-                if (weight == null) {
-                  return 'Please enter a valid number';
-                }
-                if (weight < 0) {
-                  return 'Weight must be positive';
-                }
-                if (weight > 1000) {
-                  return 'Weight cannot exceed 1000 kg';
-                }
-                return null;
-              },
-            ),
-          ] else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Slider(
-                    value: _weightValue,
-                    min: 0,
-                    max: 1000,
-                    divisions: 200,
-                    activeColor: AppColors.farmerPrimary,
-                    inactiveColor: AppColors.farmerPrimary.withOpacity(0.2),
-                    onChanged: _updateWeightFromSlider,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.farmerPrimary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${_weightValue.toStringAsFixed(1)} kg',
-                    style: AppTypography.titleMedium(color: AppColors.farmerPrimary),
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('0 kg', style: AppTypography.bodySmall(color: AppColors.textSecondary)),
-                Text('1000 kg', style: AppTypography.bodySmall(color: AppColors.textSecondary)),
-              ],
-            ),
-          ],
+          const SizedBox(height: 12),
+          
+          // Bluetooth Weight Display
+          BluetoothWeightDisplay(
+            label: 'Animal Live Weight',
+            weight: _weightValue > 0 ? _weightValue : null,
+            isConnected: _isScaleConnected,
+            onTap: _readWeightFromScale,
+            unit: 'kg',
+            themeColor: AppColors.farmerPrimary, // Farmer green theme
+          ),
           const SizedBox(height: 24),
           
           // Gender
@@ -963,7 +980,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           const SizedBox(height: 12),
           _buildHealthStatusOption(
             value: 'sick',
-            label: 'Sick',
+            label: 'Sick/Not for slaughter',
             icon: Icons.sick,
             color: AppColors.error,
           ),

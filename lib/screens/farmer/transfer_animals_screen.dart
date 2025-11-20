@@ -97,6 +97,14 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
       final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
       
+      // DIAGNOSTIC: Log what's being transferred
+      print('🔍 [TRANSFER_SUBMIT_DEBUG] Transfer submission started');
+      print('   - Selected whole animals: ${_selectedWholeAnimals.length}');
+      for (var animal in _selectedWholeAnimals) {
+        print('     • ${animal.animalId}: isSplitCarcass=${animal.isSplitCarcass}, carcassMeasurement=${animal.carcassMeasurement?.carcassType.value ?? "NULL"}');
+      }
+      print('   - Selected parts by animal: ${_selectedPartsByAnimal.length}');
+      
       // Prepare whole animal IDs
       final wholeAnimalIds = _selectedWholeAnimals.map((a) => a.id).toList();
       
@@ -409,6 +417,16 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
               // Check if it's a split carcass - if marked as split, always treat as split with parts
               final isSplitCarcass = animal.isSplitCarcass;
               final isExpanded = _expandedAnimals[animal.id] ?? false;
+              
+              // DIAGNOSTIC LOGGING
+              print('🔍 [TRANSFER_DEBUG] Animal ${animal.animalId}:');
+              print('   - isSplitCarcass: $isSplitCarcass');
+              print('   - carcassMeasurement: ${animal.carcassMeasurement != null ? "EXISTS" : "NULL"}');
+              if (animal.carcassMeasurement != null) {
+                print('   - carcassType: ${animal.carcassMeasurement!.carcassType.value}');
+              }
+              print('   - slaughterParts count: ${animal.slaughterParts.length}');
+              print('   - transferMode: ${_transferModeByAnimal[animal.id!]}');
 
               // For whole carcass only
               if (!isSplitCarcass) {
@@ -581,38 +599,33 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                         }
                       },
                     ),
-                    // Transfer mode toggle per animal
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Transfer Mode:', style: AppTypography.bodyMedium()),
-                          ChoiceChip(
-                            label: Text('Whole'),
-                            selected: _transferModeByAnimal[animal.id!] == 'whole',
-                            onSelected: (selected) {
-                              setState(() {
-                                _transferModeByAnimal[animal.id!] = 'whole';
-                                _selectedWholeAnimals.add(animal);
-                                _selectedPartsByAnimal.remove(animal.id!);
-                              });
-                            },
+                    // FIX: Remove transfer mode toggle for split carcass animals
+                    // Split carcass animals MUST be transferred as parts to preserve carcass type
+                    // Only show info message explaining this constraint
+                    if (hasParts)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.info.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.info.withOpacity(0.3)),
                           ),
-                          ChoiceChip(
-                            label: Text('Parts'),
-                            selected: _transferModeByAnimal[animal.id!] == 'parts',
-                            onSelected: (selected) {
-                              setState(() {
-                                _transferModeByAnimal[animal.id!] = 'parts';
-                                _selectedWholeAnimals.remove(animal);
-                                _selectedPartsByAnimal.putIfAbsent(animal.id!, () => []);
-                              });
-                            },
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, color: AppColors.info, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Split carcass animals must be transferred as individual parts to maintain traceability',
+                                  style: AppTypography.bodySmall(color: AppColors.info),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
                     if (isExpanded && hasParts) ...[
                       const Divider(height: 1),
                       Padding(

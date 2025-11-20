@@ -14,37 +14,75 @@ class ShopManagementProvider with ChangeNotifier {
   List<Shop> _availableShops = [];
   bool _isLoading = false;
   String? _error;
+  int? _currentUserId; // Track current user ID for permission checks
 
   // Getters
   Shop? get currentShop => _currentShop;
   List<ShopUser> get members => _members;
   List<JoinRequest> get joinRequests => _joinRequests; // All join requests
-  List<JoinRequest> get pendingJoinRequests => 
+  List<JoinRequest> get pendingJoinRequests =>
       _joinRequests.where((r) => r.status == 'pending').toList();
   List<Shop> get availableShops => _availableShops;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  int? get currentUserId => _currentUserId; // Expose for debugging
+
+  // Set current user ID (should be called when user logs in)
+  void setCurrentUserId(int userId) {
+    _currentUserId = userId;
+    notifyListeners();
+  }
 
   // Check if current user is owner/manager
   bool canManageUsers([int? userId]) {
-    if (userId == null || _members.isEmpty) return false;
-    final member = _members.firstWhere(
-      (m) => m.userId == userId,
-      orElse: () => ShopUser(
-        id: 0,
-        userId: 0,
-        username: '',
-        email: '',
-        shopId: 0,
-        shopName: '',
-        role: 'salesperson',
-        permissions: 'read',
-        invitedAt: DateTime.now(),
-        isActive: false,
-        isSuspended: false,
-      ),
-    );
-    return member.isOwner || member.isManager;
+    // Use provided userId or fall back to stored current user ID
+    final userIdToCheck = userId ?? _currentUserId;
+
+    if (userIdToCheck == null) {
+      debugPrint('⚠️ [SHOP_PERMISSION_CHECK] Cannot manage users: no userId provided and no currentUserId set');
+      return false;
+    }
+
+    if (_members.isEmpty) {
+      debugPrint('⚠️ [SHOP_PERMISSION_CHECK] Cannot manage users: members list is empty (userId=$userIdToCheck)');
+      // If we have a current shop and user ID but no members, try to load them
+      if (_currentShop != null && !_isLoading) {
+        debugPrint('🔄 [SHOP_PERMISSION_CHECK] Attempting to load members for permission check...');
+        // Don't await here as this is a synchronous method
+        loadShopMembers(_currentShop!.id!).then((_) {
+          debugPrint('✅ [SHOP_PERMISSION_CHECK] Members loaded asynchronously');
+        }).catchError((e) {
+          debugPrint('❌ [SHOP_PERMISSION_CHECK] Failed to load members: $e');
+        });
+      }
+      return false;
+    }
+
+    // Use where().firstOrNull pattern to safely check if member exists
+    final member = _members.where((m) => m.userId == userIdToCheck).firstOrNull;
+    if (member == null) {
+      debugPrint('⚠️ [SHOP_PERMISSION_CHECK] User $userIdToCheck not found in members list (${_members.length} members)');
+      
+      // Fallback: Check if the user is the shop owner based on their profile data
+      // This is crucial when members list hasn't loaded yet but we need to show UI elements
+      if (userIdToCheck == _currentUserId) {
+        // We can't easily access the User object here directly without passing it, 
+        // but we can assume if they are accessing this screen and have the role, they might be the owner.
+        // A safer check would be to pass the User object or check a flag.
+        // For now, if members are empty, we'll return false to be safe, 
+        // BUT we should rely on the UI layer (ShopUserManagementScreen) to handle the redirect 
+        // if the user really shouldn't be there.
+        
+        // However, to fix the specific issue of "Access Denied" on UI elements while loading:
+        // If we are in the process of loading, we might want to be optimistic or wait.
+        return false;
+      }
+      return false;
+    }
+
+    final canManage = member.isOwner || member.isManager;
+    debugPrint('✅ [SHOP_PERMISSION_CHECK] User $userIdToCheck canManage=$canManage (isOwner=${member.isOwner}, isManager=${member.isManager})');
+    return canManage;
   }
 
   // Create new shop
@@ -147,15 +185,34 @@ class ShopManagementProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('🔄 [SHOP_PROVIDER] Loading members for shop $shopId...');
       final response = await _apiService.get('/shops/$shopId/members/');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data is List 
-            ? response.data 
+        final List<dynamic> data = response.data is List
+            ? response.data
             : response.data['results'] ?? [];
         _members = data.map((json) => ShopUser.fromJson(json)).toList();
+
+        // Also load the shop details if we don't have them
+        if (_currentShop == null || _currentShop!.id != shopId) {
+          debugPrint('🔄 [SHOP_PROVIDER] Loading shop details for shop $shopId...');
+          final shopResponse = await _apiService.get('/shops/$shopId/');
+          if (shopResponse.statusCode == 200) {
+            _currentShop = Shop.fromJson(shopResponse.data);
+            debugPrint('✅ [SHOP_PROVIDER] Loaded shop details: ${_currentShop!.name}');
+          }
+        }
+
+        debugPrint('✅ [SHOP_PROVIDER] Loaded ${_members.length} members into provider state');
+        if (_members.isNotEmpty) {
+          debugPrint('✅ [SHOP_PROVIDER] First member: userId=${_members.first.userId}, role=${_members.first.role}');
+        }
+      } else {
+        debugPrint('❌ [SHOP_PROVIDER] Failed to load members: status=${response.statusCode}');
       }
     } catch (e) {
+      debugPrint('❌ [SHOP_PROVIDER] Error loading members: $e');
       _error = e.toString();
     } finally {
       _isLoading = false;
@@ -170,7 +227,9 @@ class ShopManagementProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.get('/shops/$shopId/join-requests/');
+      // Add timestamp to prevent caching and ensure fresh data
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final response = await _apiService.get('/shops/$shopId/join-requests/?_t=$timestamp');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data is List 

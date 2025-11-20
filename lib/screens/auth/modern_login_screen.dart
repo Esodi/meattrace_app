@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/auth_progress_provider.dart';
 import '../../services/auth_notification_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -10,6 +11,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/core/logo_with_border.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_text_field.dart';
+import '../../widgets/auth/auth_progress_panel.dart';
 
 /// MeatTrace Pro - Modern Login Screen
 /// Role-based authentication with enhanced UX
@@ -28,6 +30,8 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  bool _showProgressPanel = false;
+  bool _isProgressExpanded = true;
 
   @override
   void initState() {
@@ -94,40 +98,51 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
     // Capture the context before async operations
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final progressProvider = Provider.of<AuthProgressProvider>(context, listen: false);
+
+    // Show progress panel and start WebSocket listener
+    setState(() {
+      _showProgressPanel = true;
+    });
+    
+    debugPrint('📡 [LOGIN_SCREEN] Starting auth progress listener...');
+    await progressProvider.startListening();
+    final sessionId = progressProvider.sessionId;
+    debugPrint('🆔 [LOGIN_SCREEN] Session ID: $sessionId');
 
     // Show loading notification using captured ScaffoldMessenger
     debugPrint('⏳ [LOGIN_SCREEN] Showing loading notification');
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text('Please wait, signing you in...'),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.textSecondary,
-        duration: const Duration(seconds: 30),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    // scaffoldMessenger.showSnackBar(
+    //   SnackBar(
+    //     content: Row(
+    //       children: [
+    //         const SizedBox(
+    //           width: 20,
+    //           height: 20,
+    //           child: CircularProgressIndicator(
+    //             strokeWidth: 2,
+    //             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+    //           ),
+    //         ),
+    //         const SizedBox(width: 12),
+    //         const Expanded(
+    //           child: Text('Please wait, signing you in...'),
+    //         ),
+    //       ],
+    //     ),
+    //     backgroundColor: AppColors.textSecondary,
+    //     duration: const Duration(seconds: 30),
+    //     behavior: SnackBarBehavior.floating,
+      // ),);
 
-    debugPrint('🔄 [LOGIN_SCREEN] Calling authProvider.login()...');
+    debugPrint('🔄 [LOGIN_SCREEN] Calling authProvider.login() with sessionId...');
     final startTime = DateTime.now();
 
     try {
       final success = await authProvider.login(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
+        sessionId: sessionId,
       );
 
       final duration = DateTime.now().difference(startTime);
@@ -139,22 +154,62 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
 
       if (success && mounted) {
         debugPrint('🎉 [LOGIN_SCREEN] Login successful, showing success notification');
-        
+
         // Show success notification
         AuthNotificationService.showAuthSuccess(context, 'login');
         debugPrint('✅ [LOGIN_SCREEN] Success notification shown');
 
-        // Small delay to show success message
-        debugPrint('⏱️ [LOGIN_SCREEN] Waiting 500ms before letting router redirect...');
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Small delay to show success message and progress panel
+        debugPrint('⏱️ [LOGIN_SCREEN] Waiting 2 seconds before navigating...');
+        await Future.delayed(const Duration(seconds: 2));
 
-        debugPrint('🏠 [LOGIN_SCREEN] Router will automatically redirect to dashboard');
-        // No manual navigation needed - the router redirect will handle it
+        // Navigate to appropriate screen based on user status
+        final user = authProvider.user;
+        if (user != null) {
+          // Check if user has pending join request first
+          if (user.hasPendingJoinRequest) {
+            debugPrint('⏳ [LOGIN_SCREEN] User has pending join request, navigating to pending approval screen');
+            debugPrint('📋 [LOGIN_SCREEN] Pending request details:');
+            debugPrint('   - Unit: ${user.pendingJoinRequestUnitName}');
+            debugPrint('   - Role: ${user.pendingJoinRequestRole}');
+            debugPrint('   - Date: ${user.pendingJoinRequestDate}');
+
+            context.go('/pending-approval');
+          } else {
+            // Navigate to appropriate dashboard based on user role
+            final normalizedRole = user.role.toLowerCase();
+            debugPrint('🏠 [LOGIN_SCREEN] Navigating to dashboard for role: $normalizedRole');
+
+            if (normalizedRole == 'farmer') {
+              context.go('/farmer-home');
+            } else if (normalizedRole == 'processingunit' ||
+                        normalizedRole == 'processing_unit' ||
+                        normalizedRole == 'processor') {
+              context.go('/processor-home');
+            } else if (normalizedRole == 'shop' ||
+                        normalizedRole == 'shopowner' ||
+                        normalizedRole == 'shop_owner') {
+              context.go('/shop-home');
+            } else {
+              debugPrint('⚠️ [LOGIN_SCREEN] Unknown role "$normalizedRole", defaulting to farmer-home');
+              context.go('/farmer-home');
+            }
+          }
+        }
       } else if (mounted) {
         debugPrint('❌ [LOGIN_SCREEN] Login failed, showing error notification');
         // Show detailed error notification
         final errorMessage = authProvider.error ?? 'Login failed. Please try again.';
         AuthNotificationService.showAuthError(context, errorMessage);
+        
+        // Keep progress panel visible to show error details
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) {
+          setState(() {
+            _showProgressPanel = false;
+          });
+          progressProvider.stopListening();
+        }
       }
     } catch (e) {
       final duration = DateTime.now().difference(startTime);
@@ -166,6 +221,15 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
       if (mounted) {
         debugPrint('❌ [LOGIN_SCREEN] Showing error notification for exception');
         AuthNotificationService.showAuthError(context, 'Login failed: $e');
+        
+        // Hide progress panel and stop listener
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) {
+          setState(() {
+            _showProgressPanel = false;
+          });
+          progressProvider.stopListening();
+        }
       }
     }
   }
@@ -329,6 +393,23 @@ class _ModernLoginScreenState extends State<ModernLoginScreen> with SingleTicker
                                     ),
                                   ],
                                 ),
+
+                                // Real-time Auth Progress Panel
+                                if (_showProgressPanel) ...[
+                                  const SizedBox(height: AppTheme.space16),
+                                  Consumer<AuthProgressProvider>(
+                                    builder: (context, progressProvider, child) {
+                                      return AuthProgressPanel(
+                                        isExpanded: _isProgressExpanded,
+                                        onToggle: () {
+                                          setState(() {
+                                            _isProgressExpanded = !_isProgressExpanded;
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ],
 
                               ],
                             ),

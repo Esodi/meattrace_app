@@ -73,7 +73,7 @@ class ShopService {
   /// Fetch shops for registration (public endpoint, no auth required)
   Future<List<Shop>> getPublicShops() async {
     try {
-      final url = '${Constants.baseUrl}/api/v2/public/shops/';
+      final url = '${Constants.baseUrl}/public/shops/';
       developer.log('[SHOP_SERVICE] Fetching public shops from: $url');
       
       // Create a temporary Dio instance without authentication
@@ -109,6 +109,10 @@ class ShopService {
       if (data is Map && data.containsKey('results')) {
         shops = List<Shop>.from(
           data['results'].map((json) => Shop.fromJson(json))
+        );
+      } else if (data is Map && data.containsKey('shops')) {
+        shops = List<Shop>.from(
+          data['shops'].map((json) => Shop.fromJson(json))
         );
       } else if (data is List) {
         shops = List<Shop>.from(

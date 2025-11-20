@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -13,8 +14,12 @@ import 'package:meattrace_app/widgets/core/custom_app_bar.dart';
 import 'package:meattrace_app/widgets/core/enhanced_back_button.dart';
 import 'package:meattrace_app/services/bluetooth_printing_service.dart';
 import 'package:meattrace_app/utils/constants.dart';
+import 'package:meattrace_app/utils/app_colors.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:meattrace_app/widgets/processing_pipeline.dart';
+import 'package:meattrace_app/services/bluetooth_scale_service.dart';
+import 'package:meattrace_app/widgets/dialogs/scale_connection_dialog.dart';
+import 'package:meattrace_app/widgets/bluetooth_weight_display.dart';
 
 class CreateProductScreen extends StatefulWidget {
   const CreateProductScreen({super.key});
@@ -51,6 +56,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   String _selectionMode = 'animal';
   SlaughterPart? _selectedPart;
 
+  // Bluetooth Scale
+  final BluetoothScaleService _scaleService = BluetoothScaleService();
+  StreamSubscription? _weightSubscription;
+  bool _isScaleConnected = false;
+
   @override
   void initState() {
     super.initState();
@@ -62,7 +72,18 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       // Auto-fill processing unit field with the name of the logged-in processing unit
       final authProvider = context.read<AuthProvider>();
       final processingUnitName = authProvider.user?.processingUnitName ?? '';
+      
+      print('🏭 [CREATE_PRODUCT] Processing Unit Name from AuthProvider: "$processingUnitName"');
+      print('🏭 [CREATE_PRODUCT] Processing Unit ID: ${authProvider.user?.processingUnitId}');
+      print('🏭 [CREATE_PRODUCT] User Role: ${authProvider.user?.role}');
+      
       _processingUnitController.text = processingUnitName;
+      
+      if (processingUnitName.isEmpty) {
+        print('⚠️  [CREATE_PRODUCT] WARNING: Processing unit name is empty!');
+        print('⚠️  [CREATE_PRODUCT] This may indicate the user profile is not fully loaded.');
+      }
+      
       await _loadData();
     });
   }
@@ -315,6 +336,68 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _weightSubscription?.cancel();
+    _processingUnitController.dispose();
+    _batchNumberController.dispose();
+    for (var controller in _weightControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in _quantityControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _connectScale() async {
+    if (_scaleService.isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scale already connected')),
+      );
+      return;
+    }
+
+    final result = await showDialog(
+      context: context,
+      builder: (context) => const ScaleConnectionDialog(),
+    );
+
+    if (result == true) {
+      setState(() {
+        _isScaleConnected = true;
+      });
+      
+      _weightSubscription?.cancel();
+      _weightSubscription = _scaleService.weightStream.listen((weight) {
+        print('Scale weight: $weight');
+      });
+    }
+  }
+
+  void _readWeightFromScale(TextEditingController controller) {
+    if (!_scaleService.isConnected) {
+      _connectScale();
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reading from scale...'), duration: Duration(milliseconds: 500)),
+    );
+
+    StreamSubscription? singleRead;
+    singleRead = _scaleService.weightStream.listen((weight) {
+      setState(() {
+        controller.text = weight.toStringAsFixed(2);
+      });
+      singleRead?.cancel();
+    });
+    
+    Future.delayed(const Duration(seconds: 2), () {
+      singleRead?.cancel();
+    });
+  }
+
   Widget _buildAnimalsList() {
     if (_availableAnimals.isEmpty) {
       return const Center(
@@ -375,7 +458,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           leading: const Icon(Icons.clear_all),
           title: Text(part.partType.displayName),
           subtitle: Text(
-            'Total: ${part.weight} ${part.weightUnit} • Remaining: ${remainingWeight.toStringAsFixed(2)} ${part.weightUnit}\nAnimal ID: ${part.animalId}',
+            'Total: ${part.weight} ${part.weightUnit} • Remaining: ${remainingWeight.toStringAsFixed(2)} ${part.weightUnit}\nOrigin Animal: ${part.animalId}',
+            style: const TextStyle(fontSize: 13),
           ),
           trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
           onTap: () => Navigator.of(context).pop({
@@ -446,7 +530,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
           : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}';
     } else if (_selectedPart != null) {
-      selectionText = '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - Animal ${_selectedPart!.animalId}';
+      selectionText = '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - Origin Animal: ${_selectedPart!.animalId}';
     } else {
       selectionText = 'Select an animal or slaughter part...';
     }
@@ -571,13 +655,43 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     );
   }
 
+  /// Convert weight to kilograms for consistent comparison
+  double _convertToKg(double weight, String unit) {
+    switch (unit.toLowerCase()) {
+      case 'kg':
+        return weight;
+      case 'g':
+        return weight / 1000.0;
+      case 'lbs':
+        return weight * 0.453592;
+      default:
+        return weight; // Default to kg if unknown
+    }
+  }
+
+  /// Convert weight from kilograms to target unit
+  double _convertFromKg(double weightInKg, String targetUnit) {
+    switch (targetUnit.toLowerCase()) {
+      case 'kg':
+        return weightInKg;
+      case 'g':
+        return weightInKg * 1000.0;
+      case 'lbs':
+        return weightInKg / 0.453592;
+      default:
+        return weightInKg; // Default to kg if unknown
+    }
+  }
+
   Widget _buildWeightFields() {
-    // Calculate available weight for validation
+    // Calculate available weight for validation (always in kg)
     final double maxAvailableWeight = _selectedAnimal != null
         ? (_selectedAnimal!.remainingWeight ?? _selectedAnimal!.liveWeight ?? 0.0)
         : _selectedPart != null
             ? (_selectedPart!.remainingWeight ?? _selectedPart!.weight)
             : 0.0;
+
+    print('🔍 [CreateProductScreen] Max available weight: $maxAvailableWeight kg');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,43 +772,72 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     },
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: weightController,
-                          decoration: const InputDecoration(
-                            labelText: 'Weight',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Weight is required';
-                            }
-                            final weight = double.tryParse(value);
-                            if (weight == null || weight <= 0) {
-                              return 'Enter a valid weight';
-                            }
-                            if (weight > maxAvailableWeight) {
-                              return 'Exceeds available weight (${maxAvailableWeight.toStringAsFixed(2)} kg)';
-                            }
-                            return null;
-                          },
+                  // Bluetooth Weight Display
+                  BluetoothWeightDisplay(
+                    label: 'Product Weight',
+                    weight: double.tryParse(weightController.text),
+                    isConnected: _isScaleConnected,
+                    unit: unit,
+                    themeColor: AppColors.processorPrimary,
+                    onTap: () async {
+                      if (!_scaleService.isConnected) {
+                        await _connectScale();
+                        return;
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Reading from scale...'),
+                          duration: Duration(seconds: 2),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      DropdownButton<String>(
-                        value: unit,
-                        items: const [
-                          DropdownMenuItem(value: 'kg', child: Text('kg')),
-                          DropdownMenuItem(value: 'g', child: Text('g')),
-                          DropdownMenuItem(value: 'lbs', child: Text('lbs')),
-                        ],
-                        onChanged: (value) => setState(() => _weightUnits[category.id!] = value!),
-                      ),
-                    ],
+                      );
+
+                      bool gotWeight = false;
+                      try {
+                        await _scaleService.readWeight();
+                      } catch (e) {
+                        print('Error reading scale: $e');
+                      }
+
+                      StreamSubscription? singleRead;
+                      singleRead = _scaleService.weightStream.listen((weight) {
+                        if (!gotWeight) {
+                          gotWeight = true;
+                          setState(() {
+                            weightController.text = weight.toStringAsFixed(2);
+                          });
+                          
+                          // Validate against max weight
+                          final weightInKg = _convertToKg(weight, unit);
+                          if (weightInKg > maxAvailableWeight) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Warning: Weight exceeds available amount (${maxAvailableWeight.toStringAsFixed(2)} kg)'),
+                                backgroundColor: Colors.orange,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Weight recorded: ${weight.toStringAsFixed(2)} $unit'),
+                                backgroundColor: Colors.green,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                          
+                          singleRead?.cancel();
+                        }
+                      });
+
+                      // Timeout
+                      Future.delayed(const Duration(seconds: 5), () {
+                        if (!gotWeight) {
+                          singleRead?.cancel();
+                        }
+                      });
+                    },
                   ),
                 ],
               ),
@@ -1268,18 +1411,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    for (final controller in _weightControllers.values) {
-      controller.dispose();
-    }
-    for (final controller in _quantityControllers.values) {
-      controller.dispose();
-    }
-    _batchNumberController.dispose();
-    _processingUnitController.dispose();
-    super.dispose();
-  }
+
+
 }
 
 

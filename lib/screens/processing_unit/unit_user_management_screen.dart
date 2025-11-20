@@ -6,6 +6,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../providers/processing_unit_management_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/processing_unit_user.dart';
 import '../../models/join_request.dart';
 import '../../widgets/core/custom_button.dart';
@@ -40,8 +41,25 @@ class _ProcessingUnitUserManagementScreenState
     
     // Load data with error handling
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeProvider();
       _loadDataWithErrorHandling();
     });
+  }
+
+  void _initializeProvider() {
+    debugPrint('🚀 [UNIT_USER_MGMT] _initializeProvider called');
+    // Set current user ID in provider for permission checks
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<ProcessingUnitManagementProvider>();
+
+    debugPrint('🚀 [UNIT_USER_MGMT] AuthProvider user: ${authProvider.user}');
+    if (authProvider.user != null) {
+      provider.setCurrentUserId(authProvider.user!.id);
+      debugPrint('✅ [UNIT_USER_MGMT] Set current user ID: ${authProvider.user!.id}');
+      debugPrint('✅ [UNIT_USER_MGMT] Provider currentUserId after set: ${provider.currentUserId}');
+    } else {
+      debugPrint('⚠️ [UNIT_USER_MGMT] No current user found in AuthProvider');
+    }
   }
 
   @override
@@ -53,15 +71,26 @@ class _ProcessingUnitUserManagementScreenState
   }
 
   Future<void> _loadDataWithErrorHandling() async {
+    debugPrint('🚀 [UNIT_USER_MGMT] _loadDataWithErrorHandling called for unit ${widget.unitId}');
     try {
       final provider = context.read<ProcessingUnitManagementProvider>();
+      debugPrint('🚀 [UNIT_USER_MGMT] Got provider instance: ${provider.hashCode}');
+
+      // CRITICAL: Load members FIRST before join requests
+      // This ensures permission checks work correctly when rendering request cards
+      debugPrint('🚀 [UNIT_USER_MGMT] About to call loadUnitMembers...');
       await provider.loadUnitMembers(widget.unitId);
+      debugPrint('✅ [UNIT_USER_MGMT] Members loaded: ${provider.members.length}');
+
+      debugPrint('🚀 [UNIT_USER_MGMT] About to call loadJoinRequests...');
       await provider.loadJoinRequests(widget.unitId);
-      
+      debugPrint('✅ [UNIT_USER_MGMT] Join requests loaded: ${provider.joinRequests.length}');
+
       if (mounted) {
         setState(() => _loadError = null);
       }
     } catch (e) {
+      debugPrint('❌ [UNIT_USER_MGMT] Error in _loadDataWithErrorHandling: $e');
       if (mounted) {
         setState(() => _loadError = e.toString());
       }
@@ -70,10 +99,9 @@ class _ProcessingUnitUserManagementScreenState
 
   Future<void> _refreshData() async {
     final provider = context.read<ProcessingUnitManagementProvider>();
-    await Future.wait([
-      provider.loadUnitMembers(widget.unitId),
-      provider.loadJoinRequests(widget.unitId),
-    ]);
+    // Load members first, then join requests (sequential, not parallel)
+    await provider.loadUnitMembers(widget.unitId);
+    await provider.loadJoinRequests(widget.unitId);
     
     if (mounted) {
       setState(() => _loadError = null);
@@ -245,15 +273,25 @@ class _ProcessingUnitUserManagementScreenState
   Widget _buildRequestsTab() {
     return Consumer<ProcessingUnitManagementProvider>(
       builder: (context, provider, child) {
+        // Show loading if members aren't loaded yet (required for permission checks)
+        if (!provider.membersLoaded) {
+          debugPrint('🔄 [REQUESTS_TAB] Showing loading: members not loaded yet');
+          return _buildLoadingSkeleton();
+        }
+
+        // Show loading if currently loading AND no join requests loaded yet
         if (provider.isLoading && provider.joinRequests.isEmpty) {
+          debugPrint('🔄 [REQUESTS_TAB] Showing loading: currently loading and no requests');
           return _buildLoadingSkeleton();
         }
 
         if (_loadError != null || provider.error != null) {
+          debugPrint('❌ [REQUESTS_TAB] Showing error: ${_loadError ?? provider.error}');
           return _buildErrorState(_loadError ?? provider.error!);
         }
 
-        final requests = provider.joinRequests;
+        final requests = provider.pendingJoinRequests;
+        debugPrint('✅ [REQUESTS_TAB] Rendering ${requests.length} join requests');
 
         if (requests.isEmpty) {
           return _buildEmptyState(
@@ -289,7 +327,8 @@ class _ProcessingUnitUserManagementScreenState
   }
 
   Widget _buildMemberCard(ProcessingUnitUser member, ProcessingUnitManagementProvider provider) {
-    final canManage = provider.canManageUsers();
+    // Members should be loaded by the time this renders, but add safety check
+    final canManage = provider.membersLoaded ? provider.canManageUsers() : false;
     
     return Card(
       margin: EdgeInsets.only(bottom: AppTheme.space12),
@@ -434,7 +473,18 @@ class _ProcessingUnitUserManagementScreenState
   }
 
   Widget _buildRequestCard(JoinRequest request, ProcessingUnitManagementProvider provider) {
+    // Use synchronous permission check - members should already be loaded
+    // by the time this widget renders (loaded in _loadDataWithErrorHandling)
     final canManage = provider.canManageUsers();
+
+    // DEBUG: Log permission check result
+    debugPrint('🔍 [REQUEST_CARD] Building card for ${request.username}');
+    debugPrint('🔍 [REQUEST_CARD] canManage = $canManage');
+    debugPrint('🔍 [REQUEST_CARD] Members count = ${provider.members.length}');
+    debugPrint('🔍 [REQUEST_CARD] Current user ID in provider = ${provider.currentUserId}');
+    if (provider.members.isNotEmpty) {
+      debugPrint('🔍 [REQUEST_CARD] Sample member: userId=${provider.members.first.userId}, role=${provider.members.first.role}');
+    }
     
     return Card(
       margin: EdgeInsets.only(bottom: AppTheme.space12),
@@ -529,32 +579,30 @@ class _ProcessingUnitUserManagementScreenState
               ),
             ),
             
-            if (canManage) ...[
-              SizedBox(height: AppTheme.space16),
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomButton(
-                      label: 'Reject',
-                      onPressed: () => _handleRejectRequest(request, provider),
-                      variant: ButtonVariant.secondary,
-                      customColor: AppColors.error,
-                      size: ButtonSize.small,
-                    ),
+            SizedBox(height: AppTheme.space16),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    label: 'Reject',
+                    onPressed: canManage ? () => _handleRejectRequest(request, provider) : null,
+                    variant: ButtonVariant.secondary,
+                    customColor: canManage ? AppColors.error : AppColors.textSecondary,
+                    size: ButtonSize.small,
                   ),
-                  SizedBox(width: AppTheme.space12),
-                  Expanded(
-                    child: CustomButton(
-                      label: 'Approve',
-                      onPressed: () => _handleApproveRequest(request, provider),
-                      variant: ButtonVariant.primary,
-                      customColor: AppColors.success,
-                      size: ButtonSize.small,
-                    ),
+                ),
+                SizedBox(width: AppTheme.space12),
+                Expanded(
+                  child: CustomButton(
+                    label: 'Approve',
+                    onPressed: canManage ? () => _handleApproveRequest(request, provider) : null,
+                    variant: ButtonVariant.primary,
+                    customColor: canManage ? AppColors.success : AppColors.textSecondary,
+                    size: ButtonSize.small,
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1426,11 +1474,22 @@ class _ProcessingUnitUserManagementScreenState
     JoinRequest request,
     ProcessingUnitManagementProvider provider,
   ) async {
+    debugPrint('🔥 [APPROVE_BUTTON] Approve button pressed for request ${request.id} from ${request.username}');
+    debugPrint('🔥 [APPROVE_BUTTON] Request details: id=${request.id}, username=${request.username}, email=${request.email}');
+    debugPrint('🔥 [APPROVE_BUTTON] Provider canManageUsers: ${provider.canManageUsers()}');
+    debugPrint('🔥 [APPROVE_BUTTON] Provider currentUserId: ${provider.currentUserId}');
+    debugPrint('🔥 [APPROVE_BUTTON] Provider members count: ${provider.members.length}');
+
     final success = await provider.approveJoinRequest(
       request.id!,
       responseMessage: 'Welcome to the team!',
     );
-    
+
+    debugPrint('🔥 [APPROVE_BUTTON] API call completed: success=$success');
+    if (!success) {
+      debugPrint('🔥 [APPROVE_BUTTON] Provider error: ${provider.error}');
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1442,7 +1501,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
@@ -1507,11 +1566,23 @@ class _ProcessingUnitUserManagementScreenState
     String reason,
     ProcessingUnitManagementProvider provider,
   ) async {
+    debugPrint('🔥 [REJECT_BUTTON] Reject button pressed for request ${request.id} from ${request.username}');
+    debugPrint('🔥 [REJECT_BUTTON] Request details: id=${request.id}, username=${request.username}, email=${request.email}');
+    debugPrint('🔥 [REJECT_BUTTON] Reason: "$reason"');
+    debugPrint('🔥 [REJECT_BUTTON] Provider canManageUsers: ${provider.canManageUsers()}');
+    debugPrint('🔥 [REJECT_BUTTON] Provider currentUserId: ${provider.currentUserId}');
+    debugPrint('🔥 [REJECT_BUTTON] Provider members count: ${provider.members.length}');
+
     final success = await provider.rejectJoinRequest(
       request.id!,
       responseMessage: reason.isNotEmpty ? reason : 'Your request has been rejected.',
     );
-    
+
+    debugPrint('🔥 [REJECT_BUTTON] API call completed: success=$success');
+    if (!success) {
+      debugPrint('🔥 [REJECT_BUTTON] Provider error: ${provider.error}');
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1523,7 +1594,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.warning : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }

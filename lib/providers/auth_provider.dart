@@ -6,7 +6,13 @@ import 'user_context_provider.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
-  final UserContextProvider _userContextProvider = UserContextProvider();
+  final UserContextProvider _userContextProvider;
+
+  AuthProvider(this._userContextProvider) {
+    _authInitializer = LazyInitializer(() => _checkLoginStatus());
+    _startBackgroundAuthCheck();
+    _setupAutoLogout();
+  }
   User? _user;
   bool _isLoading = false;
   String? _error;
@@ -21,14 +27,6 @@ class AuthProvider with ChangeNotifier {
 
   // Lazy initializer for background auth check
   late final LazyInitializer<void> _authInitializer;
-
-  AuthProvider() {
-    _authInitializer = LazyInitializer(() => _checkLoginStatus());
-    // Start initialization in background immediately
-    _startBackgroundAuthCheck();
-    // Set up automatic logout on unauthorized responses
-    _setupAutoLogout();
-  }
 
   Future<void> _startBackgroundAuthCheck() async {
     try {
@@ -56,6 +54,13 @@ class AuthProvider with ChangeNotifier {
           if (_user != null) {
             _userContextProvider.setCurrentUser(_user!);
             debugPrint('✅ User profile loaded: ${_user!.username} (${_user!.role})');
+            debugPrint('🏭 Processing Unit ID: ${_user!.processingUnitId}');
+            debugPrint('🏭 Processing Unit Name: ${_user!.processingUnitName}');
+            debugPrint('🏪 Shop ID: ${_user!.shopId}');
+            debugPrint('🏪 Shop Name: ${_user!.shopName}');
+            debugPrint('⏳ hasPendingJoinRequest: ${_user!.hasPendingJoinRequest}');
+            debugPrint('📌 pendingJoinRequestUnitName: ${_user!.pendingJoinRequestUnitName}');
+            debugPrint('📌 pendingJoinRequestRole: ${_user!.pendingJoinRequestRole}');
           } else {
             debugPrint('⚠️ No user profile returned despite valid token');
           }
@@ -87,8 +92,11 @@ class AuthProvider with ChangeNotifier {
     await _authInitializer.value;
   }
 
-  Future<bool> login(String username, String password) async {
+  Future<bool> login(String username, String password, {String? sessionId}) async {
     debugPrint('🔐 [AUTH_PROVIDER] Starting login process for user: $username');
+    if (sessionId != null) {
+      debugPrint('🆔 [AUTH_PROVIDER] Using session ID: $sessionId');
+    }
     
     // Set loading state
     _isLoading = true;
@@ -101,7 +109,7 @@ class AuthProvider with ChangeNotifier {
       debugPrint('🔄 [AUTH_PROVIDER] Calling _authService.login() with 30s timeout...');
 
       // Add timeout to prevent infinite hanging
-      _user = await _authService.login(username, password).timeout(
+      _user = await _authService.login(username, password, sessionId: sessionId).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
           debugPrint('⏱️ [AUTH_PROVIDER] Login request timed out after 30 seconds');
@@ -116,6 +124,9 @@ class AuthProvider with ChangeNotifier {
         debugPrint('👤 [AUTH_PROVIDER] Setting current user: ${_user!.username} (${_user!.role})');
         _userContextProvider.setCurrentUser(_user!);
         _error = null;
+        debugPrint('⏳ [AUTH_PROVIDER] hasPendingJoinRequest: ${_user!.hasPendingJoinRequest}');
+        debugPrint('📌 [AUTH_PROVIDER] pendingJoinRequestUnitName: ${_user!.pendingJoinRequestUnitName}');
+        debugPrint('📌 [AUTH_PROVIDER] pendingJoinRequestRole: ${_user!.pendingJoinRequestRole}');
       } else {
         debugPrint('⚠️ [AUTH_PROVIDER] Login returned null user');
         _error = 'Login failed: No user data received';
@@ -203,6 +214,27 @@ class AuthProvider with ChangeNotifier {
     _userContextProvider.clearCurrentUser();
     _error = 'Session expired. Please login again.';
     notifyListeners();
+  }
+
+  Future<bool> withdrawAccount() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _authService.withdrawAccount();
+      _user = null;
+      _userContextProvider.clearCurrentUser();
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 }
 

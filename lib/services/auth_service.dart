@@ -19,13 +19,16 @@ class AuthService {
 
   DioClient get dioClient => _dioClient;
 
-  Future<User> login(String username, String password) async {
+  Future<User> login(String username, String password, {String? sessionId}) async {
     try {
       // Log the attempt for debugging
       debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       debugPrint('🔐 LOGIN ATTEMPT START');
       debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       debugPrint('👤 Username: $username');
+      if (sessionId != null) {
+        debugPrint('🔑 Session ID: $sessionId');
+      }
       debugPrint('🌐 Base URL: ${Constants.baseUrl}');
       debugPrint('📍 Login Endpoint: ${Constants.loginEndpoint}');
       debugPrint('🔗 Full URL: ${Constants.baseUrl}${Constants.loginEndpoint}');
@@ -34,6 +37,7 @@ class AuthService {
       final loginData = {
         'username': username,
         'password': password,
+        if (sessionId != null) 'session_id': sessionId,
       };
 
       debugPrint('📤 Sending POST request with JSON data...');
@@ -69,11 +73,27 @@ class AuthService {
       await _dioClient.setAuthTokens(accessToken, refreshToken);
       debugPrint('💾 Tokens stored in SharedPreferences');
 
-      // Get user profile information
+      // Get user profile information from login response (includes has_pending_join_request)
       debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      debugPrint('👤 Fetching user profile...');
-      final user = await _getUserProfile(accessToken);
-      debugPrint('✅ User profile fetched: ${user.username} (${user.role})');
+      debugPrint('👤 Parsing user data from login response...');
+      
+      final userData = tokens['user'];
+      if (userData == null) {
+        debugPrint('⚠️ WARNING: No user data in login response, falling back to profile fetch');
+        final user = await _getUserProfile(accessToken);
+        debugPrint('✅ User profile fetched: ${user.username} (${user.role})');
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        debugPrint('🎉 LOGIN SUCCESS');
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        return user;
+      }
+      
+      debugPrint('📦 User data from login: ${userData is Map ? (userData as Map).keys : 'N/A'}');
+      debugPrint('🔍 has_pending_join_request: ${userData['has_pending_join_request']}');
+      
+      final user = User.fromJson(userData);
+      debugPrint('✅ User parsed: ${user.username} (${user.role})');
+      debugPrint('⏳ hasPendingJoinRequest: ${user.hasPendingJoinRequest}');
       debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       debugPrint('🎉 LOGIN SUCCESS');
       debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -143,9 +163,13 @@ class AuthService {
     String password,
     String role, {
     Map<String, dynamic>? additionalData,
+    String? sessionId,
   }) async {
     try {
       debugPrint('🔐 [FLUTTER_AUTH] Attempting registration for user: $username with role: $role');
+      if (sessionId != null) {
+        debugPrint('🔑 [FLUTTER_AUTH] Session ID: $sessionId');
+      }
       debugPrint('🌐 [FLUTTER_AUTH] Using base URL: ${Constants.baseUrl}');
 
       // Clear any existing local data before registration
@@ -159,6 +183,7 @@ class AuthService {
         'email': email,
         'password': password,
         'role': role,
+        if (sessionId != null) 'session_id': sessionId,
       };
 
       // Add any additional data (for processing units, shops, etc.)
@@ -240,6 +265,27 @@ class AuthService {
     } catch (e) {
       debugPrint('❌ [AUTH_SERVICE] Logout error: $e');
       throw Exception('Logout failed: $e');
+    }
+  }
+
+  Future<void> withdrawAccount() async {
+    try {
+      debugPrint('🗑️ [AUTH_SERVICE] Withdrawing join request and deleting account...');
+      
+      // Call backend to withdraw join request
+      await _dioClient.dio.post(
+        '${Constants.joinRequestsEndpoint}withdraw/',
+      );
+      
+      debugPrint('✅ [AUTH_SERVICE] Join request withdrawn successfully');
+      
+      // Clear local data and tokens
+      await logout();
+      
+      debugPrint('✅ [AUTH_SERVICE] Account withdrawal completed');
+    } catch (e) {
+      debugPrint('❌ [AUTH_SERVICE] Withdraw account error: $e');
+      throw Exception('Failed to withdraw account: $e');
     }
   }
 
@@ -450,21 +496,33 @@ class AuthService {
     }
 
     // Default permissions based on role
-    switch (user.role.toLowerCase()) {
+    final role = user.role.toLowerCase();
+    switch (role) {
       case 'processingunit':
       case 'processing_unit':
+      case 'processor':
         return permission == 'read' || permission == 'write';
       case 'farmer':
         return permission == 'read';
       case 'shop':
-        return permission == 'read';
+      case 'shopowner':
+      case 'shop_owner':
+        // Shop owners have full permissions for their shop
+        return true;
       default:
         return false;
     }
   }
 
   bool canManageUsers(User user, {int? processingUnitId}) {
-    if (user.role.toLowerCase() == 'admin') {
+    final role = user.role.toLowerCase();
+    
+    if (role == 'admin') {
+      return true;
+    }
+    
+    // Shop owners can always manage users
+    if (role == 'shop' || role == 'shopowner' || role == 'shop_owner') {
       return true;
     }
 
@@ -491,7 +549,14 @@ class AuthService {
   }
 
   bool isOwnerOrManager(User user, {int? processingUnitId}) {
-    if (user.role.toLowerCase() == 'admin') {
+    final role = user.role.toLowerCase();
+    
+    if (role == 'admin') {
+      return true;
+    }
+    
+    // Shop owners are owners
+    if (role == 'shop' || role == 'shopowner' || role == 'shop_owner') {
       return true;
     }
 

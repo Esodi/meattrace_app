@@ -202,25 +202,36 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
         }
       } else {
         // For joining an existing unit:
-        // Step 1: Register the user account first
+        // Validate that a unit is selected
+        if (_selectedUnit == null) {
+          throw Exception('Please select a processing unit to join');
+        }
+
+        // Register the user account with processing_unit_id to trigger join request creation
         final success = await authProvider.register(
           _usernameController.text.trim(),
           _emailController.text.trim(),
           _passwordController.text,
           'ProcessingUnit',
+          additionalData: {
+            'processing_unit_id': _selectedUnit!.id,
+            'requested_role': 'worker',  // Default role, can be made selectable
+            'message': 'I would like to join this processing unit',
+          },
         );
 
         if (!success) {
           throw Exception(authProvider.error ?? 'Registration failed');
         }
 
-        // Step 2: Submit join request (would need a join request API)
-        // For now, just show success message
+        // User is now registered and logged in automatically
+        // The router will detect the pending join request and redirect to pending-approval screen
         if (mounted) {
           _showSuccessSnackbar(
-            'Join request submitted! You will be notified when approved.',
+            'Join request submitted! Waiting for approval.',
           );
-          _navigateToRoleBasedHome('ProcessingUnit');
+          // Router will automatically redirect to /pending-approval based on user.hasPendingJoinRequest
+          context.go('/processor-home'); // This will be intercepted by router and redirected to /pending-approval
         }
       }
     } catch (e) {

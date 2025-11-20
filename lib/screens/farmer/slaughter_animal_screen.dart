@@ -1,3 +1,4 @@
+import 'dart:async'; // Added for StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,9 @@ import '../../utils/app_typography.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_card.dart';
 import '../../widgets/core/custom_text_field.dart';
+import '../../services/bluetooth_scale_service.dart';
+import '../../widgets/dialogs/scale_connection_dialog.dart';
+import '../../widgets/bluetooth_weight_display.dart';
 
 /// Slaughter Animal Screen - Complete flow for recording animal slaughter with carcass measurements
 /// Features: Animal selection, carcass type choice (whole/split), measurement recording, confirmation
@@ -74,6 +78,11 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   int _retryCount = 0;
   static const int _maxRetries = 3;
 
+  // Bluetooth Scale
+  final BluetoothScaleService _scaleService = BluetoothScaleService();
+  StreamSubscription? _weightSubscription;
+  bool _isScaleConnected = false;
+
   @override
   void initState() {
     super.initState();
@@ -89,9 +98,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Refresh animals when returning to this screen
-    print('🔵 [SlaughterScreen] didChangeDependencies - Refreshing animals');
-    _loadAvailableAnimals();
+    // Don't reload here - it causes duplicate calls
+    // Only load in initState
+    print('🔵 [SlaughterScreen] didChangeDependencies called (skipping reload)');
   }
 
   @override
@@ -106,23 +115,212 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     _feetWeightWholeController.dispose();
     _wholeCarcassWeightController.dispose();
     _notesController.dispose();
+    _weightSubscription?.cancel();
     super.dispose();
   }
 
+  Future<void> _connectScale() async {
+    if (_scaleService.isConnected) {
+      // Already connected, maybe show status or disconnect option?
+      // For now, just show a toast or snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scale already connected')),
+      );
+      return;
+    }
+
+    final result = await showDialog(
+      context: context,
+      builder: (context) => const ScaleConnectionDialog(),
+    );
+
+    if (result == true) {
+      setState(() {
+        _isScaleConnected = true;
+      });
+      
+      // Listen to weight stream
+      _weightSubscription?.cancel();
+      _weightSubscription = _scaleService.weightStream.listen((weight) {
+        // We could auto-update a focused field, or just keep the latest value
+        // For this implementation, we'll pull on demand via the button
+        print('Scale weight: $weight');
+      });
+    }
+  }
+
+  void _readWeightFromScale(TextEditingController controller) async {
+    if (!_scaleService.isConnected) {
+      _connectScale();
+      return;
+    }
+
+    print('👆 [SlaughterScreen] Reading weight from scale...');
+    
+    // Show loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Reading from scale... Please ensure weight is stable.'),
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    bool gotWeight = false;
+    
+    // Try to manually read the characteristic first (some scales need this)
+    try {
+      print('👆 [SlaughterScreen] Attempting manual read...');
+      await _scaleService.readWeight();
+    } catch (e) {
+      print('⚠️ [SlaughterScreen] Manual read failed (normal for notify-only scales): $e');
+    }
+    
+    // Listen for the next weight value from the stream
+    StreamSubscription? singleRead;
+    singleRead = _scaleService.weightStream.listen((weight) {
+      print('✅ [SlaughterScreen] Received weight: $weight kg');
+      if (!gotWeight) {
+        gotWeight = true;
+        setState(() {
+          controller.text = weight.toStringAsFixed(2);
+        });
+        singleRead?.cancel();
+        
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Weight: ${weight.toStringAsFixed(2)} kg'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+    
+    // Longer timeout (10 seconds) to give scale time to stabilize and send data
+    Future.delayed(const Duration(seconds: 10), () {
+      if (!gotWeight) {
+        print('⏱️ [SlaughterScreen] Timeout waiting for weight');
+        singleRead?.cancel();
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No weight received. Ensure weight is on scale and stable.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
+  }
+
+  Widget _buildWeightFieldWithScale(
+    TextEditingController controller,
+    String label,
+    String unit,
+    Function(String?)? onChanged,
+  ) {
+    // Parse current weight from controller
+    double? currentWeight;
+    if (controller.text.isNotEmpty) {
+      currentWeight = double.tryParse(controller.text);
+    }
+
+    return BluetoothWeightDisplay(
+      label: label,
+      weight: currentWeight,
+      isConnected: _isScaleConnected,
+      onTap: () async {
+        // Read weight and update controller
+        if (!_scaleService.isConnected) {
+          await _connectScale();
+          return;
+        }
+
+        print('👆 [SlaughterScreen] Reading weight for $label...');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reading from scale... Please ensure weight is stable.'),
+            duration: Duration(seconds: 10),
+          ),
+        );
+
+        bool gotWeight = false;
+        
+        try {
+          await _scaleService.readWeight();
+        } catch (e) {
+          print('⚠️ [SlaughterScreen] Manual read failed: $e');
+        }
+        
+        StreamSubscription? singleRead;
+        singleRead = _scaleService.weightStream.listen((weight) {
+          if (!gotWeight) {
+            gotWeight = true;
+            setState(() {
+              controller.text = weight.toStringAsFixed(2);
+            });
+            if (onChanged != null) {
+              onChanged(weight.toStringAsFixed(2));
+            }
+            singleRead?.cancel();
+            
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$label: ${weight.toStringAsFixed(2)} $unit'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        });
+        
+        Future.delayed(const Duration(seconds: 10), () {
+          if (!gotWeight) {
+            singleRead?.cancel();
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No weight received. Ensure weight is on scale and stable.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        });
+      },
+      unit: unit,
+      themeColor: AppColors.farmerPrimary, // Farmer green theme
+    );
+  }
+
+
   Future<void> _loadAvailableAnimals() async {
+    print('🔵 [SlaughterScreen] _loadAvailableAnimals started');
     setState(() => _isLoading = true);
     try {
       final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      print('🔵 [SlaughterScreen] Fetching animals from provider...');
       await animalProvider.fetchAnimals(slaughtered: false);
 
+      print('🔵 [SlaughterScreen] Total animals from provider: ${animalProvider.animals.length}');
+      
       final animals = animalProvider.animals.where((animal) {
-        return !animal.slaughtered &&
-          animal.transferredTo == null &&
-          (animal.healthStatus == null ||
+        final notSlaughtered = !animal.slaughtered;
+        final notTransferred = animal.transferredTo == null;
+        final healthOk = animal.healthStatus == null ||
            animal.healthStatus!.toLowerCase() == 'healthy' ||
-           animal.healthStatus!.toLowerCase() == 'active');
+           animal.healthStatus!.toLowerCase() == 'active';
+        
+        print('  Animal ${animal.animalId}: slaughtered=$notSlaughtered, transferred=$notTransferred, health=$healthOk');
+        
+        return notSlaughtered && notTransferred && healthOk;
       }).toList();
 
+      print('🔵 [SlaughterScreen] Filtered animals count: ${animals.length}');
+      
       setState(() {
         _availableAnimals = animals;
         _filteredAnimals = animals;
@@ -130,6 +328,8 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         _isOffline = false;
         _networkError = null;
       });
+      
+      print('🔵 [SlaughterScreen] State updated - _availableAnimals: ${_availableAnimals.length}, _filteredAnimals: ${_filteredAnimals.length}');
 
       if (widget.animalId != null) {
         final targetAnimal = animals.where((animal) => animal.id.toString() == widget.animalId).toList();
@@ -138,6 +338,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         }
       }
     } catch (e) {
+      print('❌ [SlaughterScreen] Error loading animals: $e');
       setState(() {
         _isLoading = false;
         _isOffline = true;
@@ -805,185 +1006,137 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Recording slaughter...'),
+                  Text('Processing slaughter...'),
                 ],
               ),
             )
-          : Column(
-              children: [
-                if (_isOffline) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    color: AppColors.warning.withOpacity(0.1),
-                    child: Row(
-                      children: [
-                        Icon(Icons.wifi_off, color: AppColors.warning, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Working offline - Changes will sync when connection is restored',
-                            style: AppTypography.bodySmall(color: AppColors.warning),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: _loadAvailableAnimals,
-                          child: Text(
-                            'Retry',
-                            style: AppTypography.bodySmall(color: AppColors.farmerPrimary),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                Expanded(
-                  child: IndexedStack(
-                    index: _currentStep,
+          : _currentStep == 0 && _isLoading
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildAnimalSelectionStep(),
-                      _buildCarcassTypeStep(),
-                      _buildMeasurementStep(),
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Loading animals...'),
                     ],
                   ),
-                ),
-              ],
-            ),
+                )
+              : _buildContent(),
     );
   }
 
-  Widget _buildAnimalSelectionStep() {
-    return Column(
-      children: [
-        // Search bar
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: CustomTextField(
-            controller: _searchController,
-            label: 'Search animals',
-            hint: 'Enter animal ID, name, species, or breed',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchController.clear();
-                    },
-                  )
-                : null,
-          ),
+  Widget _buildContent() {
+    return Stepper(
+      type: StepperType.horizontal,
+      currentStep: _currentStep,
+      onStepContinue: _nextStep,
+      onStepCancel: _previousStep,
+      controlsBuilder: (context, details) {
+        return const SizedBox.shrink();
+      },
+      steps: [
+        Step(
+          title: const Text('Animal'),
+          content: _buildAnimalSelectionStep(),
+          isActive: _currentStep >= 0,
+          state: _currentStep > 0 ? StepState.complete : StepState.indexed,
         ),
-
-        // Animal list
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _filteredAnimals.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.pets_outlined, size: 64, color: AppColors.textSecondary),
-                          const SizedBox(height: 16),
-                          Text(
-                            _searchController.text.isEmpty
-                                ? 'No active animals available'
-                                : 'No animals match your search',
-                            style: AppTypography.bodyLarge(color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Only healthy, active animals can be slaughtered',
-                            style: AppTypography.bodySmall(color: AppColors.textSecondary),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _filteredAnimals.length,
-                      itemBuilder: (context, index) {
-                        final animal = _filteredAnimals[index];
-                        return _buildAnimalCard(animal);
-                      },
-                    ),
+        Step(
+          title: const Text('Carcass'),
+          content: _buildCarcassTypeStep(),
+          isActive: _currentStep >= 1,
+          state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+        ),
+        Step(
+          title: const Text('Measure'),
+          content: _buildMeasurementStep(),
+          isActive: _currentStep >= 2,
+          state: _currentStep > 2 ? StepState.complete : StepState.indexed,
         ),
       ],
     );
   }
 
-  Widget _buildAnimalCard(Animal animal) {
-    return CustomCard(
-      onTap: () => _selectAnimal(animal),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.farmerPrimary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  _getSpeciesEmoji(animal.species),
-                  style: const TextStyle(fontSize: 28),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    animal.animalId,
-                    style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  if (animal.animalName != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      animal.animalName!,
-                      style: AppTypography.bodyMedium(color: AppColors.textSecondary),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildInfoChip('Breed: ${animal.breed ?? 'N/A'}'),
-                      const SizedBox(width: 8),
-                      _buildInfoChip('${animal.age.toInt()}m'),
-                      const SizedBox(width: 8),
-                      _buildInfoChip('${animal.liveWeight ?? 0} kg'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.check_circle, size: 16, color: AppColors.success),
-                      const SizedBox(width: 4),
-                      Text(
-                        animal.healthStatus ?? 'Healthy',
-                        style: AppTypography.bodySmall(color: AppColors.success),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // Arrow
-            Icon(Icons.arrow_forward_ios, size: 20, color: AppColors.textSecondary),
-          ],
+  Widget _buildAnimalSelectionStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CustomTextField(
+          controller: _searchController,
+          label: 'Search Animals',
+          hint: 'Search by ID, name, or species',
+          prefixIcon: const Icon(Icons.search),
+          onChanged: (value) => _filterAnimals(),
         ),
-      ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 400, // Fixed height for the list
+          child: _filteredAnimals.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 16),
+                        Text(
+                          _isLoading ? 'Loading animals...' : 'No animals found',
+                          style: AppTypography.bodyLarge(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  itemCount: _filteredAnimals.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final animal = _filteredAnimals[index];
+                    final isSelected = _selectedAnimal?.id == animal.id;
+                    
+                    return CustomCard(
+                      onTap: () => _selectAnimal(animal),
+                      borderColor: isSelected ? AppColors.farmerPrimary : null,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Text(
+                              _getSpeciesEmoji(animal.species),
+                              style: const TextStyle(fontSize: 24),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    animal.animalId,
+                                    style: AppTypography.titleMedium().copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected ? AppColors.farmerPrimary : null,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${animal.breed ?? animal.species} • ${animal.liveWeight} kg',
+                                    style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(Icons.check_circle, color: AppColors.farmerPrimary),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -1021,10 +1174,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   Widget _buildCarcassTypeStep() {
-    print('🔵 [SlaughterScreen] _buildCarcassTypeStep called');
-    
     if (_selectedAnimal == null) {
-      print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _buildCarcassTypeStep');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1045,8 +1195,6 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         ),
       );
     }
-    
-    print('✅ [SlaughterScreen] Selected animal: ${_selectedAnimal!.animalId}');
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -1218,10 +1366,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   Widget _buildMeasurementStep() {
-    print('🔵 [SlaughterScreen] _buildMeasurementStep called');
-    
     if (_selectedAnimal == null) {
-      print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _buildMeasurementStep');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1242,8 +1387,6 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         ),
       );
     }
-    
-    print('✅ [SlaughterScreen] Selected animal: ${_selectedAnimal!.animalId}');
     
     return Form(
       key: _formKey,
@@ -1342,10 +1485,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   Widget _buildWholeCarcassMeasurements() {
-    print('🔵 [SlaughterScreen] _buildWholeCarcassMeasurements called');
-
     if (_selectedAnimal == null) {
-      print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _buildWholeCarcassMeasurements');
       return Center(child: Text('Error: No animal selected', style: AppTypography.bodyLarge(color: AppColors.error)));
     }
 
@@ -1477,47 +1617,79 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     Function(String) onUnitChanged, {
     bool required = false,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: CustomTextField(
-            controller: controller,
-            label: label,
-            hint: 'Enter weight',
-            keyboardType: TextInputType.number,
-            validator: required
-                ? (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Required';
-                    }
-                    final weight = double.tryParse(value);
-                    if (weight == null || weight <= 0) {
-                      return 'Invalid';
-                    }
-                    return null;
-                  }
-                : null,
-            onChanged: (_) => setState(() {}),
+    // Parse current weight from controller
+    double? currentWeight;
+    if (controller.text.isNotEmpty) {
+      currentWeight = double.tryParse(controller.text);
+    }
+
+    return BluetoothWeightDisplay(
+      label: label + (required ? ' *' : ''),
+      weight: currentWeight,
+      isConnected: _isScaleConnected,
+      onTap: () async {
+        // Read weight and update controller
+        if (!_scaleService.isConnected) {
+          await _connectScale();
+          return;
+        }
+
+        print('👆 [SlaughterScreen] Reading weight for $label...');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reading from scale... Please ensure weight is stable.'),
+            duration: Duration(seconds: 10),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 1,
-          child: DropdownButtonFormField<String>(
-            value: unit,
-            decoration: const InputDecoration(
-              labelText: 'Unit',
-              border: OutlineInputBorder(),
-            ),
-            items: ['kg', 'lbs', 'g'].map((u) {
-              return DropdownMenuItem(value: u, child: Text(u));
-            }).toList(),
-            onChanged: (value) => onUnitChanged(value!),
-          ),
-        ),
-      ],
+        );
+
+        bool gotWeight = false;
+        
+        try {
+          await _scaleService.readWeight();
+        } catch (e) {
+          print('⚠️ [SlaughterScreen] Manual read failed: $e');
+        }
+        
+        StreamSubscription? singleRead;
+        singleRead = _scaleService.weightStream.listen((weight) {
+          if (!gotWeight) {
+            gotWeight = true;
+            setState(() {
+              controller.text = weight.toStringAsFixed(2);
+            });
+            // Note: onUnitChanged is for unit selection, not weight value change.
+            // We don't have a callback for weight value change here, but controller is updated.
+            
+            singleRead?.cancel();
+            
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$label: ${weight.toStringAsFixed(2)} $unit'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        });
+        
+        Future.delayed(const Duration(seconds: 10), () {
+          if (!gotWeight) {
+            singleRead?.cancel();
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No weight received. Ensure weight is on scale and stable.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        });
+      },
+      unit: unit,
+      themeColor: AppColors.farmerPrimary,
     );
   }
 }
