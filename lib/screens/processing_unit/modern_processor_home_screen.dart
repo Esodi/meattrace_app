@@ -272,7 +272,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
             ),
             tooltip: 'Notifications',
-            onPressed: () => context.push('/receive-animals'),
+            onPressed: () => context.push('/processor/notifications'),
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined, color: AppColors.textPrimary),

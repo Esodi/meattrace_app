@@ -502,7 +502,7 @@ class _ModernFarmerHomeScreenState extends State<ModernFarmerHomeScreen>
                             child: CompactAnimalCard(
                               animalId: animal.animalId,
                               species: animal.species,
-                              healthStatus: animal.healthStatus ?? 'healthy',
+                              healthStatus: animal.computedLifecycleStatus.name,
                               onTap: () {
                                 // Navigate to animal details
                                 if (animal.id != null) {

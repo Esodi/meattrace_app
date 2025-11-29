@@ -46,7 +46,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
       await animalProvider.fetchAnimals(slaughtered: true);
       debugPrint('[TRANSFER_ANIMALS] Animals fetched: ${animalProvider.animals.length}');
 
-      final units = await ProcessingUnitService().getProcessingUnits();
+      final units = await ProcessingUnitService().getProcessingUnits(all: true);
       debugPrint('[TRANSFER_ANIMALS] Processing units fetched: ${units.length}');
       debugPrint('[TRANSFER_ANIMALS] Processing units data: $units');
 

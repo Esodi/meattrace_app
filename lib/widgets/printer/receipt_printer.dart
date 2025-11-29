@@ -108,8 +108,10 @@ class ReceiptPrinter {
     
     // Sale info
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+    // Convert UTC time to local time for display
+    final localTime = sale.createdAt.toLocal();
     bytes += generator.text(
-      'Date: ${dateFormat.format(sale.createdAt)}',
+      'Date: ${dateFormat.format(localTime)}',
       styles: PosStyles(align: PosAlign.left),
     );
     bytes += generator.text(

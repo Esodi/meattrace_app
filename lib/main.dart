@@ -49,6 +49,7 @@ import 'screens/processing_unit/transfer_products_screen.dart';
 import 'screens/processing_unit/unit_registration_screen.dart';
 import 'screens/processing_unit/unit_user_management_screen.dart';
 import 'screens/processing_unit/product_categories_screen.dart';
+import 'screens/processing_unit/processor_notification_screen.dart';
 import 'screens/shop/modern_shop_home_screen.dart';
 import 'screens/shop/receive_products_screen.dart';
 import 'screens/shop/shop_registration_screen.dart';
@@ -252,18 +253,33 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 return '/';
               }
 
-              // If logged in, check for pending join request
+              // If logged in, check for pending or rejected join request
               if (isLoggedIn) {
                 final user = authProvider.user;
-                if (user != null && user.hasPendingJoinRequest) {
-                  // User has pending join request - show pending approval screen
-                  if (!isGoingToPendingApproval) {
-                    debugPrint('   ➡️ Redirecting to pending-approval (has pending join request)');
-                    return '/pending-approval';
+                if (user != null) {
+                  // Check for pending request
+                  if (user.hasPendingJoinRequest) {
+                    // User has pending join request - show pending approval screen
+                    if (!isGoingToPendingApproval) {
+                      debugPrint('   ➡️ Redirecting to pending-approval (has pending join request)');
+                      return '/pending-approval';
+                    }
+                    // Already on pending approval screen, no redirect needed
+                    debugPrint('   ✅ On pending-approval screen');
+                    return null;
                   }
-                  // Already on pending approval screen, no redirect needed
-                  debugPrint('   ✅ On pending-approval screen');
-                  return null;
+                  
+                  // Check for rejected request
+                  if (user.hasRejectedJoinRequest) {
+                    // User has rejected join request - show pending approval screen (which handles rejection display)
+                    if (!isGoingToPendingApproval) {
+                      debugPrint('   ➡️ Redirecting to pending-approval (has rejected join request)');
+                      return '/pending-approval';
+                    }
+                    // Already on pending approval screen, no redirect needed
+                    debugPrint('   ✅ On pending-approval screen');
+                    return null;
+                  }
                 }
               }
 
@@ -296,8 +312,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 path: '/pending-approval',
                 builder: (context, state) {
                   final user = authProvider.user;
-                  if (user == null || !user.hasPendingJoinRequest) {
-                    // Redirect to login if no pending request
+                  if (user == null || (!user.hasPendingJoinRequest && !user.hasRejectedJoinRequest)) {
+                    // Redirect to login if no pending or rejected request
                     return const ModernLoginScreen();
                   }
                   
@@ -311,6 +327,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     requestedRole: user.pendingJoinRequestRole ?? 'worker',
                     requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
                     isShop: isShop,
+                    rejectionReason: user.rejectionReason,
                   );
                 },
               ),
@@ -331,13 +348,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 builder: (context, state) {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
                   final user = authProvider.user;
-                  if (user != null && user.hasPendingJoinRequest) {
-                    debugPrint('   ➡️ User has pending join request - intercepting /processor-home and showing pending approval screen');
+                  if (user != null && (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
+                    debugPrint('   ➡️ User has pending/rejected join request - intercepting /processor-home');
                     return PendingApprovalScreen(
                       entityName: user.pendingJoinRequestUnitName ?? 'Unknown Unit',
                       requestedRole: user.pendingJoinRequestRole ?? 'worker',
                       requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
                       isShop: false,
+                      rejectionReason: user.rejectionReason,
                     );
                   }
                   return const ModernProcessorHomeScreen();
@@ -348,13 +366,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 builder: (context, state) {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
                   final user = authProvider.user;
-                  if (user != null && user.hasPendingJoinRequest) {
-                    debugPrint('   ➡️ User has pending join request - intercepting /shop-home and showing pending approval screen');
+                  if (user != null && (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
+                    debugPrint('   ➡️ User has pending/rejected join request - intercepting /shop-home');
                     return PendingApprovalScreen(
                       entityName: user.pendingJoinRequestShopName ?? 'Unknown Shop',
                       requestedRole: user.pendingJoinRequestRole ?? 'worker',
                       requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
                       isShop: true,
+                      rejectionReason: user.rejectionReason,
                     );
                   }
                   final index = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
@@ -483,6 +502,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               GoRoute(
                 path: '/processor/product-categories',
                 builder: (context, state) => ProductCategoriesScreen(),
+              ),
+              GoRoute(
+                path: '/processor/notifications',
+                builder: (context, state) => const ProcessorNotificationScreen(),
               ),
               
               // User Management routes

@@ -106,4 +106,29 @@ class JoinRequestService {
     return createJoinRequest(unitType, unitId, joinRequest.requestedRole,
         message: joinRequest.message, qualifications: joinRequest.qualifications);
   }
+
+  Future<void> cancelJoinRequest(int requestId) async {
+    try {
+      await _dioClient.dio.delete('/join-requests/$requestId/');
+    } on DioException catch (e) {
+      throw Exception('Failed to cancel join request: ${e.message}');
+    }
+  }
+
+  Future<JoinRequest?> getCurrentUserJoinRequest() async {
+    try {
+      final requests = await fetchUserJoinRequests();
+      // Return the first pending or rejected request
+      if (requests.isEmpty) return null;
+      
+      for (var request in requests) {
+        if (request.status == 'pending' || request.status == 'rejected') {
+          return request;
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 }

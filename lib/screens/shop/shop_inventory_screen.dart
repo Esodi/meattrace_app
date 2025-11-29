@@ -29,7 +29,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
   String _searchQuery = '';
   String _selectedCategory = 'all';
 
-  final List<String> _categories = ['all', 'beef', 'pork', 'poultry', 'other'];
+  final List<String> _categories = ['all'];
 
   @override
   void initState() {
@@ -340,7 +340,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                           style: AppTypography.bodyMedium(),
                         ),
                         const Spacer(),
-                        // Show "Add Price" button if price is 0, otherwise show price
+                        // Show "Add Price" button if price is 0, otherwise show price with edit button
                         if (product.price == 0)
                           ElevatedButton.icon(
                             onPressed: () => _showAddPriceDialog(product),
@@ -364,12 +364,29 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                             ),
                           )
                         else
-                          Text(
-                            'TZS ${product.price.toStringAsFixed(2)}',
-                            style: AppTypography.titleMedium().copyWith(
-                              color: AppColors.shopPrimary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'TZS ${product.price.toStringAsFixed(2)}',
+                                style: AppTypography.titleMedium().copyWith(
+                                  color: AppColors.shopPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: AppTheme.space4),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.edit,
+                                  size: 20,
+                                  color: AppColors.shopPrimary,
+                                ),
+                                onPressed: () => _showEditPriceDialog(product),
+                                tooltip: 'Edit Price',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
                           ),
                       ],
                     ),
@@ -740,6 +757,144 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                       } catch (e) {
                         setDialogState(() => isLoading = false);
                         if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to update price: $e'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditPriceDialog(Product product) {
+    final priceController = TextEditingController(
+      text: product.price.toStringAsFixed(2),
+    );
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.edit, color: AppColors.shopPrimary),
+              const SizedBox(width: AppTheme.space8),
+              Text('Edit Price', style: AppTypography.headlineMedium()),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Product: ${product.productType}',
+                style: AppTypography.bodyMedium().copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                'Batch: ${product.batchNumber ?? 'N/A'}',
+                style: AppTypography.bodySmall().copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppTheme.space8),
+              Text(
+                'Current Price: TZS ${product.price.toStringAsFixed(2)}',
+                style: AppTypography.bodyMedium().copyWith(
+                  color: AppColors.shopPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppTheme.space16),
+              CustomTextField(
+                controller: priceController,
+                hint: 'Enter new price',
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                prefixIcon: Icon(Icons.attach_money, color: AppColors.textSecondary),
+                enabled: !isLoading,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+              child: Text('Cancel', style: AppTypography.button()),
+            ),
+            CustomButton(
+              label: 'Update Price',
+              loading: isLoading,
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      final priceText = priceController.text.trim();
+                      if (priceText.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter a price'),
+                            backgroundColor: AppColors.warning,
+                          ),
+                        );
+                        return;
+                      }
+
+                      final price = double.tryParse(priceText);
+                      if (price == null || price <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter a valid price greater than 0'),
+                            backgroundColor: AppColors.warning,
+                          ),
+                        );
+                        return;
+                      }
+
+                      // Check if price hasn't changed
+                      if (price == product.price) {
+                        Navigator.of(context).pop();
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+
+                      try {
+                        final productProvider = Provider.of<ProductProvider>(context, listen: false);
+                        
+                        // Update product with new price
+                        final updatedProduct = product.copyWith(
+                          price: price,
+                          quantity: 0, // Set to 0 to trigger partial update in service
+                        );
+                        
+                        await productProvider.updateProduct(updatedProduct);
+                        
+                        // Refresh the inventory list
+                        await _loadInventory();
+
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Price updated to TZS ${price.toStringAsFixed(2)}'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isLoading = false);
+                        if (mounted) {
+                          Navigator.of(context).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Failed to update price: $e'),

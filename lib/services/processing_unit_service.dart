@@ -40,12 +40,14 @@ class ProcessingUnitService {
     }
   }
 
-  Future<List<ProcessingUnit>> getProcessingUnits() async {
+  Future<List<ProcessingUnit>> getProcessingUnits({bool all = false}) async {
     try {
-      debugPrint('[PROCESSING_UNIT_SERVICE] Fetching processing units from: ${Constants.processingUnitsEndpoint}');
-      final response = await _dioClient.dio.get(
-        Constants.processingUnitsEndpoint,
-      );
+      final url = all 
+          ? '${Constants.processingUnitsEndpoint}?all=true'
+          : Constants.processingUnitsEndpoint;
+      
+      debugPrint('[PROCESSING_UNIT_SERVICE] Fetching processing units from: $url');
+      final response = await _dioClient.dio.get(url);
 
       debugPrint('[PROCESSING_UNIT_SERVICE] Response status: ${response.statusCode}');
       debugPrint('[PROCESSING_UNIT_SERVICE] Response data type: ${response.data.runtimeType}');

@@ -1,251 +1,231 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import '../../utils/app_theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
-import '../../providers/auth_provider.dart';
+import '../../utils/app_theme.dart';
 import '../../widgets/core/custom_button.dart';
+
+/// MeatTrace Pro - Pending Approval Screen
+/// Displays join request status and allows withdrawal
 
 class PendingApprovalScreen extends StatefulWidget {
   final String entityName;
+  final bool isShop;
   final String requestedRole;
   final DateTime requestedAt;
-  final bool isShop;
+  final String? rejectionReason;
 
   const PendingApprovalScreen({
-    super.key,
+    Key? key,
     required this.entityName,
+    required this.isShop,
     required this.requestedRole,
     required this.requestedAt,
-    this.isShop = false,
-  });
+    this.rejectionReason,
+  }) : super(key: key);
 
   @override
   State<PendingApprovalScreen> createState() => _PendingApprovalScreenState();
 }
 
 class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
-  String? _confirmationText = '';
+  String? _confirmationText;
+
+  bool get isRejected => widget.rejectionReason != null;
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = widget.isShop ? AppColors.shopPrimary : AppColors.processorPrimary;
-    final icon = widget.isShop ? Icons.store : Icons.factory;
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(AppTheme.space24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Pending Icon
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.1),
-                    shape: BoxShape.circle,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppTheme.space24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Status Icon
+            Container(
+              padding: const EdgeInsets.all(AppTheme.space24),
+              decoration: BoxDecoration(
+                color: isRejected ? AppColors.error.withOpacity(0.1) : primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isRejected ? Icons.cancel_outlined : Icons.hourglass_empty_rounded,
+                size: 64,
+                color: isRejected ? AppColors.error : primaryColor,
+              ),
+            ),
+            const SizedBox(height: AppTheme.space24),
+
+            // Title
+            Text(
+              isRejected ? 'Request Rejected' : 'Approval Pending',
+              style: AppTypography.headlineMedium().copyWith(
+                fontWeight: FontWeight.bold,
+                color: isRejected ? AppColors.error : AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppTheme.space12),
+
+            // Subtitle
+            Text(
+              isRejected
+                ? 'Your request to join has been rejected.'
+                : 'Your request to join is currently under review.',
+              style: AppTypography.bodyLarge().copyWith(
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppTheme.space32),
+
+            // Details Card
+            Container(
+              padding: const EdgeInsets.all(AppTheme.space20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                  child: Icon(
-                    Icons.hourglass_empty,
-                    size: 60,
-                    color: AppColors.warning,
-                  ),
-                ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildInfoRow('Organization', widget.entityName),
+                  const Divider(height: AppTheme.space24),
+                  _buildInfoRow('Type', widget.isShop ? 'Shop' : 'Processing Unit'),
+                  const Divider(height: AppTheme.space24),
+                  _buildInfoRow('Requested Role', _formatRole(widget.requestedRole)),
+                  const Divider(height: AppTheme.space24),
+                  _buildInfoRow(isRejected ? 'Rejected Date' : 'Requested', _formatDate(widget.requestedAt)),
 
-                SizedBox(height: AppTheme.space32),
-
-                // Title
-                Text(
-                  'Request Pending Approval',
-                  style: AppTypography.headlineMedium().copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                SizedBox(height: AppTheme.space16),
-
-                // Message
-                Text(
-                  'Your request to join',
-                  style: AppTypography.bodyLarge(),
-                  textAlign: TextAlign.center,
-                ),
-
-                SizedBox(height: AppTheme.space8),
-
-                // Entity Name
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppTheme.space16,
-                    vertical: AppTheme.space12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(
-                      color: primaryColor.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        icon,
-                        color: primaryColor,
-                        size: 24,
+                  if (isRejected && widget.rejectionReason != null) ...[
+                    const Divider(height: AppTheme.space24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppTheme.space12),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                        border: Border.all(color: AppColors.error.withOpacity(0.2)),
                       ),
-                      SizedBox(width: AppTheme.space8),
-                      Flexible(
-                        child: Text(
-                          widget.entityName,
-                          style: AppTypography.headlineSmall().copyWith(
-                            color: primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: AppTheme.space16),
-
-                Text(
-                  'is pending approval.',
-                  style: AppTypography.bodyLarge(),
-                  textAlign: TextAlign.center,
-                ),
-
-                SizedBox(height: AppTheme.space32),
-
-                // Info Card
-                Container(
-                  padding: EdgeInsets.all(AppTheme.space16),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(
-                      color: AppColors.info.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: AppColors.info,
-                            size: 20,
-                          ),
-                          SizedBox(width: AppTheme.space8),
                           Text(
-                            'Request Details',
-                            style: AppTypography.bodyLarge().copyWith(
+                            'Rejection Reason:',
+                            style: AppTypography.bodySmall().copyWith(
+                              color: AppColors.error,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.info,
+                            ),
+                          ),
+                          const SizedBox(height: AppTheme.space4),
+                          Text(
+                            widget.rejectionReason!,
+                            style: AppTypography.bodyMedium().copyWith(
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: AppTheme.space12),
-                      _buildInfoRow('Requested Role', _formatRole(widget.requestedRole)),
-                      SizedBox(height: AppTheme.space8),
-                      _buildInfoRow('Submitted', _formatDate(widget.requestedAt)),
-                      SizedBox(height: AppTheme.space8),
-                      _buildInfoRow('Status', 'Pending Review'),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: AppTheme.space32),
-
-                // Instructions
-                Container(
-                  padding: EdgeInsets.all(AppTheme.space16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        color: Colors.grey.shade600,
-                        size: 32,
-                      ),
-                      SizedBox(height: AppTheme.space12),
-                      Text(
-                        'What happens next?',
-                        style: AppTypography.bodyLarge().copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: AppTheme.space8),
-                      Text(
-                        'The owner or manager will review your request. You will receive a notification once your request is approved or rejected.',
-                        style: AppTypography.bodyMedium().copyWith(
-                          color: Colors.grey.shade700,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: AppTheme.space32),
-
-                // Withdraw Request Button
-                CustomButton(
-                  label: 'Withdraw Request',
-                  onPressed: () => _showWithdrawConfirmationDialog(context),
-                  customColor: AppColors.error,
-                  icon: Icons.delete_forever,
-                ),
-
-                SizedBox(height: AppTheme.space16),
-
-                // Logout Button
-                CustomButton(
-                  label: 'Logout',
-                  onPressed: () async {
-                    final authProvider = context.read<AuthProvider>();
-                    await authProvider.logout();
-                    if (context.mounted) {
-                      context.go('/login');
-                    }
-                  },
-                  customColor: Colors.grey.shade600,
-                  icon: Icons.logout,
-                ),
-
-                SizedBox(height: AppTheme.space16),
-
-                // Refresh Button
-                TextButton.icon(
-                  onPressed: () async {
-                    // Refresh user profile to check if approved
-                    final authProvider = context.read<AuthProvider>();
-                    await authProvider.ensureInitialized();
-
-                    // The router will automatically redirect if status changed
-                  },
-                  icon: Icon(Icons.refresh),
-                  label: Text('Check Status'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: primaryColor,
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
+
+            const SizedBox(height: AppTheme.space32),
+
+            // Instructions
+            if (!isRejected)
+              Container(
+                padding: const EdgeInsets.all(AppTheme.space16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      color: Colors.grey.shade600,
+                      size: 32,
+                    ),
+                    const SizedBox(height: AppTheme.space12),
+                    Text(
+                      'What happens next?',
+                      style: AppTypography.bodyLarge().copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppTheme.space8),
+                    Text(
+                      'The owner or manager will review your request. You will receive a notification once your request is approved or rejected.',
+                      style: AppTypography.bodyMedium().copyWith(
+                        color: Colors.grey.shade700,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: AppTheme.space32),
+
+            // Withdraw Request Button (only if pending)
+            if (!isRejected)
+              CustomButton(
+                label: 'Withdraw Request',
+                onPressed: () => _showWithdrawConfirmationDialog(context),
+                customColor: AppColors.error,
+                icon: Icons.delete_forever,
+              ),
+
+              const SizedBox(height: AppTheme.space16),
+
+            // Logout / Back to Login Button
+            CustomButton(
+              label: isRejected ? 'Back to Login' : 'Logout',
+              onPressed: () async {
+                final authProvider = context.read<AuthProvider>();
+                await authProvider.logout();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              },
+              customColor: isRejected ? primaryColor : Colors.grey.shade600,
+              icon: Icons.logout,
+            ),
+
+            const SizedBox(height: AppTheme.space16),
+
+            // Refresh Button (only if pending)
+            if (!isRejected)
+              TextButton.icon(
+                onPressed: () async {
+                  // Refresh user profile to check if approved
+                  final authProvider = context.read<AuthProvider>();
+                  await authProvider.ensureInitialized();
+
+                  // The router will automatically redirect if status changed
+                },
+                icon: Icon(Icons.refresh),
+                label: Text('Check Status'),
+                style: TextButton.styleFrom(
+                  foregroundColor: primaryColor,
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -321,9 +301,9 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 'Are you sure you want to withdraw your join request?',
                 style: AppTypography.bodyLarge(),
               ),
-              SizedBox(height: AppTheme.space12),
+              const SizedBox(height: AppTheme.space12),
               Container(
-                padding: EdgeInsets.all(AppTheme.space12),
+                padding: const EdgeInsets.all(AppTheme.space12),
                 decoration: BoxDecoration(
                   color: AppColors.error.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
@@ -341,7 +321,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                           color: AppColors.error,
                           size: 20,
                         ),
-                        SizedBox(width: AppTheme.space8),
+                        const SizedBox(width: AppTheme.space8),
                         Text(
                           'This action cannot be undone!',
                           style: AppTypography.bodyMedium().copyWith(
@@ -351,7 +331,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: AppTheme.space8),
+                    const SizedBox(height: AppTheme.space8),
                     Text(
                       '• Your join request will be permanently withdrawn\n'
                       '• Your account and all associated data will be deleted\n'
@@ -371,7 +351,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: AppTheme.space8),
+              const SizedBox(height: AppTheme.space8),
               StatefulBuilder(
                 builder: (context, setState) {
                   return TextField(
@@ -385,7 +365,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                       ),
-                      contentPadding: EdgeInsets.symmetric(
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: AppTheme.space12,
                         vertical: AppTheme.space8,
                       ),
@@ -456,7 +436,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred: $e'),
+            content: Text('Error: $e'),
             backgroundColor: AppColors.error,
           ),
         );

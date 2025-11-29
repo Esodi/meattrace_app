@@ -47,6 +47,9 @@ class User {
     this.pendingJoinRequestShopName,
     this.pendingJoinRequestRole,
     this.pendingJoinRequestDate,
+    this.hasRejectedJoinRequest = false,
+    this.rejectionReason,
+    this.rejectionDate,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -156,85 +159,57 @@ class User {
           }
       }
 
-      // Parse pending join request information (robust parsing: boolean, string 'true', numeric 1 etc.)
-      final rawHasPending = profileData['has_pending_join_request'];
-      debugPrint('🔍 [USER_FROM_JSON] raw has_pending_join_request: $rawHasPending (type: ${rawHasPending?.runtimeType})');
-      final hasPendingJoinRequest = rawHasPending == true || rawHasPending == 'true' || rawHasPending == 1 || rawHasPending == '1';
-      String? pendingJoinRequestUnitName;
-      String? pendingJoinRequestShopName;
-      String? pendingJoinRequestRole;
-      DateTime? pendingJoinRequestDate;
-
-      if (hasPendingJoinRequest && profileData['pending_join_request'] != null) {
-          final pendingRequest = profileData['pending_join_request'] as Map<String, dynamic>;
-          pendingJoinRequestUnitName = pendingRequest['processing_unit_name']?.toString();
-          pendingJoinRequestShopName = pendingRequest['shop_name']?.toString();
-          pendingJoinRequestRole = pendingRequest['requested_role']?.toString();
-          if (pendingRequest['created_at'] != null) {
-              pendingJoinRequestDate = DateTime.parse(pendingRequest['created_at']);
-          }
-      }
-
       return User(
-          id: int.parse(userData['id'].toString()),
-          username: userData['user_username']?.toString() ?? userData['username']?.toString() ?? '',
-          email: userData['user_email']?.toString() ?? userData['email']?.toString() ?? '',
-          firstName: userData['first_name']?.toString(),
-          lastName: userData['last_name']?.toString(),
-          isActive: userData['is_active'] ?? true,
-          dateJoined: userData['date_joined'] != null ? DateTime.parse(userData['date_joined']) : null,
-          lastLogin: userData['last_login'] != null ? DateTime.parse(userData['last_login']) : null,
-          role: profileData['role']?.toString() ?? 'Farmer',
-          processingUnitId: processingUnitId,
-          processingUnitName: processingUnitName,
-          shopId: shopId,
-          shopName: shopName,
-          processingUnitMemberships: memberships,
-          hasPendingJoinRequest: hasPendingJoinRequest,
-          pendingJoinRequestUnitName: pendingJoinRequestUnitName,
-          pendingJoinRequestShopName: pendingJoinRequestShopName,
-          pendingJoinRequestRole: pendingJoinRequestRole,
-          pendingJoinRequestDate: pendingJoinRequestDate,
+        id: userData['id'],
+        username: userData['username'] ?? userData['user_username'] ?? '',
+        email: userData['email'] ?? userData['user_email'] ?? '',
+        firstName: userData['first_name'],
+        lastName: userData['last_name'],
+        isActive: userData['is_active'] ?? true,
+        dateJoined: userData['date_joined'] != null ? DateTime.parse(userData['date_joined']) : null,
+        lastLogin: userData['last_login'] != null ? DateTime.parse(userData['last_login']) : null,
+        role: profileData['role'] ?? 'worker',
+        processingUnitId: processingUnitId,
+        processingUnitName: processingUnitName,
+        shopId: shopId,
+        shopName: shopName,
+        processingUnitMemberships: memberships,
+        hasPendingJoinRequest: userData['has_pending_join_request'] ?? false,
+        pendingJoinRequestUnitName: userData['pending_join_request'] != null ? userData['pending_join_request']['processing_unit_name'] : null,
+        pendingJoinRequestShopName: userData['pending_join_request'] != null ? userData['pending_join_request']['shop_name'] : null,
+        pendingJoinRequestRole: userData['pending_join_request'] != null ? userData['pending_join_request']['requested_role'] : null,
+        pendingJoinRequestDate: userData['pending_join_request'] != null && userData['pending_join_request']['created_at'] != null 
+            ? DateTime.parse(userData['pending_join_request']['created_at']) 
+            : null,
+        // Parse rejected request data
+        hasRejectedJoinRequest: userData['has_rejected_join_request'] ?? false,
+        rejectionReason: userData['rejected_join_request'] != null ? userData['rejected_join_request']['rejection_reason'] : null,
+        rejectionDate: userData['rejected_join_request'] != null && userData['rejected_join_request']['updated_at'] != null
+            ? DateTime.parse(userData['rejected_join_request']['updated_at'])
+            : null,
       );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'email': email,
-      'first_name': firstName,
-      'last_name': lastName,
-      'is_active': isActive,
-      'date_joined': dateJoined?.toIso8601String(),
-      'last_login': lastLogin?.toIso8601String(),
-      'role': role,
-      'processing_unit_id': processingUnitId,
-      'processing_unit_name': processingUnitName,
-      'shop_id': shopId,
-      'shop_name': shopName,
-      'processing_unit_memberships': processingUnitMemberships?.map((m) => m.toJson()).toList(),
-      'has_pending_join_request': hasPendingJoinRequest,
-      'pending_join_request_unit_name': pendingJoinRequestUnitName,
-      'pending_join_request_shop_name': pendingJoinRequestShopName,
-      'pending_join_request_role': pendingJoinRequestRole,
-      'pending_join_request_date': pendingJoinRequestDate?.toIso8601String(),
-    };
-  }
-
-  String get displayName => firstName != null && lastName != null
-      ? '$firstName $lastName'
-      : username;
-
-  // Make role checks resilient to different capitalizations and backend role strings
-  bool get isFarmer => role.toLowerCase().contains('farm');
-
-  bool get isProcessingUnit {
-    final r = role.toLowerCase();
-    return r == 'processingunit' || r == 'processing_unit' || r == 'processor' || r.contains('process');
-  }
-
+  // Helper getters
+  bool get isFarmer => role.toLowerCase() == 'farmer';
+  bool get isProcessingUnit => role.toLowerCase().contains('processor') || role.toLowerCase().contains('processing');
   bool get isShop => role.toLowerCase().contains('shop');
+  
+  // Display name helper
+  String get displayName {
+    if (firstName != null && firstName!.isNotEmpty) {
+      if (lastName != null && lastName!.isNotEmpty) {
+        return '$firstName $lastName';
+      }
+      return firstName!;
+    }
+    return username;
+  }
+
+  // Rejection details
+  final bool hasRejectedJoinRequest;
+  final String? rejectionReason;
+  final DateTime? rejectionDate;
 }
 
 class ProcessingUnitMembership {
