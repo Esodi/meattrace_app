@@ -10,6 +10,16 @@ class NotificationModel {
   final String? actionText;
   final DateTime createdAt;
   final DateTime? expiresAt;
+  
+  // Enhanced notification fields
+  final String priority;  // low, medium, high, urgent
+  final bool isDismissed;
+  final DateTime? dismissedAt;
+  final String actionType;  // none, view, approve, reject, respond, appeal
+  final bool isArchived;
+  final DateTime? archivedAt;
+  final String? groupKey;
+  final bool isBatchNotification;
 
   NotificationModel({
     required this.id,
@@ -23,6 +33,14 @@ class NotificationModel {
     this.actionText,
     required this.createdAt,
     this.expiresAt,
+    this.priority = 'medium',
+    this.isDismissed = false,
+    this.dismissedAt,
+    this.actionType = 'none',
+    this.isArchived = false,
+    this.archivedAt,
+    this.groupKey,
+    this.isBatchNotification = false,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +56,14 @@ class NotificationModel {
       actionText: json['action_text'],
       createdAt: DateTime.parse(json['created_at']),
       expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,
+      priority: json['priority'] ?? 'medium',
+      isDismissed: json['is_dismissed'] ?? false,
+      dismissedAt: json['dismissed_at'] != null ? DateTime.parse(json['dismissed_at']) : null,
+      actionType: json['action_type'] ?? 'none',
+      isArchived: json['is_archived'] ?? false,
+      archivedAt: json['archived_at'] != null ? DateTime.parse(json['archived_at']) : null,
+      groupKey: json['group_key'],
+      isBatchNotification: json['is_batch_notification'] ?? false,
     );
   }
 
@@ -54,6 +80,14 @@ class NotificationModel {
       'action_text': actionText,
       'created_at': createdAt.toIso8601String(),
       'expires_at': expiresAt?.toIso8601String(),
+      'priority': priority,
+      'is_dismissed': isDismissed,
+      'dismissed_at': dismissedAt?.toIso8601String(),
+      'action_type': actionType,
+      'is_archived': isArchived,
+      'archived_at': archivedAt?.toIso8601String(),
+      'group_key': groupKey,
+      'is_batch_notification': isBatchNotification,
     };
   }
 
@@ -69,6 +103,14 @@ class NotificationModel {
     String? actionText,
     DateTime? createdAt,
     DateTime? expiresAt,
+    String? priority,
+    bool? isDismissed,
+    DateTime? dismissedAt,
+    String? actionType,
+    bool? isArchived,
+    DateTime? archivedAt,
+    String? groupKey,
+    bool? isBatchNotification,
   }) {
     return NotificationModel(
       id: id ?? this.id,
@@ -82,6 +124,14 @@ class NotificationModel {
       actionText: actionText ?? this.actionText,
       createdAt: createdAt ?? this.createdAt,
       expiresAt: expiresAt ?? this.expiresAt,
+      priority: priority ?? this.priority,
+      isDismissed: isDismissed ?? this.isDismissed,
+      dismissedAt: dismissedAt ?? this.dismissedAt,
+      actionType: actionType ?? this.actionType,
+      isArchived: isArchived ?? this.isArchived,
+      archivedAt: archivedAt ?? this.archivedAt,
+      groupKey: groupKey ?? this.groupKey,
+      isBatchNotification: isBatchNotification ?? this.isBatchNotification,
     );
   }
 
@@ -89,6 +139,9 @@ class NotificationModel {
     if (expiresAt == null) return false;
     return DateTime.now().isAfter(expiresAt!);
   }
+  
+  bool get isUrgent => priority == 'urgent';
+  bool get isHighPriority => priority == 'high' || priority == 'urgent';
 
   String get timeAgo {
     final now = DateTime.now();
