@@ -621,6 +621,7 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
                           ),
                           child: CompactAnimalCard(
                             animalId: animal.animalId,
+                            tagNumber: animal.animalName,
                             species: animal.species,
                             healthStatus: animal.computedLifecycleStatus.name,
                             onTap: () {
