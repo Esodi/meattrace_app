@@ -29,22 +29,22 @@ class SlaughterAnimalScreen extends StatefulWidget {
 class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   final _searchController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  
+
   // Step management
   int _currentStep = 0;
-  
+
   // Selected animal
   Animal? _selectedAnimal;
-  
+
   // Carcass type
   String _carcassType = 'split'; // 'whole' or 'split'
-  
+
   // Measurement controllers for split carcass
   final _headWeightController = TextEditingController();
   final _feetWeightController = TextEditingController();
   final _leftCarcassWeightController = TextEditingController();
   final _rightCarcassWeightController = TextEditingController();
-  
+
   // Measurement controller for whole carcass
   final _totalWeightController = TextEditingController();
 
@@ -66,8 +66,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   String _headWholeUnit = 'kg';
   String _feetWholeUnit = 'kg';
   String _wholeCarcassUnit = 'kg';
-  
-  
+
   // State
   bool _isLoading = false;
   bool _isSubmitting = false;
@@ -100,7 +99,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     super.didChangeDependencies();
     // Don't reload here - it causes duplicate calls
     // Only load in initState
-    print('🔵 [SlaughterScreen] didChangeDependencies called (skipping reload)');
+    print(
+      '🔵 [SlaughterScreen] didChangeDependencies called (skipping reload)',
+    );
   }
 
   @override
@@ -123,9 +124,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     if (_scaleService.isConnected) {
       // Already connected, maybe show status or disconnect option?
       // For now, just show a toast or snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scale already connected')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Scale already connected')));
       return;
     }
 
@@ -138,7 +139,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       setState(() {
         _isScaleConnected = true;
       });
-      
+
       // Listen to weight stream
       _weightSubscription?.cancel();
       _weightSubscription = _scaleService.weightStream.listen((weight) {
@@ -156,7 +157,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     }
 
     print('👆 [SlaughterScreen] Reading weight from scale...');
-    
+
     // Show loading indicator
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -166,15 +167,17 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     );
 
     bool gotWeight = false;
-    
+
     // Try to manually read the characteristic first (some scales need this)
     try {
       print('👆 [SlaughterScreen] Attempting manual read...');
       await _scaleService.readWeight();
     } catch (e) {
-      print('⚠️ [SlaughterScreen] Manual read failed (normal for notify-only scales): $e');
+      print(
+        '⚠️ [SlaughterScreen] Manual read failed (normal for notify-only scales): $e',
+      );
     }
-    
+
     // Listen for the next weight value from the stream
     StreamSubscription? singleRead;
     singleRead = _scaleService.weightStream.listen((weight) {
@@ -185,7 +188,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           controller.text = weight.toStringAsFixed(2);
         });
         singleRead?.cancel();
-        
+
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -196,7 +199,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         );
       }
     });
-    
+
     // Longer timeout (10 seconds) to give scale time to stabilize and send data
     Future.delayed(const Duration(seconds: 10), () {
       if (!gotWeight) {
@@ -205,7 +208,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No weight received. Ensure weight is on scale and stable.'),
+            content: Text(
+              'No weight received. Ensure weight is on scale and stable.',
+            ),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 3),
           ),
@@ -238,22 +243,24 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         }
 
         print('👆 [SlaughterScreen] Reading weight for $label...');
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Reading from scale... Please ensure weight is stable.'),
+            content: Text(
+              'Reading from scale... Please ensure weight is stable.',
+            ),
             duration: Duration(seconds: 10),
           ),
         );
 
         bool gotWeight = false;
-        
+
         try {
           await _scaleService.readWeight();
         } catch (e) {
           print('⚠️ [SlaughterScreen] Manual read failed: $e');
         }
-        
+
         StreamSubscription? singleRead;
         singleRead = _scaleService.weightStream.listen((weight) {
           if (!gotWeight) {
@@ -265,7 +272,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               onChanged(weight.toStringAsFixed(2));
             }
             singleRead?.cancel();
-            
+
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -276,14 +283,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             );
           }
         });
-        
+
         Future.delayed(const Duration(seconds: 10), () {
           if (!gotWeight) {
             singleRead?.cancel();
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('No weight received. Ensure weight is on scale and stable.'),
+                content: Text(
+                  'No weight received. Ensure weight is on scale and stable.',
+                ),
                 backgroundColor: Colors.orange,
                 duration: Duration(seconds: 3),
               ),
@@ -292,35 +301,42 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         });
       },
       unit: unit,
-      themeColor: AppColors.farmerPrimary, // Farmer green theme
+      themeColor: AppColors.abbatoirPrimary, // Abbatoir green theme
     );
   }
-
 
   Future<void> _loadAvailableAnimals() async {
     print('🔵 [SlaughterScreen] _loadAvailableAnimals started');
     setState(() => _isLoading = true);
     try {
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      final animalProvider = Provider.of<AnimalProvider>(
+        context,
+        listen: false,
+      );
       print('🔵 [SlaughterScreen] Fetching animals from provider...');
       await animalProvider.fetchAnimals(slaughtered: false);
 
-      print('🔵 [SlaughterScreen] Total animals from provider: ${animalProvider.animals.length}');
-      
+      print(
+        '🔵 [SlaughterScreen] Total animals from provider: ${animalProvider.animals.length}',
+      );
+
       final animals = animalProvider.animals.where((animal) {
         final notSlaughtered = !animal.slaughtered;
         final notTransferred = animal.transferredTo == null;
-        final healthOk = animal.healthStatus == null ||
-           animal.healthStatus!.toLowerCase() == 'healthy' ||
-           animal.healthStatus!.toLowerCase() == 'active';
-        
-        print('  Animal ${animal.animalId}: slaughtered=$notSlaughtered, transferred=$notTransferred, health=$healthOk');
-        
+        final healthOk =
+            animal.healthStatus == null ||
+            animal.healthStatus!.toLowerCase() == 'healthy' ||
+            animal.healthStatus!.toLowerCase() == 'active';
+
+        print(
+          '  Animal ${animal.animalId}: slaughtered=$notSlaughtered, transferred=$notTransferred, health=$healthOk',
+        );
+
         return notSlaughtered && notTransferred && healthOk;
       }).toList();
 
       print('🔵 [SlaughterScreen] Filtered animals count: ${animals.length}');
-      
+
       setState(() {
         _availableAnimals = animals;
         _filteredAnimals = animals;
@@ -328,11 +344,15 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         _isOffline = false;
         _networkError = null;
       });
-      
-      print('🔵 [SlaughterScreen] State updated - _availableAnimals: ${_availableAnimals.length}, _filteredAnimals: ${_filteredAnimals.length}');
+
+      print(
+        '🔵 [SlaughterScreen] State updated - _availableAnimals: ${_availableAnimals.length}, _filteredAnimals: ${_filteredAnimals.length}',
+      );
 
       if (widget.animalId != null) {
-        final targetAnimal = animals.where((animal) => animal.id.toString() == widget.animalId).toList();
+        final targetAnimal = animals
+            .where((animal) => animal.id.toString() == widget.animalId)
+            .toList();
         if (targetAnimal.isNotEmpty) {
           _selectAnimal(targetAnimal.first);
         }
@@ -344,12 +364,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         _isOffline = true;
         _networkError = e.toString();
       });
-      _showError('Failed to load animals: ${e.toString()}\n\nWorking in offline mode. Some features may be limited.');
+      _showError(
+        'Failed to load animals: ${e.toString()}\n\nWorking in offline mode. Some features may be limited.',
+      );
     }
   }
 
   void _filterAnimals() {
-    print('🔍 [SlaughterScreen] _filterAnimals called with query: "${_searchController.text}"');
+    print(
+      '🔍 [SlaughterScreen] _filterAnimals called with query: "${_searchController.text}"',
+    );
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredAnimals = _availableAnimals.where((animal) {
@@ -357,13 +381,15 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         final animalName = animal.animalName?.toLowerCase() ?? '';
         final species = animal.species.toLowerCase();
         final breed = animal.breed?.toLowerCase() ?? '';
-        
+
         return animalId.contains(query) ||
-               animalName.contains(query) ||
-               species.contains(query) ||
-               breed.contains(query);
+            animalName.contains(query) ||
+            species.contains(query) ||
+            breed.contains(query);
       }).toList();
-      print('🔍 [SlaughterScreen] Filtered results: ${_filteredAnimals.length} animals');
+      print(
+        '🔍 [SlaughterScreen] Filtered results: ${_filteredAnimals.length} animals',
+      );
     });
   }
 
@@ -410,10 +436,22 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     // Split carcass - sum all parts (convert to kg first)
     double total = 0.0;
-    total += _convertToKg(double.tryParse(_headWeightController.text) ?? 0.0, _headUnit);
-    total += _convertToKg(double.tryParse(_feetWeightController.text) ?? 0.0, _feetUnit);
-    total += _convertToKg(double.tryParse(_leftCarcassWeightController.text) ?? 0.0, _leftCarcassUnit);
-    total += _convertToKg(double.tryParse(_rightCarcassWeightController.text) ?? 0.0, _rightCarcassUnit);
+    total += _convertToKg(
+      double.tryParse(_headWeightController.text) ?? 0.0,
+      _headUnit,
+    );
+    total += _convertToKg(
+      double.tryParse(_feetWeightController.text) ?? 0.0,
+      _feetUnit,
+    );
+    total += _convertToKg(
+      double.tryParse(_leftCarcassWeightController.text) ?? 0.0,
+      _leftCarcassUnit,
+    );
+    total += _convertToKg(
+      double.tryParse(_rightCarcassWeightController.text) ?? 0.0,
+      _rightCarcassUnit,
+    );
 
     return total;
   }
@@ -429,13 +467,17 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     // Check for unrealistic weights (too small for any animal)
     if (totalWeight > 0 && totalWeight < 0.5) {
-      _showError('Total carcass weight seems too small. Please verify measurements.');
+      _showError(
+        'Total carcass weight seems too small. Please verify measurements.',
+      );
       return false;
     }
 
     // Check for unrealistic weights (too large for typical livestock)
     if (totalWeight > 2000) {
-      _showError('Total carcass weight seems unusually large. Please verify measurements.');
+      _showError(
+        'Total carcass weight seems unusually large. Please verify measurements.',
+      );
       return false;
     }
 
@@ -459,29 +501,31 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       }
     }
 
-
     return true;
   }
 
   double _calculateYieldPercentage() {
     if (_selectedAnimal == null) {
-      print('⚠️ [SlaughterScreen] _calculateYieldPercentage called with null _selectedAnimal');
+      print(
+        '⚠️ [SlaughterScreen] _calculateYieldPercentage called with null _selectedAnimal',
+      );
       return 0.0;
     }
-    
+
     final liveWeight = _selectedAnimal?.liveWeight ?? 0.0;
     final carcassWeight = _calculateTotalWeight();
-    
+
     if (liveWeight == 0) return 0.0;
     return (carcassWeight / liveWeight) * 100;
   }
-
 
   Future<void> _confirmAndSlaughter() async {
     print('🔵 [SlaughterScreen] _confirmAndSlaughter called');
 
     if (_selectedAnimal == null) {
-      print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _confirmAndSlaughter');
+      print(
+        '❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _confirmAndSlaughter',
+      );
       _showError('Error: No animal selected');
       return;
     }
@@ -508,14 +552,19 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     }
 
     // Validate against live weight (yield percentage check)
-    if (_selectedAnimal!.liveWeight != null && totalWeight > _selectedAnimal!.liveWeight!) {
-      _showError('Total carcass weight (${totalWeight.toStringAsFixed(1)} kg) cannot exceed live weight (${_selectedAnimal!.liveWeight} kg)');
+    if (_selectedAnimal!.liveWeight != null &&
+        totalWeight > _selectedAnimal!.liveWeight!) {
+      _showError(
+        'Total carcass weight (${totalWeight.toStringAsFixed(1)} kg) cannot exceed live weight (${_selectedAnimal!.liveWeight} kg)',
+      );
       return;
     }
 
     // Check for unrealistic weights
     if (totalWeight > 2000) {
-      _showError('Total carcass weight seems unusually large (${totalWeight.toStringAsFixed(1)} kg). Please verify measurements.');
+      _showError(
+        'Total carcass weight seems unusually large (${totalWeight.toStringAsFixed(1)} kg). Please verify measurements.',
+      );
       return;
     }
 
@@ -542,7 +591,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           _feetWeightController.text.isEmpty ||
           _leftCarcassWeightController.text.isEmpty ||
           _rightCarcassWeightController.text.isEmpty) {
-        _showError('All four measurements are required for split carcass: head, feet, left carcass, right carcass');
+        _showError(
+          'All four measurements are required for split carcass: head, feet, left carcass, right carcass',
+        );
         return false;
       }
     }
@@ -554,7 +605,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     print('🔵 [SlaughterScreen] _performSlaughter started');
 
     if (_selectedAnimal == null) {
-      print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _performSlaughter');
+      print(
+        '❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _performSlaughter',
+      );
       _showError('Error: No animal selected');
       return;
     }
@@ -581,12 +634,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     while (_retryCount <= _maxRetries) {
       try {
-        print('🔵 [SlaughterScreen] Attempt ${_retryCount + 1}/${_maxRetries + 1}');
+        print(
+          '🔵 [SlaughterScreen] Attempt ${_retryCount + 1}/${_maxRetries + 1}',
+        );
 
         print('🔵 [SlaughterScreen] Creating DioClient');
         final dioClient = DioClient();
 
-        print('🔵 [SlaughterScreen] Creating carcass measurements FIRST (before marking as slaughtered)');
+        print(
+          '🔵 [SlaughterScreen] Creating carcass measurements FIRST (before marking as slaughtered)',
+        );
         // STEP 1: Create carcass measurements FIRST
         Map<String, Map<String, dynamic>> measurements = {};
 
@@ -637,22 +694,32 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         }
 
         print('🔵 [SlaughterScreen] Measurements prepared: $measurements');
-        print('🔵 [SlaughterScreen] Carcass type before API call: $_carcassType');
+        print(
+          '🔵 [SlaughterScreen] Carcass type before API call: $_carcassType',
+        );
 
         // Create carcass measurement record
         final measurement = CarcassMeasurement(
           animalId: _selectedAnimal!.id!,
-          carcassType: _carcassType == 'split' ? CarcassType.split : CarcassType.whole,
+          carcassType: _carcassType == 'split'
+              ? CarcassType.split
+              : CarcassType.whole,
           measurements: Map<String, Map<String, dynamic>>.from(measurements),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
 
-        final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+        final animalProvider = Provider.of<AnimalProvider>(
+          context,
+          listen: false,
+        );
         await animalProvider.createCarcassMeasurement(measurement);
 
         // Log activity
-        final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+        final activityProvider = Provider.of<ActivityProvider>(
+          context,
+          listen: false,
+        );
         await activityProvider.logSlaughter(
           animalId: _selectedAnimal!.id.toString(),
           animalTag: _selectedAnimal!.animalId,
@@ -664,10 +731,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           _showSuccessDialog();
         }
         return; // Success, exit retry loop
-
       } catch (e) {
         _retryCount++;
-        print('⚠️ [SlaughterScreen] Attempt ${_retryCount} failed: $e');
+        print('⚠️ [SlaughterScreen] Attempt $_retryCount failed: $e');
 
         if (_retryCount <= _maxRetries && _isNetworkError(e)) {
           // Wait before retry (exponential backoff)
@@ -684,10 +750,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   bool _isNetworkError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('network') ||
-           errorString.contains('connection') ||
-           errorString.contains('timeout') ||
-           errorString.contains('socket') ||
-           errorString.contains('dio');
+        errorString.contains('connection') ||
+        errorString.contains('timeout') ||
+        errorString.contains('socket') ||
+        errorString.contains('dio');
   }
 
   Future<void> _showOfflineFallbackDialog() async {
@@ -735,7 +801,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           CustomButton(
             label: 'Save Offline',
             onPressed: () => Navigator.of(context).pop(true),
-            customColor: AppColors.farmerPrimary,
+            customColor: AppColors.abbatoirPrimary,
             fullWidth: false,
           ),
         ],
@@ -845,9 +911,18 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               style: AppTypography.bodyLarge(),
             ),
             const SizedBox(height: 16),
-            _buildSuccessItem('Carcass Weight', '${_calculateTotalWeight().toStringAsFixed(1)} kg'),
-            _buildSuccessItem('Parts Recorded', _carcassType == 'split' ? '4' : '1'),
-            _buildSuccessItem('Type', _carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass'),
+            _buildSuccessItem(
+              'Carcass Weight',
+              '${_calculateTotalWeight().toStringAsFixed(1)} kg',
+            ),
+            _buildSuccessItem(
+              'Parts Recorded',
+              _carcassType == 'split' ? '4' : '1',
+            ),
+            _buildSuccessItem(
+              'Type',
+              _carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass',
+            ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -868,9 +943,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             label: 'Done',
             onPressed: () {
               Navigator.of(context).pop();
-              context.go('/farmer-home');
+              context.go('/abbatoir-home');
             },
-            customColor: AppColors.farmerPrimary,
+            customColor: AppColors.abbatoirPrimary,
             fullWidth: false,
           ),
         ],
@@ -880,12 +955,14 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
   void _showSuccessDialog() {
     print('🔵 [SlaughterScreen] _showSuccessDialog called');
-    
+
     if (_selectedAnimal == null) {
-      print('❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _showSuccessDialog');
+      print(
+        '❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _showSuccessDialog',
+      );
       return;
     }
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -906,25 +983,42 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               style: AppTypography.bodyLarge(),
             ),
             const SizedBox(height: 16),
-            _buildSuccessItem('Carcass Weight', '${_calculateTotalWeight().toStringAsFixed(1)} kg'),
-            _buildSuccessItem('Parts Recorded', _carcassType == 'split' ? '4' : '1'),
-            _buildSuccessItem('Type', _carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass'),
+            _buildSuccessItem(
+              'Carcass Weight',
+              '${_calculateTotalWeight().toStringAsFixed(1)} kg',
+            ),
+            _buildSuccessItem(
+              'Parts Recorded',
+              _carcassType == 'split' ? '4' : '1',
+            ),
+            _buildSuccessItem(
+              'Type',
+              _carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass',
+            ),
             const SizedBox(height: 16),
             Text(
               'Next Steps:',
-              style: AppTypography.bodyMedium().copyWith(fontWeight: FontWeight.w600),
+              style: AppTypography.bodyMedium().copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
-            Text('• Create products from carcass', style: AppTypography.bodySmall()),
+            Text(
+              '• Create products from carcass',
+              style: AppTypography.bodySmall(),
+            ),
             Text('• View carcass details', style: AppTypography.bodySmall()),
-            Text('• Transfer to processing unit', style: AppTypography.bodySmall()),
+            Text(
+              '• Transfer to processing unit',
+              style: AppTypography.bodySmall(),
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              context.go('/farmer-home');
+              context.go('/abbatoir-home');
             },
             child: const Text('Done'),
           ),
@@ -934,7 +1028,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               Navigator.of(context).pop();
               context.push('/animals/${_selectedAnimal!.id}');
             },
-            customColor: AppColors.farmerPrimary,
+            customColor: AppColors.abbatoirPrimary,
             fullWidth: false,
           ),
         ],
@@ -948,8 +1042,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label + ':', style: AppTypography.bodyMedium(color: AppColors.textSecondary)),
-          Text(value, style: AppTypography.bodyMedium().copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            '$label:',
+            style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+          ),
+          Text(
+            value,
+            style: AppTypography.bodyMedium().copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -960,7 +1062,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     // For network errors, show a more detailed message
     String displayMessage = message;
-    if (_isOffline || message.contains('network') || message.contains('connection')) {
+    if (_isOffline ||
+        message.contains('network') ||
+        message.contains('connection')) {
       displayMessage += '\n\nYou can continue working offline.';
     }
 
@@ -970,24 +1074,30 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 5),
-        action: _isOffline ? SnackBarAction(
-          label: 'Retry',
-          textColor: Colors.white,
-          onPressed: () => _loadAvailableAnimals(),
-        ) : null,
+        action: _isOffline
+            ? SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () => _loadAvailableAnimals(),
+              )
+            : null,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    print('🔵 [SlaughterScreen] build called - currentStep: $_currentStep, isSubmitting: $_isSubmitting');
-    print('🔵 [SlaughterScreen] selectedAnimal: ${_selectedAnimal?.animalId ?? "null"}');
-    
+    print(
+      '🔵 [SlaughterScreen] build called - currentStep: $_currentStep, isSubmitting: $_isSubmitting',
+    );
+    print(
+      '🔵 [SlaughterScreen] selectedAnimal: ${_selectedAnimal?.animalId ?? "null"}',
+    );
+
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: AppColors.farmerPrimary,
+        backgroundColor: AppColors.abbatoirPrimary,
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(
@@ -1011,17 +1121,17 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               ),
             )
           : _currentStep == 0 && _isLoading
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Loading animals...'),
-                    ],
-                  ),
-                )
-              : _buildContent(),
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading animals...'),
+                ],
+              ),
+            )
+          : _buildContent(),
     );
   }
 
@@ -1079,11 +1189,19 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+                        Icon(
+                          Icons.search_off,
+                          size: 48,
+                          color: Colors.grey.shade400,
+                        ),
                         const SizedBox(height: 16),
                         Text(
-                          _isLoading ? 'Loading animals...' : 'No animals found',
-                          style: AppTypography.bodyLarge(color: AppColors.textSecondary),
+                          _isLoading
+                              ? 'Loading animals...'
+                              : 'No animals found',
+                          style: AppTypography.bodyLarge(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -1091,14 +1209,15 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                 )
               : ListView.separated(
                   itemCount: _filteredAnimals.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final animal = _filteredAnimals[index];
                     final isSelected = _selectedAnimal?.id == animal.id;
-                    
+
                     return CustomCard(
                       onTap: () => _selectAnimal(animal),
-                      borderColor: isSelected ? AppColors.farmerPrimary : null,
+                      borderColor: isSelected ? AppColors.abbatoirPrimary : null,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -1116,19 +1235,26 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                                     animal.animalId,
                                     style: AppTypography.titleMedium().copyWith(
                                       fontWeight: FontWeight.bold,
-                                      color: isSelected ? AppColors.farmerPrimary : null,
+                                      color: isSelected
+                                          ? AppColors.abbatoirPrimary
+                                          : null,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${animal.breed ?? animal.species} • ${animal.liveWeight} kg',
-                                    style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                                    style: AppTypography.bodySmall(
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                             if (isSelected)
-                              Icon(Icons.check_circle, color: AppColors.farmerPrimary),
+                              Icon(
+                                Icons.check_circle,
+                                color: AppColors.abbatoirPrimary,
+                              ),
                           ],
                         ),
                       ),
@@ -1189,13 +1315,13 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             CustomButton(
               label: 'Go Back',
               onPressed: () => setState(() => _currentStep = 0),
-              customColor: AppColors.farmerPrimary,
+              customColor: AppColors.abbatoirPrimary,
             ),
           ],
         ),
       );
     }
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1218,12 +1344,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                       children: [
                         Text(
                           _selectedAnimal!.animalId,
-                          style: AppTypography.titleLarge().copyWith(fontWeight: FontWeight.w600),
+                          style: AppTypography.titleLarge().copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${_selectedAnimal!.breed ?? _selectedAnimal!.species} • ${_selectedAnimal!.liveWeight} kg • ${_selectedAnimal!.age}m',
-                          style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+                          style: AppTypography.bodyMedium(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -1238,7 +1368,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           // Carcass type selection
           Text(
             'Carcass Type',
-            style: AppTypography.titleLarge().copyWith(fontWeight: FontWeight.w600),
+            style: AppTypography.titleLarge().copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -1253,7 +1385,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                     value: 'whole',
                     groupValue: _carcassType,
                     onChanged: (value) => setState(() => _carcassType = value!),
-                    activeColor: AppColors.farmerPrimary,
+                    activeColor: AppColors.abbatoirPrimary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1262,17 +1394,23 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                       children: [
                         Text(
                           'Whole Carcass',
-                          style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
+                          style: AppTypography.titleMedium().copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Record total weight only',
-                          style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                          style: AppTypography.bodySmall(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Single measurement • Faster recording',
-                          style: AppTypography.bodySmall(color: AppColors.textSecondary).copyWith(fontStyle: FontStyle.italic),
+                          style: AppTypography.bodySmall(
+                            color: AppColors.textSecondary,
+                          ).copyWith(fontStyle: FontStyle.italic),
                         ),
                       ],
                     ),
@@ -1295,7 +1433,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                     value: 'split',
                     groupValue: _carcassType,
                     onChanged: (value) => setState(() => _carcassType = value!),
-                    activeColor: AppColors.farmerPrimary,
+                    activeColor: AppColors.abbatoirPrimary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1304,17 +1442,23 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                       children: [
                         Text(
                           'Split Carcass',
-                          style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
+                          style: AppTypography.titleMedium().copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Record individual parts',
-                          style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                          style: AppTypography.bodySmall(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Head, Feet, Left Carcass, Right Carcass • Better traceability',
-                          style: AppTypography.bodySmall(color: AppColors.textSecondary).copyWith(fontStyle: FontStyle.italic),
+                          style: AppTypography.bodySmall(
+                            color: AppColors.textSecondary,
+                          ).copyWith(fontStyle: FontStyle.italic),
                         ),
                       ],
                     ),
@@ -1357,7 +1501,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           CustomButton(
             label: 'Continue to Measurements',
             onPressed: _nextStep,
-            customColor: AppColors.farmerPrimary,
+            customColor: AppColors.abbatoirPrimary,
             icon: Icons.arrow_forward,
           ),
         ],
@@ -1381,13 +1525,13 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             CustomButton(
               label: 'Go Back',
               onPressed: () => setState(() => _currentStep = 0),
-              customColor: AppColors.farmerPrimary,
+              customColor: AppColors.abbatoirPrimary,
             ),
           ],
         ),
       );
     }
-    
+
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
@@ -1404,12 +1548,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                   children: [
                     Text(
                       'Recording: ${_selectedAnimal!.animalId}',
-                      style: AppTypography.titleLarge().copyWith(fontWeight: FontWeight.w600),
+                      style: AppTypography.titleLarge().copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Type: ${_carcassType == 'split' ? 'Split Carcass' : 'Whole Carcass'}',
-                      style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+                      style: AppTypography.bodyMedium(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -1429,31 +1577,39 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.farmerPrimary.withOpacity(0.1),
+                color: AppColors.abbatoirPrimary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.farmerPrimary.withOpacity(0.3)),
+                border: Border.all(
+                  color: AppColors.abbatoirPrimary.withOpacity(0.3),
+                ),
               ),
               child: Column(
                 children: [
                   Text(
                     'Total Carcass Weight',
-                    style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
+                    style: AppTypography.titleMedium().copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     '${_calculateTotalWeight().toStringAsFixed(1)} kg',
                     style: AppTypography.displaySmall(
-                      color: AppColors.farmerPrimary,
+                      color: AppColors.abbatoirPrimary,
                     ).copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Live Weight: ${_selectedAnimal!.liveWeight} kg',
-                    style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                    style: AppTypography.bodySmall(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   Text(
                     'Yield: ${_calculateYieldPercentage().toStringAsFixed(1)}%',
-                    style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                    style: AppTypography.bodySmall(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -1475,7 +1631,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             CustomButton(
               label: 'Confirm Slaughter',
               onPressed: _confirmAndSlaughter,
-              customColor: AppColors.farmerPrimary,
+              customColor: AppColors.abbatoirPrimary,
               icon: Icons.check,
             ),
           ],
@@ -1486,7 +1642,12 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
   Widget _buildWholeCarcassMeasurements() {
     if (_selectedAnimal == null) {
-      return Center(child: Text('Error: No animal selected', style: AppTypography.bodyLarge(color: AppColors.error)));
+      return Center(
+        child: Text(
+          'Error: No animal selected',
+          style: AppTypography.bodyLarge(color: AppColors.error),
+        ),
+      );
     }
 
     return Column(
@@ -1494,26 +1655,44 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       children: [
         Text(
           'Detailed Carcass Measurements',
-          style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
+          style: AppTypography.titleMedium().copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 16),
 
         // HEAD weight field
-        _buildMeasurementField('Head Weight', _headWeightWholeController, _headWholeUnit, (value) {
-          setState(() => _headWholeUnit = value);
-        }),
+        _buildMeasurementField(
+          'Head Weight',
+          _headWeightWholeController,
+          _headWholeUnit,
+          (value) {
+            setState(() => _headWholeUnit = value);
+          },
+        ),
         const SizedBox(height: 16),
 
         // FEET weight field
-        _buildMeasurementField('Feet Weight', _feetWeightWholeController, _feetWholeUnit, (value) {
-          setState(() => _feetWholeUnit = value);
-        }),
+        _buildMeasurementField(
+          'Feet Weight',
+          _feetWeightWholeController,
+          _feetWholeUnit,
+          (value) {
+            setState(() => _feetWholeUnit = value);
+          },
+        ),
         const SizedBox(height: 16),
 
         // WHOLE CARCASS weight field
-        _buildMeasurementField('Whole Carcass Weight', _wholeCarcassWeightController, _wholeCarcassUnit, (value) {
-          setState(() => _wholeCarcassUnit = value);
-        }, required: true),
+        _buildMeasurementField(
+          'Whole Carcass Weight',
+          _wholeCarcassWeightController,
+          _wholeCarcassUnit,
+          (value) {
+            setState(() => _wholeCarcassUnit = value);
+          },
+          required: true,
+        ),
 
         const SizedBox(height: 16),
 
@@ -1530,17 +1709,21 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             children: [
               Text(
                 'Live Weight (Reference)',
-                style: AppTypography.bodyMedium().copyWith(fontWeight: FontWeight.w600),
+                style: AppTypography.bodyMedium().copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 '${_selectedAnimal!.liveWeight} kg',
-                style: AppTypography.titleLarge(color: AppColors.farmerPrimary),
+                style: AppTypography.titleLarge(color: AppColors.abbatoirPrimary),
               ),
               const SizedBox(height: 12),
               Text(
                 'Dressing Percentage',
-                style: AppTypography.bodyMedium().copyWith(fontWeight: FontWeight.w600),
+                style: AppTypography.bodyMedium().copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -1584,28 +1767,54 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       children: [
         Text(
           'Split Carcass Measurements',
-          style: AppTypography.titleMedium().copyWith(fontWeight: FontWeight.w600),
+          style: AppTypography.titleMedium().copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 16),
 
-        _buildMeasurementField('Head Weight', _headWeightController, _headUnit, (value) {
-          setState(() => _headUnit = value);
-        }, required: true),
+        _buildMeasurementField(
+          'Head Weight',
+          _headWeightController,
+          _headUnit,
+          (value) {
+            setState(() => _headUnit = value);
+          },
+          required: true,
+        ),
         const SizedBox(height: 16),
 
-        _buildMeasurementField('Feet Weight', _feetWeightController, _feetUnit, (value) {
-          setState(() => _feetUnit = value);
-        }, required: true),
+        _buildMeasurementField(
+          'Feet Weight',
+          _feetWeightController,
+          _feetUnit,
+          (value) {
+            setState(() => _feetUnit = value);
+          },
+          required: true,
+        ),
         const SizedBox(height: 16),
 
-        _buildMeasurementField('Left Carcass Weight', _leftCarcassWeightController, _leftCarcassUnit, (value) {
-          setState(() => _leftCarcassUnit = value);
-        }, required: true),
+        _buildMeasurementField(
+          'Left Carcass Weight',
+          _leftCarcassWeightController,
+          _leftCarcassUnit,
+          (value) {
+            setState(() => _leftCarcassUnit = value);
+          },
+          required: true,
+        ),
         const SizedBox(height: 16),
 
-        _buildMeasurementField('Right Carcass Weight', _rightCarcassWeightController, _rightCarcassUnit, (value) {
-          setState(() => _rightCarcassUnit = value);
-        }, required: true),
+        _buildMeasurementField(
+          'Right Carcass Weight',
+          _rightCarcassWeightController,
+          _rightCarcassUnit,
+          (value) {
+            setState(() => _rightCarcassUnit = value);
+          },
+          required: true,
+        ),
       ],
     );
   }
@@ -1635,22 +1844,24 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         }
 
         print('👆 [SlaughterScreen] Reading weight for $label...');
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Reading from scale... Please ensure weight is stable.'),
+            content: Text(
+              'Reading from scale... Please ensure weight is stable.',
+            ),
             duration: Duration(seconds: 10),
           ),
         );
 
         bool gotWeight = false;
-        
+
         try {
           await _scaleService.readWeight();
         } catch (e) {
           print('⚠️ [SlaughterScreen] Manual read failed: $e');
         }
-        
+
         StreamSubscription? singleRead;
         singleRead = _scaleService.weightStream.listen((weight) {
           if (!gotWeight) {
@@ -1660,9 +1871,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             });
             // Note: onUnitChanged is for unit selection, not weight value change.
             // We don't have a callback for weight value change here, but controller is updated.
-            
+
             singleRead?.cancel();
-            
+
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -1673,14 +1884,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             );
           }
         });
-        
+
         Future.delayed(const Duration(seconds: 10), () {
           if (!gotWeight) {
             singleRead?.cancel();
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('No weight received. Ensure weight is on scale and stable.'),
+                content: Text(
+                  'No weight received. Ensure weight is on scale and stable.',
+                ),
                 backgroundColor: Colors.orange,
                 duration: Duration(seconds: 3),
               ),
@@ -1689,7 +1902,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         });
       },
       unit: unit,
-      themeColor: AppColors.farmerPrimary,
+      themeColor: AppColors.abbatoirPrimary,
     );
   }
 }

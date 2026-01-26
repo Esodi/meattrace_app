@@ -7,9 +7,9 @@ class NetworkHelper {
   /// Generate test URLs based on environment and network conditions
   static List<String> get testUrls {
     final baseUrls = [
-      'http://127.0.0.1:8000',      // Localhost (highest priority for development)
-      'http://10.0.2.2:8000',       // Android emulator
-      'http://192.168.1.1:8000',    // Common router IP
+      'http://127.0.0.1:8000', // Localhost (highest priority for development)
+      'http://10.0.2.2:8000', // Android emulator
+      'http://192.168.1.1:8000', // Common router IP
     ];
 
     // Add local network IPs if available
@@ -24,9 +24,9 @@ class NetworkHelper {
     try {
       // Common development IPs that might be used
       const commonDevIPs = [
-        '192.168.254.17',  // WiFi IP (from original code)
-        '192.168.44.223',  // From constants.dart
-        '192.168.1.100',   // Common development IP
+        '192.168.254.17', // WiFi IP (from original code)
+        '192.168.44.223', // From constants.dart
+        '192.168.1.100', // Common development IP
       ];
 
       for (var ip in commonDevIPs) {
@@ -41,16 +41,18 @@ class NetworkHelper {
 
   /// Test connectivity to multiple backend URLs and return the first working one
   static Future<String?> findWorkingBaseUrl() async {
-    final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 5),
-    ));
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      ),
+    );
 
     for (String url in testUrls) {
       try {
         developer.log('Testing connectivity to: $url');
         final response = await dio.get(url);
-        
+
         if (response.statusCode == 200) {
           final baseUrl = url.replaceAll('/health/', '');
           developer.log('✅ Successfully connected to: $baseUrl');
@@ -61,7 +63,7 @@ class NetworkHelper {
         continue;
       }
     }
-    
+
     developer.log('❌ No working backend URL found');
     return null;
   }
@@ -86,11 +88,13 @@ class NetworkHelper {
   /// Test if a specific URL is reachable
   static Future<bool> testConnection(String url) async {
     try {
-      final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 5),
-        receiveTimeout: const Duration(seconds: 5),
-      ));
-      
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+
       final response = await dio.get(url);
       return response.statusCode == 200;
     } catch (e) {
@@ -102,16 +106,16 @@ class NetworkHelper {
   /// Get network diagnostics information
   static Future<Map<String, dynamic>> getNetworkDiagnostics() async {
     final diagnostics = <String, dynamic>{};
-    
+
     // Get device IP
     diagnostics['deviceIp'] = await getLocalIpAddress();
-    
+
     // Test each URL
     for (String url in testUrls) {
       final isReachable = await testConnection(url);
       diagnostics[url] = isReachable;
     }
-    
+
     return diagnostics;
   }
 
@@ -142,18 +146,11 @@ class NetworkHelper {
     developer.log('Configured Base URL: ${Constants.baseUrl}');
     developer.log('Backend Connectivity Tests:');
 
-    testUrls.forEach((url) {
+    for (var url in testUrls) {
       final status = diagnostics[url] == true ? '✅ REACHABLE' : '❌ UNREACHABLE';
       developer.log('  $url - $status');
-    });
+    }
 
     developer.log('=== END DIAGNOSTICS ===');
   }
 }
-
-
-
-
-
-
-

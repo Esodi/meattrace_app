@@ -8,9 +8,9 @@ import '../animations/skeleton_loader.dart';
 /// Reusable card widgets with consistent styling
 
 enum CardVariant {
-  elevated,   // Standard elevated card
-  outlined,   // Card with border outline
-  filled,     // Filled background card
+  elevated, // Standard elevated card
+  outlined, // Card with border outline
+  filled, // Filled background card
 }
 
 class CustomCard extends StatelessWidget {
@@ -28,7 +28,7 @@ class CustomCard extends StatelessWidget {
   final bool selected;
 
   const CustomCard({
-    Key? key,
+    super.key,
     this.child,
     this.padding,
     this.margin,
@@ -41,22 +41,27 @@ class CustomCard extends StatelessWidget {
     this.onLongPress,
     this.variant = CardVariant.elevated,
     this.selected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
-    final cardColor = color ?? theme.cardTheme.color ?? theme.colorScheme.surface;
-    final cardElevation = elevation ?? (variant == CardVariant.elevated ? AppTheme.elevationLevel2 : 0);
+
+    final cardColor =
+        color ?? theme.cardTheme.color ?? theme.colorScheme.surface;
+    final cardElevation =
+        elevation ??
+        (variant == CardVariant.elevated ? AppTheme.elevationLevel2 : 0);
     final radius = borderRadius ?? AppTheme.radiusMedium;
-    
+
     Widget card = Container(
-      margin: margin ?? const EdgeInsets.symmetric(
-        horizontal: AppTheme.space16,
-        vertical: AppTheme.space8,
-      ),
+      margin:
+          margin ??
+          const EdgeInsets.symmetric(
+            horizontal: AppTheme.space16,
+            vertical: AppTheme.space8,
+          ),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(radius),
@@ -64,7 +69,8 @@ class CustomCard extends StatelessWidget {
             ? Border.all(
                 color: selected
                     ? theme.colorScheme.primary
-                    : borderColor ?? AppColors.textSecondary.withValues(alpha: 0.2),
+                    : borderColor ??
+                          AppColors.textSecondary.withValues(alpha: 0.2),
                 width: selected ? 2 : (borderWidth ?? 1),
               )
             : null,
@@ -109,14 +115,14 @@ class InfoCard extends StatelessWidget {
   final Widget? trailing;
 
   const InfoCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.value,
     this.icon,
     this.color,
     this.onTap,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -134,11 +140,7 @@ class InfoCard extends StatelessWidget {
                 color: cardColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
               ),
-              child: Icon(
-                icon,
-                color: cardColor,
-                size: AppTheme.iconLarge,
-              ),
+              child: Icon(icon, color: cardColor, size: AppTheme.iconLarge),
             ),
             const SizedBox(width: AppTheme.space16),
           ],
@@ -181,7 +183,7 @@ class StatsCard extends StatelessWidget {
   final bool isLoading;
 
   const StatsCard({
-    Key? key,
+    super.key,
     required this.label,
     required this.value,
     this.icon,
@@ -190,7 +192,7 @@ class StatsCard extends StatelessWidget {
     this.trend,
     this.onTap,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -215,11 +217,7 @@ class StatsCard extends StatelessWidget {
                   color: statColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 ),
-                child: Icon(
-                  icon,
-                  color: statColor,
-                  size: AppTheme.iconMedium,
-                ),
+                child: Icon(icon, color: statColor, size: AppTheme.iconMedium),
               ),
             const SizedBox(height: AppTheme.space12),
             Text(
@@ -270,7 +268,7 @@ class ListCard extends StatelessWidget {
   final bool selected;
 
   const ListCard({
-    Key? key,
+    super.key,
     required this.title,
     this.subtitle,
     this.leading,
@@ -278,7 +276,7 @@ class ListCard extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.selected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +339,7 @@ class HeaderCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
 
   const HeaderCard({
-    Key? key,
+    super.key,
     required this.title,
     this.subtitle,
     this.child,
@@ -349,12 +347,13 @@ class HeaderCard extends StatelessWidget {
     this.headerColor,
     this.headerAction,
     this.padding,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bgGradient = gradient ?? 
+    final bgGradient =
+        gradient ??
         LinearGradient(
           colors: [
             headerColor ?? theme.colorScheme.primary,
@@ -423,12 +422,12 @@ class EmptyStateCard extends StatelessWidget {
   final Widget? action;
 
   const EmptyStateCard({
-    Key? key,
+    super.key,
     required this.message,
     this.subtitle,
     this.icon,
     this.action,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

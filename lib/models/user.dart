@@ -191,7 +191,7 @@ class User {
   }
 
   // Helper getters
-  bool get isFarmer => role.toLowerCase() == 'farmer';
+  bool get isFarmer => role.toLowerCase() == 'abbatoir';
   bool get isProcessingUnit => role.toLowerCase().contains('processor') || role.toLowerCase().contains('processing');
   bool get isShop => role.toLowerCase().contains('shop');
   

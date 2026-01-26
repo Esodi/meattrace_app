@@ -5,10 +5,11 @@ import '../../services/api_service.dart';
 class AddProductCategoryScreen extends StatefulWidget {
   final ProductCategory? initialCategory;
 
-  AddProductCategoryScreen({Key? key, this.initialCategory}) : super(key: key);
+  const AddProductCategoryScreen({super.key, this.initialCategory});
 
   @override
-  _AddProductCategoryScreenState createState() => _AddProductCategoryScreenState();
+  _AddProductCategoryScreenState createState() =>
+      _AddProductCategoryScreenState();
 }
 
 class _AddProductCategoryScreenState extends State<AddProductCategoryScreen> {
@@ -22,7 +23,9 @@ class _AddProductCategoryScreenState extends State<AddProductCategoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Product Category' : 'Add Product Category'),
+        title: Text(
+          isEditing ? 'Edit Product Category' : 'Add Product Category',
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -64,8 +67,8 @@ class _AddProductCategoryScreenState extends State<AddProductCategoryScreen> {
       ),
     );
   }
-  
-    void _saveCategory() async {
+
+  void _saveCategory() async {
     if (isEditing) {
       final updated = ProductCategory(
         id: widget.initialCategory!.id,
@@ -91,15 +94,15 @@ class _AddProductCategoryScreenState extends State<AddProductCategoryScreen> {
 
       try {
         await ApiService().addProductCategory(newCategory);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Category added successfully!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Category added successfully!')));
         Navigator.pop(context, true);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add category: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add category: $e')));
       }
     }
-    }
+  }
 }

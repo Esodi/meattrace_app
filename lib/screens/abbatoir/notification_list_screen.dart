@@ -80,8 +80,8 @@ class _NotificationListScreenState extends State<NotificationListScreen>
           ],
           labelStyle: AppTypography.button(),
           unselectedLabelStyle: AppTypography.button(),
-          indicatorColor: AppColors.farmerPrimary,
-          labelColor: AppColors.farmerPrimary,
+          indicatorColor: AppColors.abbatoirPrimary,
+          labelColor: AppColors.abbatoirPrimary,
           unselectedLabelColor: AppColors.textSecondary,
         ),
       ),
@@ -97,7 +97,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
         icon: Icons.done_all,
         onPressed: () => _markAllAsRead(context),
         // label: 'Mark All Read',
-        backgroundColor: AppColors.farmerPrimary,
+        backgroundColor: AppColors.abbatoirPrimary,
       ),
     );
   }
@@ -108,7 +108,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
         if (provider.isLoading && !provider.isInitialized) {
           return const Center(
             child: CircularProgressIndicator(
-              color: AppColors.farmerPrimary,
+              color: AppColors.abbatoirPrimary,
             ),
           );
         }
@@ -125,7 +125,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
 
         return RefreshIndicator(
           onRefresh: () => provider.refreshNotifications(),
-          color: AppColors.farmerPrimary,
+          color: AppColors.abbatoirPrimary,
           child: ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.all(AppTheme.space16),
@@ -195,7 +195,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
                 label: 'Refresh',
                 onPressed: () => context.read<NotificationProvider>().refreshNotifications(),
                 variant: ButtonVariant.primary,
-                customColor: AppColors.farmerPrimary,
+                customColor: AppColors.abbatoirPrimary,
               )
             : null,
       ),
@@ -233,7 +233,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
               label: 'Try Again',
               onPressed: () => provider.refreshNotifications(),
               variant: ButtonVariant.primary,
-              customColor: AppColors.farmerPrimary,
+              customColor: AppColors.abbatoirPrimary,
             ),
           ],
         ),

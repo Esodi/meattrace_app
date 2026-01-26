@@ -38,13 +38,13 @@ class ComingSoonScreen extends StatelessWidget {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: AppColors.farmerPrimary.withValues(alpha: 0.1),
+                  color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
                   size: 64,
-                  color: AppColors.farmerPrimary,
+                  color: AppColors.abbatoirPrimary,
                 ),
               ),
               
@@ -65,7 +65,7 @@ class ComingSoonScreen extends StatelessWidget {
               Text(
                 featureName,
                 style: AppTypography.headlineSmall(
-                  color: AppColors.farmerPrimary,
+                  color: AppColors.abbatoirPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -90,7 +90,7 @@ class ComingSoonScreen extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back),
                 label: const Text('Go Back'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.farmerPrimary,
+                  backgroundColor: AppColors.abbatoirPrimary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,

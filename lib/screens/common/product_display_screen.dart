@@ -17,11 +17,7 @@ class ProductDisplayScreen extends StatefulWidget {
   final String productId;
   final String? source; // 'shop', 'processor', etc.
 
-  const ProductDisplayScreen({
-    Key? key,
-    required this.productId,
-    this.source,
-  }) : super(key: key);
+  const ProductDisplayScreen({super.key, required this.productId, this.source});
 
   @override
   State<ProductDisplayScreen> createState() => _ProductDisplayScreenState();
@@ -49,7 +45,9 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.backgroundLight,
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : AppColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
         elevation: 0,
@@ -57,10 +55,7 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          'Product Details',
-          style: AppTypography.headlineMedium(),
-        ),
+        title: Text('Product Details', style: AppTypography.headlineMedium()),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -80,7 +75,9 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
                   const SizedBox(height: AppTheme.space16),
                   Text(
                     'Loading product information...',
-                    style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+                    style: AppTypography.bodyMedium(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -97,7 +94,9 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
           }
 
           // Debug logs for new fields
-          print('Product Display: processingUnitName: ${product.processingUnitName}');
+          print(
+            'Product Display: processingUnitName: ${product.processingUnitName}',
+          );
           print('Product Display: animalAnimalId: ${product.animalAnimalId}');
           print('Product Display: animalSpecies: ${product.animalSpecies}');
           print('Product Display: receivedByName: ${product.receivedByName}');
@@ -143,7 +142,9 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
             ],
 
             // Action Buttons (for shop users)
-            if (isShop && product.transferredTo != null && product.receivedBy == null)
+            if (isShop &&
+                product.transferredTo != null &&
+                product.receivedBy == null)
               _buildActionButtons(product),
           ],
         ),
@@ -246,10 +247,7 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: AppTheme.space4),
-          Text(
-            label,
-            style: AppTypography.labelMedium(color: color),
-          ),
+          Text(label, style: AppTypography.labelMedium(color: color)),
         ],
       ),
     );
@@ -272,36 +270,42 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Product Information',
-            style: AppTypography.headlineSmall(),
-          ),
+          Text('Product Information', style: AppTypography.headlineSmall()),
           const SizedBox(height: AppTheme.space16),
-          _buildInfoRow(Icons.monitor_weight, 'Weight',
-            '${product.weight ?? 'N/A'} ${product.weightUnit}'),
-          _buildInfoRow(Icons.inventory, 'Quantity',
-            '${product.quantity} units'),
-          _buildInfoRow(Icons.attach_money, 'Price',
-            '\$${product.price.toStringAsFixed(2)}'),
-          _buildInfoRow(Icons.factory, 'Manufacturer',
-            product.manufacturer),
+          _buildInfoRow(
+            Icons.monitor_weight,
+            'Weight',
+            '${product.weight ?? 'N/A'} ${product.weightUnit}',
+          ),
+          _buildInfoRow(
+            Icons.inventory,
+            'Quantity',
+            '${product.quantity} units',
+          ),
+          _buildInfoRow(
+            Icons.attach_money,
+            'Price',
+            '\$${product.price.toStringAsFixed(2)}',
+          ),
+          _buildInfoRow(Icons.factory, 'Manufacturer', product.manufacturer),
           if (product.processingUnitName != null)
-            _buildInfoRow(Icons.business, 'Processing Unit',
-              product.processingUnitName!),
+            _buildInfoRow(
+              Icons.business,
+              'Processing Unit',
+              product.processingUnitName!,
+            ),
           if (product.animalAnimalId != null)
-            _buildInfoRow(Icons.tag, 'Animal ID',
-              product.animalAnimalId!),
+            _buildInfoRow(Icons.tag, 'Animal ID', product.animalAnimalId!),
           if (product.animalSpecies != null)
-            _buildInfoRow(Icons.pets, 'Animal Species',
-              product.animalSpecies!),
-          _buildInfoRow(Icons.calendar_today, 'Created',
-            _formatDate(product.createdAt)),
+            _buildInfoRow(Icons.pets, 'Animal Species', product.animalSpecies!),
+          _buildInfoRow(
+            Icons.calendar_today,
+            'Created',
+            _formatDate(product.createdAt),
+          ),
           if (product.description.isNotEmpty) ...[
             const Divider(height: AppTheme.space24),
-            Text(
-              'Description',
-              style: AppTypography.labelLarge(),
-            ),
+            Text('Description', style: AppTypography.labelLarge()),
             const SizedBox(height: AppTheme.space8),
             Text(
               product.description,
@@ -326,13 +330,12 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
               children: [
                 Text(
                   label,
-                  style: AppTypography.labelSmall(color: AppColors.textSecondary),
+                  style: AppTypography.labelSmall(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: AppTheme.space4),
-                Text(
-                  value,
-                  style: AppTypography.bodyMedium(),
-                ),
+                Text(value, style: AppTypography.bodyMedium()),
               ],
             ),
           ),
@@ -343,16 +346,16 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
 
   Widget _buildTransferSection(Product product, bool isDark) {
     final isReceived = product.receivedBy != null;
-    
+
     return Container(
       padding: const EdgeInsets.all(AppTheme.space16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
-          color: isReceived 
-            ? AppColors.success.withValues(alpha: 0.3)
-            : AppColors.warning.withValues(alpha: 0.3),
+          color: isReceived
+              ? AppColors.success.withValues(alpha: 0.3)
+              : AppColors.warning.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -365,10 +368,7 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
                 color: isReceived ? AppColors.success : AppColors.warning,
               ),
               const SizedBox(width: AppTheme.space8),
-              Text(
-                'Transfer Status',
-                style: AppTypography.headlineSmall(),
-              ),
+              Text('Transfer Status', style: AppTypography.headlineSmall()),
               const Spacer(),
               StatusBadge(
                 label: isReceived ? 'Received' : 'Pending',
@@ -378,17 +378,25 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
           ),
           const SizedBox(height: AppTheme.space16),
           if (product.transferredAt != null)
-            _buildInfoRow(Icons.send, 'Transferred', 
-              _formatDateTime(product.transferredAt!)),
+            _buildInfoRow(
+              Icons.send,
+              'Transferred',
+              _formatDateTime(product.transferredAt!),
+            ),
           if (product.transferredToName != null)
-            _buildInfoRow(Icons.store, 'Transferred To', 
-              product.transferredToName!),
+            _buildInfoRow(
+              Icons.store,
+              'Transferred To',
+              product.transferredToName!,
+            ),
           if (product.receivedAt != null)
-            _buildInfoRow(Icons.check, 'Received', 
-              _formatDateTime(product.receivedAt!)),
+            _buildInfoRow(
+              Icons.check,
+              'Received',
+              _formatDateTime(product.receivedAt!),
+            ),
           if (product.receivedByName != null)
-            _buildInfoRow(Icons.person, 'Received By',
-              product.receivedByName!),
+            _buildInfoRow(Icons.person, 'Received By', product.receivedByName!),
         ],
       ),
     );
@@ -404,19 +412,20 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Traceability Timeline',
-            style: AppTypography.headlineSmall(),
-          ),
+          Text('Traceability Timeline', style: AppTypography.headlineSmall()),
           const SizedBox(height: AppTheme.space16),
           TraceabilityTimeline(
-            events: product.timeline.map((e) => TimelineEvent(
-              title: e.action,
-              timestamp: e.timestamp,
-              location: e.location,
-              icon: _getIconForStage(e.stage),
-              color: _getColorForStage(e.stage),
-            )).toList(),
+            events: product.timeline
+                .map(
+                  (e) => TimelineEvent(
+                    title: e.action,
+                    timestamp: e.timestamp,
+                    location: e.location,
+                    icon: _getIconForStage(e.stage),
+                    color: _getColorForStage(e.stage),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
@@ -453,11 +462,7 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 80,
-              color: AppColors.error,
-            ),
+            Icon(Icons.error_outline, size: 80, color: AppColors.error),
             const SizedBox(height: AppTheme.space16),
             Text(
               'Error Loading Product',
@@ -539,34 +544,34 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
   }
 }
 
-  IconData _getIconForStage(int? stage) {
-    if (stage == null) return Icons.info;
-    switch (stage) {
-      case 1:
-        return Icons.agriculture;
-      case 2:
-        return Icons.factory;
-      case 3:
-        return Icons.local_shipping;
-      case 4:
-        return Icons.store;
-      default:
-        return Icons.timeline;
-    }
+IconData _getIconForStage(int? stage) {
+  if (stage == null) return Icons.info;
+  switch (stage) {
+    case 1:
+      return Icons.agriculture;
+    case 2:
+      return Icons.factory;
+    case 3:
+      return Icons.local_shipping;
+    case 4:
+      return Icons.store;
+    default:
+      return Icons.timeline;
   }
+}
 
-  Color _getColorForStage(int? stage) {
-    if (stage == null) return AppColors.info;
-    switch (stage) {
-      case 1:
-        return AppColors.farmerPrimary;
-      case 2:
-        return AppColors.processorPrimary;
-      case 3:
-        return AppColors.warning;
-      case 4:
-        return AppColors.shopPrimary;
-      default:
-        return AppColors.info;
-    }
+Color _getColorForStage(int? stage) {
+  if (stage == null) return AppColors.info;
+  switch (stage) {
+    case 1:
+      return AppColors.abbatoirPrimary;
+    case 2:
+      return AppColors.processorPrimary;
+    case 3:
+      return AppColors.warning;
+    case 4:
+      return AppColors.shopPrimary;
+    default:
+      return AppColors.info;
   }
+}

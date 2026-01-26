@@ -4,7 +4,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../../services/bluetooth_scale_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
-import '../core/custom_button.dart';
 
 class ScaleConnectionDialog extends StatefulWidget {
   const ScaleConnectionDialog({super.key});
@@ -39,23 +38,25 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
 
     try {
       print('🔍 [ScaleDialog] Checking Bluetooth support...');
-      
+
       // Check if Bluetooth is supported
       if (await FlutterBluePlus.isSupported == false) {
         throw Exception('Bluetooth is not supported on this device');
       }
-      
+
       print('🔍 [ScaleDialog] Checking Bluetooth adapter state...');
       final adapterState = await FlutterBluePlus.adapterState.first;
       print('🔍 [ScaleDialog] Adapter state: $adapterState');
-      
+
       if (adapterState != BluetoothAdapterState.on) {
-        throw Exception('Bluetooth is turned off. Please enable Bluetooth and try again.');
+        throw Exception(
+          'Bluetooth is turned off. Please enable Bluetooth and try again.',
+        );
       }
-      
+
       print('🔍 [ScaleDialog] Starting scan...');
       await _scaleService.startScan(timeout: const Duration(seconds: 15));
-      
+
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         print('🔍 [ScaleDialog] Scan results: ${results.length} devices found');
         if (mounted) {
@@ -66,16 +67,18 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
                 // Show ALL devices, not just those with names
                 _scanResults = results;
               });
-              
+
               // Debug: print device names
               for (var result in results) {
-                print('  - Device: ${result.device.platformName.isEmpty ? "Unknown" : result.device.platformName} (${result.device.remoteId})');
+                print(
+                  '  - Device: ${result.device.platformName.isEmpty ? "Unknown" : result.device.platformName} (${result.device.remoteId})',
+                );
               }
             }
           });
         }
       });
-      
+
       // Auto-stop scanning after timeout
       Future.delayed(const Duration(seconds: 15), () {
         if (mounted && _isScanning) {
@@ -83,7 +86,6 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
           _stopScan();
         }
       });
-      
     } catch (e) {
       print('❌ [ScaleDialog] Scan error: $e');
       if (mounted) {
@@ -109,7 +111,7 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
     await _stopScan();
-    
+
     try {
       // Show loading
       if (!mounted) return;
@@ -120,21 +122,20 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
       );
 
       await _scaleService.connect(device);
-      
+
       // Close loading
       if (mounted) Navigator.pop(context);
-      
+
       // Close dialog with success
       if (mounted) Navigator.pop(context, true);
-      
     } catch (e) {
       // Close loading
       if (mounted) Navigator.pop(context);
-      
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connection failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Connection failed: $e')));
       }
     }
   }
@@ -144,7 +145,7 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(Icons.bluetooth, color: AppColors.farmerPrimary),
+          Icon(Icons.bluetooth, color: AppColors.abbatoirPrimary),
           const SizedBox(width: 12),
           const Text('Connect Scale'),
         ],
@@ -169,10 +170,10 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
                 itemCount: _scanResults.length,
                 itemBuilder: (context, index) {
                   final result = _scanResults[index];
-                  final deviceName = result.device.platformName.isEmpty 
-                      ? 'Unknown' 
+                  final deviceName = result.device.platformName.isEmpty
+                      ? 'Unknown'
                       : result.device.platformName;
-                  
+
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(8),
@@ -189,8 +190,16 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(deviceName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text(result.device.remoteId.toString(), style: const TextStyle(fontSize: 10)),
+                              Text(
+                                deviceName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                result.device.remoteId.toString(),
+                                style: const TextStyle(fontSize: 10),
+                              ),
                             ],
                           ),
                         ),
@@ -209,15 +218,9 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
       ),
       actions: [
         if (_isScanning)
-          TextButton(
-            onPressed: _stopScan,
-            child: const Text('Stop Scan'),
-          )
+          TextButton(onPressed: _stopScan, child: const Text('Stop Scan'))
         else
-          TextButton(
-            onPressed: _startScan,
-            child: const Text('Rescan'),
-          ),
+          TextButton(onPressed: _startScan, child: const Text('Rescan')),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),

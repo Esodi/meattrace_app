@@ -262,9 +262,9 @@ class _ShopSignupScreenState extends State<ShopSignupScreen>
     debugPrint('🚀 [SHOP_SIGNUP] Navigating to home for role: "$role" (normalized: "$normalizedRole")');
     
     // Handle all possible role variations
-    if (normalizedRole == 'farmer') {
-      debugPrint('   ➡️ Going to: /farmer-home');
-      context.go('/farmer-home');
+    if (normalizedRole == 'abbatoir') {
+      debugPrint('   ➡️ Going to: /abbatoir-home');
+      context.go('/abbatoir-home');
     } else if (normalizedRole == 'processingunit' || 
                normalizedRole == 'processing_unit' ||
                normalizedRole == 'processor') {

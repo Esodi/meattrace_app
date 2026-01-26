@@ -6,28 +6,29 @@ import '../../providers/auth_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../services/dio_client.dart';
 import '../../services/api_service.dart';
-import '../../utils/theme.dart';
-import '../../utils/responsive.dart';
-import '../../widgets/core/custom_card.dart';
+import '../../utils/app_colors.dart';
+import '../../utils/app_typography.dart';
+import '../../utils/app_theme.dart';
+import '../../widgets/core/custom_button.dart';
 import '../../models/activity.dart';
 import 'package:intl/intl.dart';
 
-/// Farmer Profile Screen
-/// Features: User profile, statistics, recent activities, settings
-class FarmerProfileScreen extends StatefulWidget {
-  const FarmerProfileScreen({super.key});
+class ModernAbbatoirProfileScreen extends StatefulWidget {
+  const ModernAbbatoirProfileScreen({super.key});
 
   @override
-  State<FarmerProfileScreen> createState() => _FarmerProfileScreenState();
+  State<ModernAbbatoirProfileScreen> createState() =>
+      _ModernAbbatoirProfileScreenState();
 }
 
-class _FarmerProfileScreenState extends State<FarmerProfileScreen>
+class _ModernAbbatoirProfileScreenState
+    extends State<ModernAbbatoirProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
   bool _isEditing = false;
+  final ScrollController _scrollController = ScrollController();
 
   // Profile data
   final _formKey = GlobalKey<FormState>();
@@ -48,14 +49,19 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadProfileData();
-    _loadStatistics();
-    _loadRecentActivities();
+
+    // Add microtask to prevent build errors during initial load
+    Future.microtask(() {
+      _loadProfileData();
+      _loadStatistics();
+      _loadRecentActivities();
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
@@ -66,9 +72,12 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   }
 
   Future<void> _loadProfileData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
+
     try {
       final apiService = ApiService();
+      // Only wrapping necessary logic in try-catch
       final data = await apiService.fetchProfile();
 
       if (mounted) {
@@ -84,7 +93,10 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: $e')),
+          SnackBar(
+            content: Text('Error loading profile: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -95,8 +107,13 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   }
 
   Future<void> _loadStatistics() async {
+    if (!mounted) return;
     try {
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      final animalProvider = Provider.of<AnimalProvider>(
+        context,
+        listen: false,
+      );
+      // Ensure we don't trigger unnecessary rebuilds or loops
       await animalProvider.fetchAnimals(slaughtered: null);
 
       if (mounted) {
@@ -105,8 +122,9 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
           _activeAnimals = animalProvider.animals
               .where((a) => !a.slaughtered && a.transferredTo == null)
               .length;
-          _slaughteredAnimals =
-              animalProvider.animals.where((a) => a.slaughtered).length;
+          _slaughteredAnimals = animalProvider.animals
+              .where((a) => a.slaughtered)
+              .length;
           _transferredAnimals = animalProvider.animals
               .where((a) => a.transferredTo != null)
               .length;
@@ -118,9 +136,12 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   }
 
   Future<void> _loadRecentActivities() async {
+    if (!mounted) return;
     try {
-      final activityProvider =
-          Provider.of<ActivityProvider>(context, listen: false);
+      final activityProvider = Provider.of<ActivityProvider>(
+        context,
+        listen: false,
+      );
       await activityProvider.fetchActivities();
     } catch (e) {
       debugPrint('Error loading activities: $e');
@@ -128,7 +149,9 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   }
 
   Future<void> _updateProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
@@ -142,13 +165,12 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
         'location': _locationController.text.trim(),
       });
 
-      setState(() => _isEditing = false);
-
       if (mounted) {
+        setState(() => _isEditing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -158,7 +180,7 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating profile: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -178,115 +200,105 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
     final isDark = themeProvider.isDarkMode;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF1A1A1A)
-          : AppTheme.backgroundGray,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: NestedScrollView(
+        controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverAppBar(
-              expandedHeight: 200.0,
+              expandedHeight: 180.0,
               floating: false,
               pinned: true,
-              backgroundColor: AppTheme.primaryRed,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.abbatoirPrimary,
+              elevation: 0,
               flexibleSpace: FlexibleSpaceBar(
-                title: Text(
-                  'Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    shadows: [
-                      Shadow(
-                        blurRadius: 10.0,
-                        color: Colors.black.withOpacity(0.5),
-                        offset: const Offset(0, 2),
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Gradient Background
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.abbatoirPrimary,
+                            AppColors.abbatoirDark,
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppTheme.primaryRed,
-                        AppTheme.primaryRed.withOpacity(0.8),
-                      ],
                     ),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 40),
-                        Hero(
-                          tag: 'profile_avatar',
-                          child: Container(
-                            width: 100,
-                            height: 100,
+                    // Pattern Overlay (Optional)
+                    Opacity(
+                      opacity: 0.1,
+                      child: CustomPaint(painter: GridPainter()),
+                    ),
+                    // Content
+                    Positioned(
+                      bottom:
+                          60, // Leave space for TabBar or heavy bottom padding
+                      left: 0,
+                      right: 0,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
+                              color: Colors.white.withOpacity(0.2),
                             ),
-                            child: Center(
+                            child: CircleAvatar(
+                              radius: 40,
+                              backgroundColor: Colors.white,
                               child: Text(
-                                _getInitials(user?.username ?? 'F'),
-                                style: const TextStyle(
-                                  fontSize: 40,
+                                _getInitials(user?.username ?? 'U'),
+                                style: AppTypography.headlineLarge().copyWith(
+                                  color: AppColors.abbatoirPrimary,
                                   fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryRed,
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          user?.username ?? 'Farmer',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                blurRadius: 10.0,
-                                color: Colors.black45,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
+                          const SizedBox(height: AppTheme.space12),
+                          Text(
+                            user?.username ?? 'Abbatoir User',
+                            style: AppTypography.headlineMedium().copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
+                          Text(
+                            user?.email ?? '',
+                            style: AppTypography.bodySmall().copyWith(
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
               actions: [
                 if (!_isEditing)
                   IconButton(
                     icon: const Icon(Icons.edit_outlined),
+                    color: Colors.white,
                     onPressed: () => setState(() => _isEditing = true),
                     tooltip: 'Edit Profile',
                   )
                 else
                   IconButton(
                     icon: const Icon(Icons.check),
+                    color: Colors.white,
                     onPressed: _updateProfile,
                     tooltip: 'Save Changes',
                   ),
                 IconButton(
                   icon: const Icon(Icons.settings_outlined),
-                  onPressed: () => context.push('/farmer/settings'),
+                  color: Colors.white,
+                  onPressed: () => context.push('/abbatoir/settings'),
                   tooltip: 'Settings',
                 ),
               ],
@@ -295,34 +307,29 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
               delegate: _SliverAppBarDelegate(
                 TabBar(
                   controller: _tabController,
-                  labelColor: isDark ? AppTheme.primaryRed : AppTheme.primaryRed,
-                  unselectedLabelColor: isDark
-                      ? Colors.white.withOpacity(0.6)
-                      : Colors.black54,
-                  indicatorColor: AppTheme.primaryRed,
+                  labelColor: AppColors.abbatoirPrimary,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.abbatoirPrimary,
                   indicatorWeight: 3,
+                  labelStyle: AppTypography.labelLarge(),
                   tabs: const [
-                    Tab(
-                      icon: Icon(Icons.person_outline),
-                      text: 'Profile',
-                    ),
-                    Tab(
-                      icon: Icon(Icons.bar_chart_outlined),
-                      text: 'Statistics',
-                    ),
-                    Tab(
-                      icon: Icon(Icons.history_outlined),
-                      text: 'Activity',
-                    ),
+                    Tab(text: 'Profile'),
+                    Tab(text: 'Statistics'),
+                    Tab(text: 'Activity'),
                   ],
                 ),
+                backgroundColor: Theme.of(context).colorScheme.surface,
               ),
               pinned: true,
             ),
           ];
         },
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.abbatoirPrimary,
+                ),
+              )
             : TabBarView(
                 controller: _tabController,
                 children: [
@@ -337,7 +344,7 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
 
   Widget _buildProfileTab(bool isDark) {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(Responsive.getPadding(context)),
+      padding: const EdgeInsets.all(AppTheme.space16),
       child: Form(
         key: _formKey,
         child: AnimationLimiter(
@@ -350,30 +357,27 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
                 child: FadeInAnimation(child: widget),
               ),
               children: [
-                _buildSectionTitle('Personal Information', isDark),
-                const SizedBox(height: 16),
-                _buildTextField(
+                _buildSectionTitle('Personal Information'),
+                const SizedBox(height: AppTheme.space16),
+                _buildModernTextField(
                   controller: _firstNameController,
                   label: 'First Name',
                   icon: Icons.person_outline,
                   enabled: _isEditing,
-                  isDark: isDark,
                 ),
-                const SizedBox(height: 16),
-                _buildTextField(
+                const SizedBox(height: AppTheme.space16),
+                _buildModernTextField(
                   controller: _lastNameController,
                   label: 'Last Name',
                   icon: Icons.person_outline,
                   enabled: _isEditing,
-                  isDark: isDark,
                 ),
-                const SizedBox(height: 16),
-                _buildTextField(
+                const SizedBox(height: AppTheme.space16),
+                _buildModernTextField(
                   controller: _emailController,
                   label: 'Email',
                   icon: Icons.email_outlined,
                   enabled: _isEditing,
-                  isDark: isDark,
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -385,65 +389,57 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-                _buildTextField(
+                const SizedBox(height: AppTheme.space16),
+                _buildModernTextField(
                   controller: _phoneController,
                   label: 'Phone Number',
                   icon: Icons.phone_outlined,
                   enabled: _isEditing,
-                  isDark: isDark,
                   keyboardType: TextInputType.phone,
                 ),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Farm Information', isDark),
-                const SizedBox(height: 16),
-                _buildTextField(
+                const SizedBox(height: AppTheme.space32),
+                _buildSectionTitle('Abbatoir Information'),
+                const SizedBox(height: AppTheme.space16),
+                _buildModernTextField(
                   controller: _farmNameController,
-                  label: 'Farm Name',
+                  label: 'Abbatoir Name',
                   icon: Icons.agriculture_outlined,
                   enabled: _isEditing,
-                  isDark: isDark,
                 ),
-                const SizedBox(height: 16),
-                _buildTextField(
+                const SizedBox(height: AppTheme.space16),
+                _buildModernTextField(
                   controller: _locationController,
                   label: 'Location',
                   icon: Icons.location_on_outlined,
                   enabled: _isEditing,
-                  isDark: isDark,
                 ),
-                const SizedBox(height: 32),
-                if (_isEditing)
+                if (_isEditing) ...[
+                  const SizedBox(height: AppTheme.space32),
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: CustomButton(
+                          label: 'Cancel',
+                          variant: ButtonVariant.secondary,
                           onPressed: () {
                             setState(() => _isEditing = false);
-                            _loadProfileData();
+                            _loadProfileData(); // Reset data
                           },
-                          icon: const Icon(Icons.cancel_outlined),
-                          label: const Text('Cancel'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppTheme.space16),
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: CustomButton(
+                          label: 'Save Changes',
+                          customColor: AppColors.abbatoirPrimary,
                           onPressed: _updateProfile,
-                          icon: const Icon(Icons.save_outlined),
-                          label: const Text('Save Changes'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryRed,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
                         ),
                       ),
                     ],
                   ),
+                ],
+                // Bottom padding
+                const SizedBox(height: 80),
               ],
             ),
           ),
@@ -454,7 +450,7 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
 
   Widget _buildStatisticsTab(bool isDark) {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(Responsive.getPadding(context)),
+      padding: const EdgeInsets.all(AppTheme.space16),
       child: AnimationLimiter(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,69 +461,65 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
               child: FadeInAnimation(child: widget),
             ),
             children: [
-              _buildSectionTitle('Livestock Overview', isDark),
-              const SizedBox(height: 16),
+              _buildSectionTitle('Livestock Overview'),
+              const SizedBox(height: AppTheme.space16),
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 1.2,
+                mainAxisSpacing: AppTheme.space16,
+                crossAxisSpacing: AppTheme.space16,
+                childAspectRatio: 1.1,
                 children: [
-                  _buildStatCard(
+                  _buildModernStatCard(
                     title: 'Total Animals',
                     value: _totalAnimals.toString(),
                     icon: Icons.pets,
-                    color: AppTheme.primaryGreen,
-                    isDark: isDark,
+                    color: AppColors.abbatoirPrimary,
                   ),
-                  _buildStatCard(
+                  _buildModernStatCard(
                     title: 'Active',
                     value: _activeAnimals.toString(),
                     icon: Icons.check_circle_outline,
-                    color: AppTheme.successGreen,
-                    isDark: isDark,
+                    color: AppColors.success,
                   ),
-                  _buildStatCard(
+                  _buildModernStatCard(
                     title: 'Slaughtered',
                     value: _slaughteredAnimals.toString(),
                     icon: Icons.restaurant_menu,
-                    color: AppTheme.secondaryBurgundy,
-                    isDark: isDark,
+                    color: AppColors.error,
                   ),
-                  _buildStatCard(
+                  _buildModernStatCard(
                     title: 'Transferred',
                     value: _transferredAnimals.toString(),
                     icon: Icons.send,
-                    color: AppTheme.accentOrange,
-                    isDark: isDark,
+                    color: AppColors.accentOrange,
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
-              _buildSectionTitle('Quick Actions', isDark),
-              const SizedBox(height: 16),
-              _buildQuickActionButton(
+              const SizedBox(height: AppTheme.space32),
+              _buildSectionTitle('Quick Actions'),
+              const SizedBox(height: AppTheme.space16),
+              _buildQuickActionTile(
                 title: 'View All Animals',
+                subtitle: 'Manage livestock inventory',
                 icon: Icons.list_alt,
-                onTap: () => context.go('/farmer/livestock-history'),
-                isDark: isDark,
+                onTap: () => context.push('/abbatoir/livestock-history'),
               ),
-              const SizedBox(height: 12),
-              _buildQuickActionButton(
+              _buildQuickActionTile(
                 title: 'Register New Animal',
+                subtitle: 'Add new livestock to the system',
                 icon: Icons.add_circle_outline,
-                onTap: () => context.go('/register-animal'),
-                isDark: isDark,
+                onTap: () => context.push('/register-animal'),
               ),
-              const SizedBox(height: 12),
-              _buildQuickActionButton(
+              _buildQuickActionTile(
                 title: 'Transfer Animals',
-                icon: Icons.send_outlined,
-                onTap: () => context.go('/select-animals-transfer'),
-                isDark: isDark,
+                subtitle: 'Move animals to processing',
+                icon: Icons.local_shipping_outlined,
+                onTap: () => context.push('/select-animals-transfer'),
               ),
+              // Bottom padding
+              const SizedBox(height: 80),
             ],
           ),
         ),
@@ -547,19 +539,21 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
               children: [
                 Icon(
                   Icons.history_outlined,
-                  size: 80,
-                  color: isDark
-                      ? Colors.white.withOpacity(0.3)
-                      : Colors.black26,
+                  size: 64,
+                  color: AppColors.textTertiary.withOpacity(0.5),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppTheme.space16),
                 Text(
                   'No recent activities',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: isDark
-                        ? Colors.white.withOpacity(0.5)
-                        : Colors.black45,
+                  style: AppTypography.bodyLarge().copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your recent actions will appear here',
+                  style: AppTypography.bodySmall().copyWith(
+                    color: AppColors.textTertiary,
                   ),
                 ),
               ],
@@ -571,9 +565,11 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
           onRefresh: () async {
             await activityProvider.fetchActivities(forceRefresh: true);
           },
-          child: ListView.builder(
-            padding: EdgeInsets.all(Responsive.getPadding(context)),
+          color: AppColors.abbatoirPrimary,
+          child: ListView.separated(
+            padding: const EdgeInsets.all(AppTheme.space16),
             itemCount: activities.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final activity = activities[index];
               return AnimationConfiguration.staggeredList(
@@ -582,7 +578,7 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
                 child: SlideAnimation(
                   verticalOffset: 50.0,
                   child: FadeInAnimation(
-                    child: _buildActivityCard(activity, isDark),
+                    child: _buildModernActivityCard(activity),
                   ),
                 ),
               );
@@ -593,23 +589,23 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
     );
   }
 
-  Widget _buildSectionTitle(String title, bool isDark) {
+  // --- Helper Widgets ---
+
+  Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: TextStyle(
-        fontSize: 20,
+      style: AppTypography.titleLarge().copyWith(
         fontWeight: FontWeight.bold,
-        color: isDark ? Colors.white : AppTheme.textPrimary,
+        color: AppColors.textPrimary,
       ),
     );
   }
 
-  Widget _buildTextField({
+  Widget _buildModernTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
     required bool enabled,
-    required bool isDark,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
@@ -618,109 +614,85 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
       enabled: enabled,
       keyboardType: keyboardType,
       validator: validator,
-      style: TextStyle(
-        color: isDark ? Colors.white : AppTheme.textPrimary,
-      ),
+      style: AppTypography.bodyMedium().copyWith(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
-        filled: true,
+        prefixIcon: Icon(icon, color: AppColors.textSecondary),
+        filled:
+            true, // Only fill when enabled for better contrast? Or always light fill
         fillColor: enabled
-            ? (isDark
-                ? const Color(0xFF2D2D2D)
-                : Colors.white)
-            : (isDark
-                ? const Color(0xFF1E1E1E)
-                : Colors.grey.shade100),
+            ? Colors.transparent
+            : AppColors.backgroundGray.withOpacity(0.5),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.2)
-                : AppTheme.dividerGray,
-          ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          borderSide: BorderSide(color: AppColors.divider),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.2)
-                : AppTheme.dividerGray,
-          ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          borderSide: BorderSide(color: AppColors.divider),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: AppTheme.primaryRed,
-            width: 2,
-          ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          borderSide: BorderSide(color: AppColors.abbatoirPrimary, width: 2),
         ),
-        labelStyle: TextStyle(
-          color: isDark
-              ? Colors.white.withOpacity(0.7)
-              : AppTheme.textSecondary,
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          borderSide: BorderSide(color: AppColors.divider.withOpacity(0.5)),
+        ),
+        labelStyle: AppTypography.bodyMedium().copyWith(
+          color: AppColors.textSecondary,
         ),
       ),
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildModernStatCard({
     required String title,
     required String value,
     required IconData icon,
     required Color color,
-    required bool isDark,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppTheme.space16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isDark
-            ? Border.all(color: Colors.white.withOpacity(0.1))
-            : null,
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: AppColors.divider.withOpacity(0.5)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 32,
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: AppTypography.headlineMedium().copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark
-                  ? Colors.white.withOpacity(0.7)
-                  : AppTheme.textSecondary,
+            style: AppTypography.bodySmall().copyWith(
+              color: AppColors.textSecondary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -729,66 +701,51 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
     );
   }
 
-  Widget _buildQuickActionButton({
+  Widget _buildQuickActionTile({
     required String title,
+    required String subtitle,
     required IconData icon,
     required VoidCallback onTap,
-    required bool isDark,
   }) {
-    return Material(
-      color: Colors.transparent,
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        side: BorderSide(color: AppColors.divider.withOpacity(0.5)),
+      ),
+      margin: const EdgeInsets.only(bottom: AppTheme.space12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: isDark
-                ? Border.all(color: Colors.white.withOpacity(0.1))
-                : null,
-            boxShadow: isDark
-                ? null
-                : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-          ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.space16),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryRed.withOpacity(0.1),
+                  color: AppColors.abbatoirPrimary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  icon,
-                  color: AppTheme.primaryRed,
-                  size: 24,
-                ),
+                child: Icon(icon, color: AppColors.abbatoirPrimary, size: 24),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppTheme.space16),
               Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white : AppTheme.textPrimary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppTypography.titleMedium()),
+                    Text(
+                      subtitle,
+                      style: AppTypography.bodySmall().copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                color: isDark
-                    ? Colors.white.withOpacity(0.5)
-                    : AppTheme.textSecondary,
-              ),
+              const Icon(Icons.chevron_right, color: AppColors.textTertiary),
             ],
           ),
         ),
@@ -796,25 +753,20 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
     );
   }
 
-  Widget _buildActivityCard(Activity activity, bool isDark) {
+  Widget _buildModernActivityCard(Activity activity) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppTheme.space16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: isDark
-            ? Border.all(color: Colors.white.withOpacity(0.1))
-            : null,
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: AppColors.divider.withOpacity(0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -828,42 +780,34 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
             child: Icon(
               _getActivityIcon(activity.type),
               color: _getActivityColor(activity.type),
-              size: 24,
+              size: 20,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppTheme.space16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   activity.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : AppTheme.textPrimary,
+                  style: AppTypography.titleSmall().copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 if (activity.description != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     activity.description!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark
-                          ? Colors.white.withOpacity(0.7)
-                          : AppTheme.textSecondary,
+                    style: AppTypography.bodySmall().copyWith(
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
                 const SizedBox(height: 8),
                 Text(
                   _formatDateTime(activity.timestamp),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark
-                        ? Colors.white.withOpacity(0.5)
-                        : AppTheme.textSecondary.withOpacity(0.7),
+                  style: AppTypography.labelSmall().copyWith(
+                    color: AppColors.textTertiary,
                   ),
                 ),
               ],
@@ -875,6 +819,7 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   }
 
   String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
     final parts = name.split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -882,12 +827,16 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
     return name.substring(0, 1).toUpperCase();
   }
 
+  String _formatDateTime(DateTime dt) {
+    return DateFormat('MMM d, y • h:mm a').format(dt);
+  }
+
   IconData _getActivityIcon(ActivityType type) {
     switch (type) {
       case ActivityType.registration:
         return Icons.add_circle_outline;
       case ActivityType.transfer:
-        return Icons.send_outlined;
+        return Icons.local_shipping_outlined;
       case ActivityType.slaughter:
         return Icons.restaurant_menu_outlined;
       case ActivityType.healthUpdate:
@@ -904,44 +853,51 @@ class _FarmerProfileScreenState extends State<FarmerProfileScreen>
   Color _getActivityColor(ActivityType type) {
     switch (type) {
       case ActivityType.registration:
-        return AppTheme.primaryGreen;
+        return AppColors.success;
       case ActivityType.transfer:
-        return AppTheme.accentOrange;
+        return AppColors.accentOrange;
       case ActivityType.slaughter:
-        return AppTheme.secondaryBurgundy;
+        return AppColors.error;
       case ActivityType.healthUpdate:
-        return AppTheme.infoBlue;
+        return AppColors.info;
       case ActivityType.weightUpdate:
-        return AppTheme.secondaryBlue;
+        return AppColors.secondaryBlue;
       case ActivityType.vaccination:
-        return AppTheme.successGreen;
+        return AppColors.secondaryBlue; // fallback for purple
       default:
-        return AppTheme.textSecondary;
-    }
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    } else {
-      return DateFormat('MMM d, yyyy • h:mm a').format(dateTime);
+        return AppColors.textSecondary;
     }
   }
 }
 
+// Minimal Grid Painter for background texture
+class GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..strokeWidth = 1;
+
+    const double spacing = 20.0;
+
+    for (double i = 0; i < size.width; i += spacing) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+
+    for (double i = 0; i < size.height; i += spacing) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverAppBarDelegate(this._tabBar);
+  _SliverAppBarDelegate(this._tabBar, {required this.backgroundColor});
 
   final TabBar _tabBar;
+  final Color backgroundColor;
 
   @override
   double get minExtent => _tabBar.preferredSize.height;
@@ -950,14 +906,11 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
-
-    return Container(
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      child: _tabBar,
-    );
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: backgroundColor, child: _tabBar);
   }
 
   @override

@@ -23,12 +23,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     OnboardingPage(
       title: 'Complete Traceability',
       description:
-          'Track livestock from farm to table with QR codes and complete chain of custody documentation.',
+          'Track livestock from abbatoir to table with QR codes and complete chain of custody documentation.',
       icon: CustomIcons.qrCodeScan,
-      color: AppColors.farmerPrimary,
+      color: AppColors.abbatoirPrimary,
       gradient: [
-        AppColors.farmerPrimary,
-        AppColors.farmerPrimary.withValues(alpha: 0.7),
+        AppColors.abbatoirPrimary,
+        AppColors.abbatoirPrimary.withValues(alpha: 0.7),
       ],
     ),
     OnboardingPage(

@@ -30,7 +30,9 @@ class AnimalService {
       final queryParams = <String, dynamic>{};
       if (species != null) queryParams['species'] = species;
       // Only add slaughtered param if it's explicitly set (not null)
-      if (slaughtered != null) queryParams['slaughtered'] = slaughtered.toString();
+      if (slaughtered != null) {
+        queryParams['slaughtered'] = slaughtered.toString();
+      }
       if (search != null) queryParams['search'] = search;
       if (ordering != null) queryParams['ordering'] = ordering;
       if (page != null) queryParams['page'] = page;
@@ -43,12 +45,14 @@ class AnimalService {
       print('🔵 Endpoint: ${Constants.animalsEndpoint}');
       print('🔵 Query params: $queryParams');
       print('🔵 Full URL: ${Constants.baseUrl}${Constants.animalsEndpoint}');
-      
+
       // Get current auth token for debugging
       final dio = _dioClient.dio;
       final authHeader = dio.options.headers['Authorization'];
       if (authHeader != null) {
-        print('🔵 Auth header present: ${authHeader.toString().substring(0, 30)}...');
+        print(
+          '🔵 Auth header present: ${authHeader.toString().substring(0, 30)}...',
+        );
       } else {
         print('⚠️ WARNING: No auth header!');
       }
@@ -60,13 +64,13 @@ class AnimalService {
       );
 
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('� ANIMAL_SERVICE - GET_ANIMALS RESPONSE');
+      print('📡 ANIMAL_SERVICE - GET_ANIMALS RESPONSE');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       print('✅ Response status: ${response.statusCode}');
-      print('� Response data type: ${response.data.runtimeType}');
-      
+      print('📦 RAW DATA: ${response.data}');
+
       final data = response.data;
-      
+
       if (data is Map) {
         print('📋 Response is Map with keys: ${data.keys.toList()}');
         if (data.containsKey('count')) {
@@ -75,37 +79,39 @@ class AnimalService {
         if (data.containsKey('results')) {
           final resultsList = data['results'] as List;
           print('📦 Results array length: ${resultsList.length}');
+          // Log each animal ID and animal_id for debugging
+          for (var i = 0; i < resultsList.length; i++) {
+            final animalData = resultsList[i];
+            print(
+              '   [$i] ID: ${animalData['id']}, Tag: ${animalData['animal_id']}, Species: ${animalData['species']}, Abbatoir: ${animalData['abbatoir']}',
+            );
+          }
         }
       } else if (data is List) {
         print('📦 Response is List with length: ${data.length}');
+        for (var i = 0; i < data.length; i++) {
+          final animalData = data[i];
+          print(
+            '   [$i] ID: ${animalData['id']}, Tag: ${animalData['animal_id']}, Species: ${animalData['species']}, Abbatoir: ${animalData['abbatoir']}',
+          );
+        }
       }
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+
       // Handle both paginated and unpaginated responses
       if (data is List) {
         // Direct list response (no pagination)
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         print('🔄 PARSING ANIMALS FROM LIST (UNPAGINATED)');
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        print('📦 List contains ${data.length} items');
         final animals = <Animal>[];
         for (var i = 0; i < data.length; i++) {
           try {
-            final animalData = data[i];
-            print('[$i] Parsing: ID=${animalData['id']}, animal_id=${animalData['animal_id']}, species=${animalData['species']}');
-            print('[$i] slaughtered=${animalData['slaughtered']}, farmer=${animalData['farmer']}');
-            animals.add(Animal.fromMap(animalData));
-            print('[$i] ✅ Successfully parsed');
-          } catch (e, stackTrace) {
-            print('[$i] ❌ Parse error: $e');
-            print('[$i] ❌ Stack: $stackTrace');
-            print('[$i] ❌ Raw: ${data[i]}');
+            animals.add(Animal.fromMap(data[i]));
+          } catch (e) {
+            print('❌ Parse error at index $i: $e');
+            print('❌ Problematic data: ${data[i]}');
             continue;
           }
         }
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        print('✅ PARSING COMPLETE: ${animals.length}/${data.length} animals parsed');
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         return {
           'results': animals,
           'count': animals.length,
@@ -114,29 +120,17 @@ class AnimalService {
         };
       } else if (data is Map && data.containsKey('results')) {
         final resultsList = data['results'] as List;
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         print('🔄 PARSING ANIMALS FROM PAGINATED RESPONSE');
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        print('📊 Total count: ${data['count']}');
-        print('📦 Current page has ${resultsList.length} items');
         final animals = <Animal>[];
         for (var i = 0; i < resultsList.length; i++) {
           try {
-            final animalData = resultsList[i];
-            print('[$i] Parsing: ID=${animalData['id']}, animal_id=${animalData['animal_id']}, species=${animalData['species']}');
-            print('[$i] farmer=${animalData['farmer']}, transferred_to=${animalData['transferred_to']}, received_by=${animalData['received_by']}');
-            animals.add(Animal.fromMap(animalData));
-            print('[$i] ✅ Successfully parsed');
-          } catch (e, stackTrace) {
-            print('[$i] ❌ Parse error: $e');
-            print('[$i] ❌ Stack: $stackTrace');
-            print('[$i] ❌ Raw: ${resultsList[i]}');
+            animals.add(Animal.fromMap(resultsList[i]));
+          } catch (e) {
+            print('❌ Parse error at index $i: $e');
+            print('❌ Problematic data: ${resultsList[i]}');
             continue;
           }
         }
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        print('✅ PARSING COMPLETE: ${animals.length}/${resultsList.length} animals parsed');
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         return {
           'results': animals,
           'count': data['count'],
@@ -144,23 +138,10 @@ class AnimalService {
           'previous': data['previous'],
         };
       } else {
-        print('❌ ERROR: Unexpected response format!');
-        print('❌ Data type: ${data.runtimeType}');
-        print('❌ Data: $data');
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('❌ ANIMAL_SERVICE - GET_ANIMALS ERROR');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('❌ Error: $e');
-      print('❌ Error type: ${e.runtimeType}');
-      if (e is DioException) {
-        print('❌ DioException status: ${e.response?.statusCode}');
-        print('❌ DioException response: ${e.response?.data}');
-        print('❌ DioException message: ${e.message}');
-      }
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('❌ ANIMAL_SERVICE - GET_ANIMALS ERROR: $e');
       throw Exception('Failed to fetch animals: $e');
     }
   }
@@ -183,7 +164,9 @@ class AnimalService {
 
   Future<Animal> getAnimal(int id) async {
     try {
-      final response = await _dioClient.dio.get('${Constants.animalsEndpoint}$id/');
+      final response = await _dioClient.dio.get(
+        '${Constants.animalsEndpoint}$id/',
+      );
       return Animal.fromMap(response.data);
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 404) {
@@ -196,7 +179,9 @@ class AnimalService {
   Future<Animal> createAnimal(Animal animal, {File? photo}) async {
     try {
       print('AnimalService.createAnimal - Starting animal creation');
-      print('Animal data: species=${animal.species}, age=${animal.age}, abbatoir=${animal.abbatoirName}');
+      print(
+        'Animal data: species=${animal.species}, age=${animal.age}, abbatoir=${animal.abbatoirName}',
+      );
       print('Photo provided: ${photo != null}');
 
       final formData = FormData.fromMap(animal.toMapForCreate());
@@ -204,10 +189,12 @@ class AnimalService {
       // Add photo if provided
       if (photo != null) {
         final fileName = photo.path.split('/').last;
-        formData.files.add(MapEntry(
-          'photo',
-          await MultipartFile.fromFile(photo.path, filename: fileName),
-        ));
+        formData.files.add(
+          MapEntry(
+            'photo',
+            await MultipartFile.fromFile(photo.path, filename: fileName),
+          ),
+        );
         print('Photo added to form data: $fileName');
       }
 
@@ -266,29 +253,33 @@ class AnimalService {
   }
 
   Future<Map<String, dynamic>> transferAnimals(
-    List<int?> animalIds, 
+    List<int?> animalIds,
     int processingUnitId, {
     List<Map<String, dynamic>>? partTransfers,
   }) async {
     try {
       final filteredAnimalIds = animalIds.where((id) => id != null).toList();
-      print('SERVICE_TRANSFER_START - Filtered Animal IDs: $filteredAnimalIds, Processing Unit ID: $processingUnitId');
-      
+      print(
+        'SERVICE_TRANSFER_START - Filtered Animal IDs: $filteredAnimalIds, Processing Unit ID: $processingUnitId',
+      );
+
       final requestData = <String, dynamic>{
         'processing_unit_id': processingUnitId,
       };
-      
+
       // Add animal_ids only if there are whole animal transfers
       if (filteredAnimalIds.isNotEmpty) {
         requestData['animal_ids'] = filteredAnimalIds;
       }
-      
+
       // Add part_transfers if provided (for split carcass workflow)
       if (partTransfers != null && partTransfers.isNotEmpty) {
         requestData['part_transfers'] = partTransfers;
-        print('SERVICE_TRANSFER_PART_TRANSFERS - Part transfers: $partTransfers');
+        print(
+          'SERVICE_TRANSFER_PART_TRANSFERS - Part transfers: $partTransfers',
+        );
       }
-      
+
       print('SERVICE_TRANSFER_REQUEST_DATA - Data: $requestData');
 
       final response = await _dioClient.dio.post(
@@ -296,17 +287,29 @@ class AnimalService {
         data: requestData,
       );
 
-      print('SERVICE_TRANSFER_SUCCESS - Status: ${response.statusCode}, Response: ${response.data}');
+      print(
+        'SERVICE_TRANSFER_SUCCESS - Status: ${response.statusCode}, Response: ${response.data}',
+      );
       return response.data;
     } catch (e) {
       print('SERVICE_TRANSFER_ERROR - Exception: $e');
       print('SERVICE_TRANSFER_ERROR_TYPE - Type: ${e.runtimeType}');
       if (e is DioException) {
-        print('SERVICE_TRANSFER_DIO_ERROR - Status: ${e.response?.statusCode}, Response: ${e.response?.data}');
-        print('SERVICE_TRANSFER_DIO_ERROR_REQUEST - URL: ${e.requestOptions.uri}');
-        print('SERVICE_TRANSFER_DIO_ERROR_REQUEST_METHOD - Method: ${e.requestOptions.method}');
-        print('SERVICE_TRANSFER_DIO_ERROR_REQUEST_DATA - Data: ${e.requestOptions.data}');
-        print('SERVICE_TRANSFER_DIO_ERROR_REQUEST_HEADERS - Headers: ${e.requestOptions.headers}');
+        print(
+          'SERVICE_TRANSFER_DIO_ERROR - Status: ${e.response?.statusCode}, Response: ${e.response?.data}',
+        );
+        print(
+          'SERVICE_TRANSFER_DIO_ERROR_REQUEST - URL: ${e.requestOptions.uri}',
+        );
+        print(
+          'SERVICE_TRANSFER_DIO_ERROR_REQUEST_METHOD - Method: ${e.requestOptions.method}',
+        );
+        print(
+          'SERVICE_TRANSFER_DIO_ERROR_REQUEST_DATA - Data: ${e.requestOptions.data}',
+        );
+        print(
+          'SERVICE_TRANSFER_DIO_ERROR_REQUEST_HEADERS - Headers: ${e.requestOptions.headers}',
+        );
       }
       throw Exception('Failed to transfer animals: $e');
     }
@@ -315,12 +318,16 @@ class AnimalService {
   Future<List<Animal>> getTransferredAnimals() async {
     debugPrint('🔍 [AnimalService] getTransferredAnimals called');
     try {
-      debugPrint('🔍 [AnimalService] Making GET request to ${Constants.animalsEndpoint}transferred_animals/');
+      debugPrint(
+        '🔍 [AnimalService] Making GET request to ${Constants.animalsEndpoint}transferred_animals/',
+      );
       final response = await _dioClient.dio.get(
         '${Constants.animalsEndpoint}transferred_animals/',
       );
       debugPrint('🔍 [AnimalService] Response status: ${response.statusCode}');
-      debugPrint('🔍 [AnimalService] Response data type: ${response.data.runtimeType}');
+      debugPrint(
+        '🔍 [AnimalService] Response data type: ${response.data.runtimeType}',
+      );
       debugPrint('🔍 [AnimalService] Raw response data: ${response.data}');
 
       final data = response.data;
@@ -329,23 +336,31 @@ class AnimalService {
       if (data is Map && data.containsKey('animals')) {
         debugPrint('🔍 [AnimalService] Response is Map with animals key');
         final animalsData = data['animals'] as List;
-        debugPrint('🔍 [AnimalService] Animals list has ${animalsData.length} items');
+        debugPrint(
+          '🔍 [AnimalService] Animals list has ${animalsData.length} items',
+        );
         animals = animalsData.map((json) => Animal.fromMap(json)).toList();
         debugPrint('🔍 [AnimalService] Count from response: ${data['count']}');
       } else if (data is List) {
-        debugPrint('🔍 [AnimalService] Response is List with ${data.length} items');
+        debugPrint(
+          '🔍 [AnimalService] Response is List with ${data.length} items',
+        );
         animals = data.map((json) => Animal.fromMap(json)).toList();
       } else if (data is Map && data.containsKey('results')) {
         debugPrint('🔍 [AnimalService] Response is Map with results key');
         final results = data['results'] as List;
-        debugPrint('🔍 [AnimalService] Results list has ${results.length} items');
+        debugPrint(
+          '🔍 [AnimalService] Results list has ${results.length} items',
+        );
         animals = results.map((json) => Animal.fromMap(json)).toList();
       } else {
         debugPrint('🔍 [AnimalService] Unexpected response format: $data');
         throw Exception('Unexpected response format: $data');
       }
 
-      debugPrint('🔍 [AnimalService] Successfully parsed ${animals.length} animals');
+      debugPrint(
+        '🔍 [AnimalService] Successfully parsed ${animals.length} animals',
+      );
       return animals;
     } catch (e) {
       debugPrint('🔍 [AnimalService] Error in getTransferredAnimals: $e');
@@ -363,12 +378,14 @@ class AnimalService {
       if (data is List) {
         return data.map((json) => Animal.fromMap(json)).toList();
       } else if (data is Map && data.containsKey('results')) {
-        return (data['results'] as List).map((json) => Animal.fromMap(json)).toList();
+        return (data['results'] as List)
+            .map((json) => Animal.fromMap(json))
+            .toList();
       } else {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Failed to fetch transferred animals for farmer: $e');
+      throw Exception('Failed to fetch transferred animals for abbatoir: $e');
     }
   }
 
@@ -396,13 +413,17 @@ class AnimalService {
       // Add animal rejections if provided
       if (animalRejections != null && animalRejections.isNotEmpty) {
         requestData['animal_rejections'] = animalRejections;
-        print('SERVICE_RECEIVE_ANIMAL_REJECTIONS - Animal rejections: $animalRejections');
+        print(
+          'SERVICE_RECEIVE_ANIMAL_REJECTIONS - Animal rejections: $animalRejections',
+        );
       }
 
       // Add part rejections if provided
       if (partRejections != null && partRejections.isNotEmpty) {
         requestData['part_rejections'] = partRejections;
-        print('SERVICE_RECEIVE_PART_REJECTIONS - Part rejections: $partRejections');
+        print(
+          'SERVICE_RECEIVE_PART_REJECTIONS - Part rejections: $partRejections',
+        );
       }
 
       print('SERVICE_RECEIVE_REQUEST_DATA - Data: $requestData');
@@ -426,7 +447,9 @@ class AnimalService {
       final data = response.data;
       if (data is Map && data.containsKey('results')) {
         // Transform ProcessingUnit entities to the expected format for farmers
-        final processingUnits = List<Map<String, dynamic>>.from(data['results']);
+        final processingUnits = List<Map<String, dynamic>>.from(
+          data['results'],
+        );
         return processingUnits.map((pu) {
           // Add null safety checks for the owner field
           final owner = pu['owner'];
@@ -444,7 +467,8 @@ class AnimalService {
 
           return {
             'id': owner['id'] ?? pu['id'] ?? 0,
-            'username': owner['username'] ?? pu['name'] ?? 'Unknown Processing Unit',
+            'username':
+                owner['username'] ?? pu['name'] ?? 'Unknown Processing Unit',
             'email': owner['email'] ?? 'N/A',
             'role': 'ProcessingUnit',
             'processing_unit_name': pu['name'] ?? 'Unknown',
@@ -461,20 +485,32 @@ class AnimalService {
     }
   }
 
-  Future<CarcassMeasurement> createCarcassMeasurement(CarcassMeasurement measurement) async {
+  Future<CarcassMeasurement> createCarcassMeasurement(
+    CarcassMeasurement measurement,
+  ) async {
     final timestamp = DateTime.now().toIso8601String();
-    print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_CREATE_START - Animal ID: ${measurement.animalId}, Carcass Type: ${measurement.carcassType.name}');
+    print(
+      '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_CREATE_START - Animal ID: ${measurement.animalId}, Carcass Type: ${measurement.carcassType.name}',
+    );
 
     try {
       final requestData = measurement.toMapForCreate();
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DATA_PREP - Request data prepared: $requestData');
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_MEASUREMENTS - Measurements count: ${measurement.measurements.length}');
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DATA_PREP - Request data prepared: $requestData',
+      );
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_MEASUREMENTS - Measurements count: ${measurement.measurements.length}',
+      );
 
       for (final entry in measurement.measurements.entries) {
-        print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DETAIL - Field: ${entry.key}, Value: ${entry.value['value']}, Unit: ${entry.value['unit']}');
+        print(
+          '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DETAIL - Field: ${entry.key}, Value: ${entry.value['value']}, Unit: ${entry.value['unit']}',
+        );
       }
 
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_API_CALL_START - Making POST request to ${Constants.carcassMeasurementsEndpoint}');
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_API_CALL_START - Making POST request to ${Constants.carcassMeasurementsEndpoint}',
+      );
       // Increase timeout for carcass measurement API call
       final dioExtended = _dioClient.dio;
       dioExtended.options.connectTimeout = const Duration(seconds: 60);
@@ -485,19 +521,31 @@ class AnimalService {
         data: requestData,
       );
 
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_API_CALL_SUCCESS - Response status: ${response.statusCode}');
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_RESPONSE_DATA - Response data: ${response.data}');
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_API_CALL_SUCCESS - Response status: ${response.statusCode}',
+      );
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_RESPONSE_DATA - Response data: ${response.data}',
+      );
 
       final createdMeasurement = CarcassMeasurement.fromMap(response.data);
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_OBJECT_CREATED - Created measurement ID: ${createdMeasurement.id}');
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_OBJECT_CREATED - Created measurement ID: ${createdMeasurement.id}',
+      );
 
       return createdMeasurement;
     } catch (e) {
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_ERROR - Exception occurred: $e');
-      print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_ERROR_TYPE - Exception type: ${e.runtimeType}');
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_ERROR - Exception occurred: $e',
+      );
+      print(
+        '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_ERROR_TYPE - Exception type: ${e.runtimeType}',
+      );
 
       if (e is DioException) {
-        print('[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DIO_ERROR - DioException details:');
+        print(
+          '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DIO_ERROR - DioException details:',
+        );
         print('  - Status code: ${e.response?.statusCode}');
         print('  - Response data: ${e.response?.data}');
         print('  - Request URL: ${e.requestOptions.uri}');
@@ -509,7 +557,9 @@ class AnimalService {
     }
   }
 
-  Future<CarcassMeasurement?> getCarcassMeasurementForAnimal(int animalId) async {
+  Future<CarcassMeasurement?> getCarcassMeasurementForAnimal(
+    int animalId,
+  ) async {
     try {
       final response = await _dioClient.dio.get(
         Constants.carcassMeasurementsEndpoint,
@@ -517,7 +567,9 @@ class AnimalService {
       );
 
       final data = response.data;
-      if (data is Map && data.containsKey('results') && (data['results'] as List).isNotEmpty) {
+      if (data is Map &&
+          data.containsKey('results') &&
+          (data['results'] as List).isNotEmpty) {
         return CarcassMeasurement.fromMap((data['results'] as List).first);
       } else if (data is List && data.isNotEmpty) {
         return CarcassMeasurement.fromMap(data.first);
@@ -532,7 +584,9 @@ class AnimalService {
     }
   }
 
-  Future<CarcassMeasurement> updateCarcassMeasurement(CarcassMeasurement measurement) async {
+  Future<CarcassMeasurement> updateCarcassMeasurement(
+    CarcassMeasurement measurement,
+  ) async {
     try {
       final response = await _dioClient.dio.put(
         '${Constants.carcassMeasurementsEndpoint}${measurement.id}/',
@@ -577,7 +631,9 @@ class AnimalService {
         };
       } else if (data is Map && data.containsKey('results')) {
         return {
-          'results': (data['results'] as List).map((json) => SlaughterPart.fromMap(json)).toList(),
+          'results': (data['results'] as List)
+              .map((json) => SlaughterPart.fromMap(json))
+              .toList(),
           'count': data['count'],
           'next': data['next'],
           'previous': data['previous'],
@@ -649,7 +705,10 @@ class AnimalService {
     }
   }
 
-  Future<Map<String, dynamic>> transferSlaughterParts(List<int?> partIds, int processingUnitId) async {
+  Future<Map<String, dynamic>> transferSlaughterParts(
+    List<int?> partIds,
+    int processingUnitId,
+  ) async {
     try {
       final response = await _dioClient.dio.post(
         '${Constants.animalsEndpoint}transfer_parts/',
@@ -668,9 +727,7 @@ class AnimalService {
     try {
       final response = await _dioClient.dio.post(
         '${Constants.animalsEndpoint}receive_parts/',
-        data: {
-          'part_ids': partIds.where((id) => id != null).toList(),
-        },
+        data: {'part_ids': partIds.where((id) => id != null).toList()},
       );
       return response.data;
     } catch (e) {
@@ -678,11 +735,3 @@ class AnimalService {
     }
   }
 }
-
-
-
-
-
-
-
-

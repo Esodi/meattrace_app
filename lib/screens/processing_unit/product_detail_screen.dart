@@ -470,10 +470,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           String title = event.action;
           
           // Determine icon based on action/location
-          if (event.action.toLowerCase().contains('farm') || 
+          if (event.action.toLowerCase().contains('abbatoir') || 
               event.action.toLowerCase().contains('origin')) {
             icon = Icons.agriculture;
-            title = 'Origin Farm';
+            title = 'Origin Abbatoir';
           } else if (event.action.toLowerCase().contains('process') || 
                      event.action.toLowerCase().contains('slaughter')) {
             icon = Icons.factory;

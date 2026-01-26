@@ -11,7 +11,7 @@ import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_text_field.dart';
 
 /// Modern signup screen with role-specific forms
-/// Supports three roles: Farmer, Processing Unit, Shop
+/// Supports three roles: Abbatoir, Processing Unit, Shop
 /// Features: Multi-step wizard, role-specific fields, validation, animations
 class ModernSignupScreen extends StatefulWidget {
   final String? initialRole;
@@ -60,7 +60,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
   @override
   void initState() {
     super.initState();
-    _selectedRole = widget.initialRole ?? 'farmer';
+    _selectedRole = widget.initialRole ?? 'abbatoir';
 
     _fadeController = AnimationController(
       vsync: this,
@@ -95,21 +95,21 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
 
   Color _getRoleColor() {
     switch (_selectedRole) {
-      case 'farmer':
-        return AppColors.farmerPrimary;
+      case 'abbatoir':
+        return AppColors.abbatoirPrimary;
       case 'processing_unit':
         return AppColors.processorPrimary;
       case 'shop':
         return AppColors.shopPrimary;
       default:
-        return AppColors.farmerPrimary;
+        return AppColors.abbatoirPrimary;
     }
   }
 
   String _getRoleTitle() {
     switch (_selectedRole) {
-      case 'farmer':
-        return 'Farmer Registration';
+      case 'abbatoir':
+        return 'Abbatoir Registration';
       case 'processing_unit':
         return 'Processing Unit Registration';
       case 'shop':
@@ -121,7 +121,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
 
   IconData _getRoleIcon() {
     switch (_selectedRole) {
-      case 'farmer':
+      case 'abbatoir':
         return CustomIcons.cattle;
       case 'processing_unit':
         return CustomIcons.processingPlant;
@@ -200,7 +200,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
       };
 
       // Add role-specific fields
-      if (_selectedRole == 'farmer') {
+      if (_selectedRole == 'abbatoir') {
         userData['farm_name'] = _farmNameController.text;
       } else if (_selectedRole == 'processing_unit') {
         userData['facility_name'] = _facilityNameController.text;
@@ -213,8 +213,8 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
       // Convert lowercase role to capitalized format expected by backend
       String backendRole;
       switch (_selectedRole) {
-        case 'farmer':
-          backendRole = 'Farmer';
+        case 'abbatoir':
+          backendRole = 'Abbatoir';
           break;
         case 'processing_unit':
           backendRole = 'ProcessingUnit';
@@ -223,7 +223,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
           backendRole = 'Shop';
           break;
         default:
-          backendRole = 'Farmer';
+          backendRole = 'Abbatoir';
       }
 
       final success = await authProvider.register(
@@ -286,9 +286,9 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
     debugPrint('🚀 [SIGNUP] Navigating to home for role: "$role" (normalized: "$normalizedRole")');
     
     // Handle all possible role variations
-    if (normalizedRole == 'farmer') {
-      debugPrint('   ➡️ Going to: /farmer-home');
-      context.go('/farmer-home');
+    if (normalizedRole == 'abbatoir') {
+      debugPrint('   ➡️ Going to: /abbatoir-home');
+      context.go('/abbatoir-home');
     } else if (normalizedRole == 'processingunit' || 
                normalizedRole == 'processing_unit' ||
                normalizedRole == 'processor') {
@@ -647,8 +647,8 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _selectedRole == 'farmer'
-                ? 'Farm Information'
+            _selectedRole == 'abbatoir'
+                ? 'Abbatoir Information'
                 : _selectedRole == 'processing_unit'
                     ? 'Facility Information'
                     : 'Store Information',
@@ -656,23 +656,23 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
           ),
           const SizedBox(height: AppTheme.space8),
           Text(
-            _selectedRole == 'farmer'
-                ? 'Tell us about your farm'
+            _selectedRole == 'abbatoir'
+                ? 'Tell us about your abbatoir'
                 : _selectedRole == 'processing_unit'
                     ? 'Tell us about your processing facility'
                     : 'Tell us about your shop',
             style: AppTypography.bodyMedium().copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppTheme.space32),
-          if (_selectedRole == 'farmer') ...[
+          if (_selectedRole == 'abbatoir') ...[
             CustomTextField(
               controller: _farmNameController,
-              label: 'Farm Name',
-              hint: 'Enter your farm name',
+              label: 'Abbatoir Name',
+              hint: 'Enter your abbatoir name',
               prefixIcon: Icon(CustomIcons.cattle),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter farm name';
+                  return 'Please enter abbatoir name';
                 }
                 return null;
               },
@@ -681,10 +681,10 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
             Container(
               padding: const EdgeInsets.all(AppTheme.space16),
               decoration: BoxDecoration(
-                color: AppColors.farmerPrimary.withValues(alpha: 0.1),
+                color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 border: Border.all(
-                  color: AppColors.farmerPrimary.withValues(alpha: 0.3),
+                  color: AppColors.abbatoirPrimary.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -694,14 +694,14 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: AppColors.farmerPrimary,
+                        color: AppColors.abbatoirPrimary,
                         size: 20,
                       ),
                       const SizedBox(width: AppTheme.space8),
                       Text(
-                        'Farmer Features',
+                        'Abbatoir Features',
                         style: AppTypography.titleMedium().copyWith(
-                          color: AppColors.farmerPrimary,
+                          color: AppColors.abbatoirPrimary,
                         ),
                       ),
                     ],

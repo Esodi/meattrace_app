@@ -4,13 +4,14 @@ import '../../models/product.dart';
 import '../../services/dio_client.dart';
 import '../../utils/app_colors.dart';
 import 'product_detail_screen.dart';
-import '../farmer/animal_detail_screen.dart';
+import '../abbatoir/animal_detail_screen.dart';
 
 class ProcessorInventoryScreen extends StatefulWidget {
-  const ProcessorInventoryScreen({Key? key}) : super(key: key);
+  const ProcessorInventoryScreen({super.key});
 
   @override
-  State<ProcessorInventoryScreen> createState() => _ProcessorInventoryScreenState();
+  State<ProcessorInventoryScreen> createState() =>
+      _ProcessorInventoryScreenState();
 }
 
 class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
@@ -38,13 +39,14 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
     setState(() => _isLoading = true);
     try {
       final dio = DioClient().dio;
-      
+
       // Fetch received animals
       final animalsResponse = await dio.get('/animals/');
-      
+
       // Handle both paginated and non-paginated responses for animals
       List<dynamic> animalsList;
-      if (animalsResponse.data is Map && animalsResponse.data.containsKey('results')) {
+      if (animalsResponse.data is Map &&
+          animalsResponse.data.containsKey('results')) {
         // Paginated response
         animalsList = animalsResponse.data['results'] as List;
       } else if (animalsResponse.data is List) {
@@ -54,18 +56,19 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
         // Empty or unexpected format
         animalsList = [];
       }
-      
+
       final receivedAnimals = animalsList
           .map((json) => Animal.fromMap(json))
           .where((animal) => animal.receivedBy != null)
           .toList();
-      
+
       // Fetch products
       final productsResponse = await dio.get('/products/');
-      
+
       // Handle both paginated and non-paginated responses for products
       List<dynamic> productsList;
-      if (productsResponse.data is Map && productsResponse.data.containsKey('results')) {
+      if (productsResponse.data is Map &&
+          productsResponse.data.containsKey('results')) {
         // Paginated response
         productsList = productsResponse.data['results'] as List;
       } else if (productsResponse.data is List) {
@@ -75,20 +78,20 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
         // Empty or unexpected format
         productsList = [];
       }
-      
+
       final products = productsList
           .map((json) => Product.fromMap(json))
           .toList();
-      
+
       setState(() {
         _receivedAnimals = receivedAnimals;
         _products = products;
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading inventory: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading inventory: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -111,7 +114,9 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          print('DEBUG: Screen height: ${constraints.maxHeight}, width: ${constraints.maxWidth}');
+          print(
+            'DEBUG: Screen height: ${constraints.maxHeight}, width: ${constraints.maxWidth}',
+          );
           return Column(
             children: [
               Padding(
@@ -132,8 +137,10 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
                 ),
               ),
               Expanded(
-                child: Container(
-                  height: constraints.maxHeight - 150, // Reserve space for search and app bar
+                child: SizedBox(
+                  height:
+                      constraints.maxHeight -
+                      150, // Reserve space for search and app bar
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : TabBarView(
@@ -191,7 +198,8 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
             const SizedBox(height: 8),
             if (_searchQuery.isEmpty)
               TextButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/receive-animals'),
+                onPressed: () =>
+                    Navigator.pushNamed(context, '/receive-animals'),
                 icon: const Icon(Icons.download),
                 label: const Text(''),
               ),
@@ -224,7 +232,8 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AnimalDetailScreen(animalId: animal.id!.toString()),
+              builder: (context) =>
+                  AnimalDetailScreen(animalId: animal.id!.toString()),
             ),
           );
         },
@@ -237,7 +246,9 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: AppColors.processorPrimary.withOpacity(0.1),
+                    backgroundColor: AppColors.processorPrimary.withOpacity(
+                      0.1,
+                    ),
                     child: Icon(
                       _getSpeciesIcon(animal.species),
                       color: AppColors.processorPrimary,
@@ -327,7 +338,11 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
                 const Divider(height: 24),
                 Row(
                   children: [
-                    Icon(Icons.download_done, size: 16, color: Colors.grey.shade600),
+                    Icon(
+                      Icons.download_done,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Received: ${_formatDate(animal.receivedAt!)}',
@@ -368,7 +383,8 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
             const SizedBox(height: 8),
             if (_searchQuery.isEmpty)
               TextButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/create-product'),
+                onPressed: () =>
+                    Navigator.pushNamed(context, '/create-product'),
                 icon: const Icon(Icons.add),
                 label: const Text('Create Product'),
               ),
@@ -401,7 +417,8 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ProductDetailScreen(productId: product.id!.toString()),
+              builder: (context) =>
+                  ProductDetailScreen(productId: product.id!.toString()),
             ),
           );
         },
@@ -480,14 +497,21 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
                     '${product.weight ?? 0} ${product.weightUnit}',
                   ),
                   const SizedBox(width: 8),
-                  _buildInfoChip(Icons.inventory, '${product.quantity.toInt()}'),
+                  _buildInfoChip(
+                    Icons.inventory,
+                    '${product.quantity.toInt()}',
+                  ),
                 ],
               ),
               if (product.transferredTo != null) ...[
                 const Divider(height: 24),
                 Row(
                   children: [
-                    Icon(Icons.local_shipping, size: 16, color: Colors.orange.shade600),
+                    Icon(
+                      Icons.local_shipping,
+                      size: 16,
+                      color: Colors.orange.shade600,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Transferred',
@@ -521,10 +545,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
         ],
       ),

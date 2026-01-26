@@ -10,7 +10,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/anatomical_name_mapping.dart';
 import '../../widgets/core/status_badge.dart';
 import '../../widgets/core/custom_button.dart';
-import '../farmer/animal_detail_screen.dart';
+import '../abbatoir/animal_detail_screen.dart';
 
 /// Pending Processing Screen - Shows received animals/parts not yet processed into products
 class PendingProcessingScreen extends StatefulWidget {

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/user.dart';
@@ -6,7 +5,8 @@ import 'dio_client.dart';
 import '../utils/constants.dart';
 
 class UserManagementService {
-  static final UserManagementService _instance = UserManagementService._internal();
+  static final UserManagementService _instance =
+      UserManagementService._internal();
   final DioClient _dioClient = DioClient();
 
   factory UserManagementService() {
@@ -94,9 +94,7 @@ class UserManagementService {
 
       final response = await _dioClient.dio.post(
         '${Constants.usersEndpoint}$userId/suspend/',
-        data: {
-          'reason': reason,
-        },
+        data: {'reason': reason},
       );
 
       debugPrint('✅ User suspended successfully');
@@ -145,9 +143,7 @@ class UserManagementService {
 
       final response = await _dioClient.dio.patch(
         '${Constants.usersEndpoint}$userId/',
-        data: {
-          'role': newRole,
-        },
+        data: {'role': newRole},
       );
 
       debugPrint('✅ User role updated successfully');
@@ -212,7 +208,9 @@ class UserManagementService {
       );
 
       debugPrint('✅ Audit logs fetched successfully');
-      return List<Map<String, dynamic>>.from(response.data['results'] ?? response.data);
+      return List<Map<String, dynamic>>.from(
+        response.data['results'] ?? response.data,
+      );
     } on DioException catch (e) {
       debugPrint('❌ Failed to fetch audit logs: ${e.message}');
       throw Exception('Failed to load audit logs: ${e.message}');

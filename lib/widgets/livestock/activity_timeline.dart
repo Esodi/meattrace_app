@@ -6,18 +6,18 @@ import '../../models/activity.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 /// Activity Timeline Widget
-/// Displays a timeline of recent farmer activities
+/// Displays a timeline of recent abbatoir activities
 class ActivityTimeline extends StatelessWidget {
   final List<Activity> activities;
   final int maxItems;
   final VoidCallback? onViewAll;
 
   const ActivityTimeline({
-    Key? key,
+    super.key,
     required this.activities,
     this.maxItems = 5,
     this.onViewAll,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -36,17 +36,14 @@ class ActivityTimeline extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Recent Activity',
-                style: AppTypography.headlineMedium(),
-              ),
+              Text('Recent Activity', style: AppTypography.headlineMedium()),
               if (onViewAll != null)
                 TextButton(
                   onPressed: onViewAll,
                   child: Text(
                     'View All',
                     style: AppTypography.button().copyWith(
-                      color: AppColors.farmerPrimary,
+                      color: AppColors.abbatoirPrimary,
                     ),
                   ),
                 ),
@@ -60,21 +57,31 @@ class ActivityTimeline extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
               ),
             ],
+            border: Border.all(
+              color: AppColors.divider.withValues(alpha: 0.5),
+              width: 1,
+            ),
           ),
           child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppTheme.space12),
+            padding: const EdgeInsets.symmetric(vertical: AppTheme.space8),
             itemCount: displayActivities.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            separatorBuilder: (context, index) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
+              child: Divider(
+                height: 1,
+                color: AppColors.divider.withValues(alpha: 0.5),
+              ),
+            ),
             itemBuilder: (context, index) {
               return ActivityTimelineItem(
                 activity: displayActivities[index],
@@ -113,9 +120,7 @@ class ActivityTimeline extends StatelessWidget {
           const SizedBox(height: AppTheme.space12),
           Text(
             'No Recent Activity',
-            style: AppTypography.bodyMedium(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTypography.bodyMedium(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -130,94 +135,99 @@ class ActivityTimelineItem extends StatelessWidget {
   final bool isLast;
 
   const ActivityTimelineItem({
-    Key? key,
+    super.key,
     required this.activity,
     this.isFirst = false,
     this.isLast = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        vertical: AppTheme.space8,
-        horizontal: AppTheme.space4,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon with colored background
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _getActivityColor().withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+    return InkWell(
+      onTap: activity.targetRoute != null
+          ? () {}
+          : null, // Route navigation logic should be here
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppTheme.space12,
+          horizontal: AppTheme.space16,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Icon with colored background
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _getActivityColor().withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _getActivityIcon(),
+                color: _getActivityColor(),
+                size: 20,
+              ),
             ),
-            child: Icon(
-              _getActivityIcon(),
-              color: _getActivityColor(),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: AppTheme.space12),
+            const SizedBox(width: AppTheme.space16),
 
-          // Activity Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activity.title,
-                  style: AppTypography.bodyMedium(
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppTheme.space4),
-                Row(
-                  children: [
-                    Text(
-                      _formatTimestamp(activity.timestamp),
-                      style: AppTypography.caption(
-                        color: AppColors.textSecondary,
-                      ),
+            // Activity Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activity.title,
+                    style: AppTypography.titleSmall().copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
                     ),
-                    if (activity.metadata != null &&
-                        activity.metadata!.containsKey('count')) ...[
-                      const SizedBox(width: AppTheme.space8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.space8,
-                          vertical: AppTheme.space4,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        _formatTimestamp(activity.timestamp),
+                        style: AppTypography.labelSmall().copyWith(
+                          color: AppColors.textSecondary,
                         ),
-                        decoration: BoxDecoration(
-                          color: AppColors.info.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      ),
+                      if (activity.metadata != null &&
+                          activity.metadata!.containsKey('count')) ...[
+                        const SizedBox(width: AppTheme.space8),
+                        Container(
+                          width: 4,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: AppColors.divider,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                        child: Text(
+                        const SizedBox(width: AppTheme.space8),
+                        Text(
                           '${activity.metadata!['count']} items',
-                          style: AppTypography.caption(
+                          style: AppTypography.labelSmall().copyWith(
                             color: AppColors.info,
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Chevron for navigation
-          if (activity.targetRoute != null)
-            Icon(
-              Icons.chevron_right,
-              size: AppTheme.iconSmall,
-              color: AppColors.textTertiary,
-            ),
-        ],
+            // Chevron for navigation
+            if (activity.targetRoute != null)
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.textTertiary,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -244,7 +254,7 @@ class ActivityTimelineItem extends StatelessWidget {
   Color _getActivityColor() {
     switch (activity.type) {
       case ActivityType.registration:
-        return AppColors.farmerPrimary;
+        return AppColors.abbatoirPrimary;
       case ActivityType.transfer:
         return AppColors.processorPrimary;
       case ActivityType.slaughter:
@@ -269,11 +279,7 @@ class CompactActivityCard extends StatelessWidget {
   final Activity activity;
   final VoidCallback? onTap;
 
-  const CompactActivityCard({
-    Key? key,
-    required this.activity,
-    this.onTap,
-  }) : super(key: key);
+  const CompactActivityCard({super.key, required this.activity, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -293,7 +299,9 @@ class CompactActivityCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: _getActivityColor(activity.type).withValues(alpha: 0.15),
+                  color: _getActivityColor(
+                    activity.type,
+                  ).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 ),
                 child: Icon(
@@ -359,7 +367,7 @@ class CompactActivityCard extends StatelessWidget {
   Color _getActivityColor(ActivityType type) {
     switch (type) {
       case ActivityType.registration:
-        return AppColors.farmerPrimary;
+        return AppColors.abbatoirPrimary;
       case ActivityType.transfer:
         return AppColors.processorPrimary;
       case ActivityType.slaughter:

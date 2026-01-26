@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../services/dio_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/app_colors.dart';
 
 class UserProfileScreen extends StatefulWidget {
-  const UserProfileScreen({Key? key}) : super(key: key);
+  const UserProfileScreen({super.key});
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -15,14 +14,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isEditing = false;
-  
+
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _organizationController = TextEditingController();
-  
+
   String _userRole = '';
   int? _userId;
 
@@ -61,9 +60,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -96,9 +95,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -202,7 +201,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           _buildProfileField(
                             controller: _usernameController,
                             label: 'Username',
@@ -210,7 +209,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             enabled: false,
                           ),
                           const SizedBox(height: 16),
-                          
+
                           _buildProfileField(
                             controller: _emailController,
                             label: 'Email',
@@ -228,7 +227,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             },
                           ),
                           const SizedBox(height: 24),
-                          
+
                           const Text(
                             'Personal Information',
                             style: TextStyle(
@@ -237,7 +236,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           _buildProfileField(
                             controller: _firstNameController,
                             label: 'First Name',
@@ -245,7 +244,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             enabled: _isEditing,
                           ),
                           const SizedBox(height: 16),
-                          
+
                           _buildProfileField(
                             controller: _lastNameController,
                             label: 'Last Name',
@@ -253,7 +252,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             enabled: _isEditing,
                           ),
                           const SizedBox(height: 16),
-                          
+
                           _buildProfileField(
                             controller: _phoneController,
                             label: 'Phone',
@@ -262,7 +261,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             keyboardType: TextInputType.phone,
                           ),
                           const SizedBox(height: 24),
-                          
+
                           const Text(
                             'Organization',
                             style: TextStyle(
@@ -271,16 +270,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           _buildProfileField(
                             controller: _organizationController,
                             label: 'Organization Name',
                             icon: Icons.business,
                             enabled: _isEditing,
                           ),
-                          
+
                           const SizedBox(height: 32),
-                          
+
                           // Statistics (read-only)
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -302,13 +301,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 const Divider(height: 24),
                                 _buildStatRow('User ID', '#$_userId'),
                                 _buildStatRow('Role', _getRoleLabel()),
-                                _buildStatRow('Username', _usernameController.text),
+                                _buildStatRow(
+                                  'Username',
+                                  _usernameController.text,
+                                ),
                               ],
                             ),
                           ),
-                          
+
                           const SizedBox(height: 24),
-                          
+
                           // Logout Button
                           SizedBox(
                             width: double.infinity,
@@ -318,14 +320,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   context: context,
                                   builder: (context) => AlertDialog(
                                     title: const Text('Logout'),
-                                    content: const Text('Are you sure you want to logout?'),
+                                    content: const Text(
+                                      'Are you sure you want to logout?',
+                                    ),
                                     actions: [
                                       TextButton(
-                                        onPressed: () => Navigator.pop(context, false),
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
                                         child: const Text('Cancel'),
                                       ),
                                       ElevatedButton(
-                                        onPressed: () => Navigator.pop(context, true),
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.red,
                                           foregroundColor: Colors.white,
@@ -335,11 +341,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                     ],
                                   ),
                                 );
-                                
+
                                 if (shouldLogout == true && mounted) {
                                   await AuthService().logout();
                                   if (mounted) {
-                                    Navigator.of(context).pushNamedAndRemoveUntil(
+                                    Navigator.of(
+                                      context,
+                                    ).pushNamedAndRemoveUntil(
                                       '/login',
                                       (route) => false,
                                     );
@@ -352,12 +360,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 style: TextStyle(color: Colors.red),
                               ),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 side: const BorderSide(color: Colors.red),
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -400,17 +410,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           ),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
           ),
         ],
       ),
@@ -420,13 +424,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String _getInitials() {
     final firstName = _firstNameController.text;
     final lastName = _lastNameController.text;
-    return '${firstName.isNotEmpty ? firstName[0] : ''}${lastName.isNotEmpty ? lastName[0] : ''}'.toUpperCase();
+    return '${firstName.isNotEmpty ? firstName[0] : ''}${lastName.isNotEmpty ? lastName[0] : ''}'
+        .toUpperCase();
   }
 
   String _getRoleLabel() {
     switch (_userRole.toLowerCase()) {
-      case 'farmer':
-        return 'Farmer/Abattoir';
+      case 'abbatoir':
+        return 'Abbatoir/Abattoir';
       case 'processor':
         return 'Processing Unit';
       case 'shop':
@@ -438,8 +443,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Color _getRoleColor() {
     switch (_userRole.toLowerCase()) {
-      case 'farmer':
-        return AppColors.farmerPrimary;
+      case 'abbatoir':
+        return AppColors.abbatoirPrimary;
       case 'processor':
         return AppColors.processorPrimary;
       case 'shop':

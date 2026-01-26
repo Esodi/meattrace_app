@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import '../models/meat_trace.dart';
 import '../models/product.dart';
-import '../models/animal.dart';
 import '../models/production_stats.dart';
 import '../models/order.dart';
 import '../models/product_category.dart';
@@ -19,7 +18,10 @@ class ApiService {
   ApiService._internal();
 
   // Generic HTTP methods for flexibility
-  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
+  Future<Response> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
     return await _dioClient.dio.get(path, queryParameters: queryParameters);
   }
 
@@ -101,7 +103,9 @@ class ApiService {
 
   Future<String> regenerateProductQrCode(String productId) async {
     try {
-      final response = await _dioClient.dio.post('/products/$productId/regenerate_qr/');
+      final response = await _dioClient.dio.post(
+        '/products/$productId/regenerate_qr/',
+      );
       return response.data['qr_code_url'];
     } on DioException catch (e) {
       throw Exception('Failed to regenerate QR code: ${e.message}');
@@ -211,9 +215,13 @@ class ApiService {
     }
   }
 
-  Future<ProductCategory> updateProductCategory(ProductCategory category) async {
+  Future<ProductCategory> updateProductCategory(
+    ProductCategory category,
+  ) async {
     try {
-      if (category.id == null) throw Exception('Category id is required for update');
+      if (category.id == null) {
+        throw Exception('Category id is required for update');
+      }
       final response = await put(
         '/product-categories/${category.id}/',
         data: category.toJson(),

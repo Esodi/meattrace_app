@@ -18,7 +18,8 @@ class ProcessingUnitRegistrationScreen extends StatefulWidget {
 }
 
 class _ProcessingUnitRegistrationScreenState
-    extends State<ProcessingUnitRegistrationScreen> with SingleTickerProviderStateMixin {
+    extends State<ProcessingUnitRegistrationScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
   final _searchController = TextEditingController();
@@ -42,7 +43,7 @@ class _ProcessingUnitRegistrationScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     // Load available units when switching to join tab
     _tabController.addListener(() {
       if (_tabController.index == 1) {
@@ -173,10 +174,7 @@ class _ProcessingUnitRegistrationScreenState
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildCreateUnitTab(),
-          _buildJoinUnitTab(),
-        ],
+        children: [_buildCreateUnitTab(), _buildJoinUnitTab()],
       ),
     );
   }
@@ -331,7 +329,9 @@ class _ProcessingUnitRegistrationScreenState
                   Expanded(
                     child: Text(
                       'After creating your unit, you can invite team members and assign roles.',
-                      style: AppTypography.caption().copyWith(color: AppColors.info),
+                      style: AppTypography.caption().copyWith(
+                        color: AppColors.info,
+                      ),
                     ),
                   ),
                 ],
@@ -373,7 +373,9 @@ class _ProcessingUnitRegistrationScreenState
               child: provider.availableUnits.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: AppTheme.space16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.space16,
+                      ),
                       itemCount: provider.availableUnits.length,
                       itemBuilder: (context, index) {
                         final unit = provider.availableUnits[index];
@@ -446,10 +448,7 @@ class _ProcessingUnitRegistrationScreenState
                         children: [
                           Icon(Icons.location_on, size: 14, color: Colors.grey),
                           SizedBox(width: 4),
-                          Text(
-                            unit.location!,
-                            style: AppTypography.caption(),
-                          ),
+                          Text(unit.location!, style: AppTypography.caption()),
                         ],
                       ),
                     ],
@@ -485,23 +484,18 @@ class _ProcessingUnitRegistrationScreenState
       padding: EdgeInsets.all(AppTheme.space16),
       decoration: BoxDecoration(
         color: AppColors.processorPrimary.withOpacity(0.05),
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade300),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Submit Join Request',
-            style: AppTypography.headlineSmall(),
-          ),
+          Text('Submit Join Request', style: AppTypography.headlineSmall()),
           SizedBox(height: AppTheme.space16),
 
           // Role Selection
           DropdownButtonFormField<String>(
-            value: _selectedRole,
+            initialValue: _selectedRole,
             decoration: InputDecoration(
               labelText: 'Preferred Role',
               border: OutlineInputBorder(
@@ -511,7 +505,10 @@ class _ProcessingUnitRegistrationScreenState
             items: [
               DropdownMenuItem(value: 'worker', child: Text('Worker')),
               DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
-              DropdownMenuItem(value: 'quality_control', child: Text('Quality Control')),
+              DropdownMenuItem(
+                value: 'quality_control',
+                child: Text('Quality Control'),
+              ),
               DropdownMenuItem(value: 'manager', child: Text('Manager')),
             ],
             onChanged: (value) => setState(() => _selectedRole = value!),
@@ -561,11 +558,7 @@ class _ProcessingUnitRegistrationScreenState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_off,
-            size: 80,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.search_off, size: 80, color: Colors.grey.shade400),
           SizedBox(height: AppTheme.space16),
           Text(
             'No processing units found',

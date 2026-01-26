@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../models/yield_trend_data.dart';
 import '../utils/constants.dart';
 import 'dio_client.dart';
@@ -20,10 +19,7 @@ class YieldTrendsService {
     String? species,
   }) async {
     try {
-      final queryParams = <String, dynamic>{
-        'period': period,
-        'role': 'farmer',
-      };
+      final queryParams = <String, dynamic>{'period': period, 'role': 'abbatoir'};
       if (species != null) queryParams['species'] = species;
 
       final response = await _dioClient.dio.get(
@@ -70,10 +66,7 @@ class YieldTrendsService {
     String? category,
   }) async {
     try {
-      final queryParams = <String, dynamic>{
-        'period': period,
-        'role': 'shop',
-      };
+      final queryParams = <String, dynamic>{'period': period, 'role': 'shop'};
       if (category != null) queryParams['category'] = category;
 
       final response = await _dioClient.dio.get(
@@ -100,14 +93,14 @@ class YieldTrendsService {
 
       final data = response.data as Map<String, dynamic>;
       return {
-        'farmer': YieldTrendData.fromMap(data['farmer']),
+        'abbatoir': YieldTrendData.fromMap(data['abbatoir']),
         'processor': YieldTrendData.fromMap(data['processor']),
         'shop': YieldTrendData.fromMap(data['shop']),
       };
     } catch (e) {
       // Return mock data if API fails
       return {
-        'farmer': _getMockFarmerData(period),
+        'abbatoir': _getMockFarmerData(period),
         'processor': _getMockProcessorData(period),
         'shop': _getMockShopData(period),
       };
@@ -118,10 +111,10 @@ class YieldTrendsService {
   YieldTrendData _getMockFarmerData(String period) {
     final now = DateTime.now();
     final days = _getPeriodDays(period);
-    
+
     return YieldTrendData(
       period: period,
-      role: 'farmer',
+      role: 'abbatoir',
       primaryMetric: YieldMetric(
         name: 'Animal Count',
         values: List.generate(days, (i) => 45.0 + (i * 2.5) + (i % 3 * 5)),
@@ -161,7 +154,7 @@ class YieldTrendsService {
   YieldTrendData _getMockProcessorData(String period) {
     final now = DateTime.now();
     final days = _getPeriodDays(period);
-    
+
     return YieldTrendData(
       period: period,
       role: 'processor',
@@ -204,7 +197,7 @@ class YieldTrendsService {
   YieldTrendData _getMockShopData(String period) {
     final now = DateTime.now();
     final days = _getPeriodDays(period);
-    
+
     return YieldTrendData(
       period: period,
       role: 'shop',
@@ -260,11 +253,12 @@ class YieldTrendsService {
 
   List<String> _generateLabels(String period, int days) {
     final now = DateTime.now();
-    
+
     if (period == '7d') {
       return List.generate(days, (i) {
         final date = now.subtract(Duration(days: days - 1 - i));
-        return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1];
+        return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday -
+            1];
       });
     } else if (period == '30d') {
       return List.generate(days, (i) {
@@ -281,11 +275,23 @@ class YieldTrendsService {
       // Show monthly labels for 1 year
       return List.generate(12, (i) {
         final date = DateTime(now.year, now.month - (11 - i));
-        return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.month - 1];
+        return [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ][date.month - 1];
       });
     }
-    
+
     return List.generate(days, (i) => 'Day ${i + 1}');
   }
 }

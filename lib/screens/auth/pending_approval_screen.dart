@@ -18,13 +18,13 @@ class PendingApprovalScreen extends StatefulWidget {
   final String? rejectionReason;
 
   const PendingApprovalScreen({
-    Key? key,
+    super.key,
     required this.entityName,
     required this.isShop,
     required this.requestedRole,
     required this.requestedAt,
     this.rejectionReason,
-  }) : super(key: key);
+  });
 
   @override
   State<PendingApprovalScreen> createState() => _PendingApprovalScreenState();
@@ -37,7 +37,9 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = widget.isShop ? AppColors.shopPrimary : AppColors.processorPrimary;
+    final primaryColor = widget.isShop
+        ? AppColors.shopPrimary
+        : AppColors.processorPrimary;
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -49,11 +51,15 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
             Container(
               padding: const EdgeInsets.all(AppTheme.space24),
               decoration: BoxDecoration(
-                color: isRejected ? AppColors.error.withOpacity(0.1) : primaryColor.withOpacity(0.1),
+                color: isRejected
+                    ? AppColors.error.withOpacity(0.1)
+                    : primaryColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isRejected ? Icons.cancel_outlined : Icons.hourglass_empty_rounded,
+                isRejected
+                    ? Icons.cancel_outlined
+                    : Icons.hourglass_empty_rounded,
                 size: 64,
                 color: isRejected ? AppColors.error : primaryColor,
               ),
@@ -74,8 +80,8 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
             // Subtitle
             Text(
               isRejected
-                ? 'Your request to join has been rejected.'
-                : 'Your request to join is currently under review.',
+                  ? 'Your request to join has been rejected.'
+                  : 'Your request to join is currently under review.',
               style: AppTypography.bodyLarge().copyWith(
                 color: Colors.grey.shade600,
               ),
@@ -102,11 +108,20 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 children: [
                   _buildInfoRow('Organization', widget.entityName),
                   const Divider(height: AppTheme.space24),
-                  _buildInfoRow('Type', widget.isShop ? 'Shop' : 'Processing Unit'),
+                  _buildInfoRow(
+                    'Type',
+                    widget.isShop ? 'Shop' : 'Processing Unit',
+                  ),
                   const Divider(height: AppTheme.space24),
-                  _buildInfoRow('Requested Role', _formatRole(widget.requestedRole)),
+                  _buildInfoRow(
+                    'Requested Role',
+                    _formatRole(widget.requestedRole),
+                  ),
                   const Divider(height: AppTheme.space24),
-                  _buildInfoRow(isRejected ? 'Rejected Date' : 'Requested', _formatDate(widget.requestedAt)),
+                  _buildInfoRow(
+                    isRejected ? 'Rejected Date' : 'Requested',
+                    _formatDate(widget.requestedAt),
+                  ),
 
                   if (isRejected && widget.rejectionReason != null) ...[
                     const Divider(height: AppTheme.space24),
@@ -115,8 +130,12 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                       padding: const EdgeInsets.all(AppTheme.space12),
                       decoration: BoxDecoration(
                         color: AppColors.error.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusMedium,
+                        ),
+                        border: Border.all(
+                          color: AppColors.error.withOpacity(0.2),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,11 +174,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 ),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.schedule,
-                      color: Colors.grey.shade600,
-                      size: 32,
-                    ),
+                    Icon(Icons.schedule, color: Colors.grey.shade600, size: 32),
                     const SizedBox(height: AppTheme.space12),
                     Text(
                       'What happens next?',
@@ -180,7 +195,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppTheme.space32),
+            const SizedBox(height: AppTheme.space32),
 
             // Withdraw Request Button (only if pending)
             if (!isRejected)
@@ -191,7 +206,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 icon: Icons.delete_forever,
               ),
 
-              const SizedBox(height: AppTheme.space16),
+            const SizedBox(height: AppTheme.space16),
 
             // Logout / Back to Login Button
             CustomButton(
@@ -221,9 +236,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 },
                 icon: Icon(Icons.refresh),
                 label: Text('Check Status'),
-                style: TextButton.styleFrom(
-                  foregroundColor: primaryColor,
-                ),
+                style: TextButton.styleFrom(foregroundColor: primaryColor),
               ),
           ],
         ),
@@ -307,9 +320,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.error.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  border: Border.all(
-                    color: AppColors.error.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,7 +374,9 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                     decoration: InputDecoration(
                       hintText: 'Type DELETE here',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusMedium,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: AppTheme.space12,

@@ -34,7 +34,10 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -241,7 +244,10 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                   ),
                   onTap: () {
                     // Get current shop ID from auth provider
-                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                    final authProvider = Provider.of<AuthProvider>(
+                      context,
+                      listen: false,
+                    );
                     final shopId = authProvider.user?.shopId;
 
                     if (shopId != null) {
@@ -249,7 +255,9 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Shop not found. Please ensure you are logged in as a shop owner.'),
+                          content: Text(
+                            'Shop not found. Please ensure you are logged in as a shop owner.',
+                          ),
                           backgroundColor: AppColors.error,
                         ),
                       );
@@ -355,26 +363,39 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
       child: Text(
         title,
         style: AppTypography.labelLarge(
-          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          color: themeProvider.isDarkMode
+              ? Colors.white.withOpacity(0.7)
+              : AppColors.textSecondary,
         ).copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  Widget _buildSettingsCard(List<Widget> children, ThemeProvider themeProvider) {
+  Widget _buildSettingsCard(
+    List<Widget> children,
+    ThemeProvider themeProvider,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Theme.of(context).brightness == Brightness.dark ? Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)) : null,
-        boxShadow: Theme.of(context).brightness == Brightness.light ? [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ] : null,
+        border: Theme.of(context).brightness == Brightness.dark
+            ? Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.1),
+              )
+            : null,
+        boxShadow: Theme.of(context).brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Column(children: children),
     );
@@ -394,13 +415,17 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
       title: Text(
         title,
         style: AppTypography.bodyLarge().copyWith(
-          color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary,
+          color: themeProvider.isDarkMode
+              ? Colors.white
+              : AppColors.textPrimary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium(
-          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          color: themeProvider.isDarkMode
+              ? Colors.white.withOpacity(0.7)
+              : AppColors.textSecondary,
         ),
       ),
       secondary: Container(
@@ -409,13 +434,9 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
           color: AppColors.shopPrimary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
-          icon,
-          color: AppColors.shopPrimary,
-          size: 24,
-        ),
+        child: Icon(icon, color: AppColors.shopPrimary, size: 24),
       ),
-      activeColor: AppColors.shopPrimary,
+      activeThumbColor: AppColors.shopPrimary,
     );
   }
 
@@ -436,22 +457,22 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
           color: (titleColor ?? AppColors.shopPrimary).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
-          icon,
-          color: titleColor ?? AppColors.shopPrimary,
-          size: 24,
-        ),
+        child: Icon(icon, color: titleColor ?? AppColors.shopPrimary, size: 24),
       ),
       title: Text(
         title,
         style: AppTypography.bodyLarge().copyWith(
-          color: titleColor ?? (themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
+          color:
+              titleColor ??
+              (themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium(
-          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          color: themeProvider.isDarkMode
+              ? Colors.white.withOpacity(0.7)
+              : AppColors.textSecondary,
         ),
       ),
       trailing: trailing,
@@ -514,17 +535,13 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
           color: AppColors.shopPrimary,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(
-          Icons.store,
-          color: Colors.white,
-          size: 32,
-        ),
+        child: Icon(Icons.store, color: Colors.white, size: 32),
       ),
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 16),
           child: Text(
-            'MeatTrace helps you track meat products from farm to table, ensuring quality and transparency throughout the supply chain.',
+            'MeatTrace helps you track meat products from abbatoir to table, ensuring quality and transparency throughout the supply chain.',
             style: AppTypography.bodyMedium(),
           ),
         ),
@@ -632,7 +649,9 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
             Text(
               'Adjust the text size for better readability',
               style: AppTypography.bodyMedium().copyWith(
-                color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+                color: isDark
+                    ? Colors.white.withOpacity(0.7)
+                    : AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 16),
@@ -680,10 +699,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Done',
-              style: TextStyle(color: AppColors.shopPrimary),
-            ),
+            child: Text('Done', style: TextStyle(color: AppColors.shopPrimary)),
           ),
         ],
       ),
@@ -706,7 +722,9 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
         content: Text(
           'Are you sure you want to sign out?',
           style: AppTypography.bodyMedium().copyWith(
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+            color: isDark
+                ? Colors.white.withOpacity(0.7)
+                : AppColors.textSecondary,
           ),
         ),
         actions: [
@@ -714,22 +732,26 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary),
+              style: TextStyle(
+                color: isDark
+                    ? Colors.white.withOpacity(0.7)
+                    : AppColors.textSecondary,
+              ),
             ),
           ),
           TextButton(
             onPressed: () async {
-              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final authProvider = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              );
               await authProvider.logout();
               if (mounted) {
                 Navigator.pop(context);
                 context.go('/login');
               }
             },
-            child: Text(
-              'Sign Out',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Sign Out', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),

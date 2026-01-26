@@ -81,7 +81,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE animals (
         id INTEGER PRIMARY KEY,
-        farmer INTEGER NOT NULL,
+        abbatoir INTEGER NOT NULL,
         species TEXT NOT NULL,
         animal_id TEXT,
         animal_name TEXT,
@@ -455,7 +455,7 @@ class DatabaseHelper {
     for (final animal in animals) {
       final map = {
         'id': animal.id,
-        'farmer': animal.farmer,
+        'abbatoir': animal.abbatoir,
         'species': animal.species,
         'animal_id': animal.animalId,
         'animal_name': animal.animalName,

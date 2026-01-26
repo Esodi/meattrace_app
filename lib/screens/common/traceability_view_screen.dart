@@ -8,7 +8,7 @@ import 'package:timeline_tile/timeline_tile.dart';
 class TraceabilityViewScreen extends StatefulWidget {
   final Product product;
 
-  const TraceabilityViewScreen({Key? key, required this.product}) : super(key: key);
+  const TraceabilityViewScreen({super.key, required this.product});
 
   @override
   State<TraceabilityViewScreen> createState() => _TraceabilityViewScreenState();
@@ -98,10 +98,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Batch: ${widget.product.batchNumber}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -130,34 +127,29 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                 children: [
                   const Text(
                     'Product Journey',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Track the complete journey from farm to your table',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
+                    'Track the complete journey from abbatoir to your table',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Source Animal
                   if (_sourceAnimal != null)
                     _buildTimelineItem(
                       isFirst: true,
                       isLast: false,
-                      title: 'Farm Origin',
+                      title: 'Abbatoir Origin',
                       subtitle: _sourceAnimal!.abbatoirName,
-                      description: 'Animal ID: ${_sourceAnimal!.animalId}\n'
+                      description:
+                          'Animal ID: ${_sourceAnimal!.animalId}\n'
                           'Species: ${_sourceAnimal!.species}\n'
                           'Age: ${_sourceAnimal!.age} months\n'
                           'Weight: ${_sourceAnimal!.liveWeight ?? 0} kg',
                       icon: Icons.agriculture,
-                      iconColor: AppColors.farmerPrimary,
+                      iconColor: AppColors.abbatoirPrimary,
                       date: _sourceAnimal!.createdAt,
                     ),
 
@@ -165,8 +157,10 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                   ...(_timeline.asMap().entries.map((entry) {
                     final index = entry.key;
                     final event = entry.value;
-                    final isLast = index == _timeline.length - 1 && widget.product.receivedBy == null;
-                    
+                    final isLast =
+                        index == _timeline.length - 1 &&
+                        widget.product.receivedBy == null;
+
                     return _buildTimelineItem(
                       isFirst: false,
                       isLast: isLast,
@@ -186,7 +180,8 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                       isLast: true,
                       title: 'Shop/Retail',
                       subtitle: 'Available for Sale',
-                      description: 'Product received and ready for consumers\n'
+                      description:
+                          'Product received and ready for consumers\n'
                           'Received: ${_formatDate(widget.product.receivedAt!)}',
                       icon: Icons.store,
                       iconColor: AppColors.shopPrimary,
@@ -210,16 +205,19 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                 children: [
                   const Text(
                     'Product Details',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const Divider(height: 24),
                   _buildDetailRow('Manufacturer', widget.product.manufacturer),
                   _buildDetailRow('Batch Number', widget.product.batchNumber),
-                  _buildDetailRow('Price', '\$${widget.product.price.toStringAsFixed(2)} per ${widget.product.weightUnit}'),
-                  _buildDetailRow('Quantity', '${widget.product.quantity.toInt()} units'),
+                  _buildDetailRow(
+                    'Price',
+                    '\$${widget.product.price.toStringAsFixed(2)} per ${widget.product.weightUnit}',
+                  ),
+                  _buildDetailRow(
+                    'Quantity',
+                    '${widget.product.quantity.toInt()} units',
+                  ),
                   if (widget.product.description.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     const Text(
@@ -288,23 +286,13 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
     return TimelineTile(
       isFirst: isFirst,
       isLast: isLast,
-      beforeLineStyle: LineStyle(
-        color: Colors.grey.shade300,
-        thickness: 2,
-      ),
+      beforeLineStyle: LineStyle(color: Colors.grey.shade300, thickness: 2),
       indicatorStyle: IndicatorStyle(
         width: 50,
         height: 50,
         indicator: Container(
-          decoration: BoxDecoration(
-            color: iconColor,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 24,
-          ),
+          decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
+          child: Icon(icon, color: Colors.white, size: 24),
         ),
       ),
       endChild: Container(
@@ -338,10 +326,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                 ),
                 Text(
                   _formatDate(date),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -379,19 +364,13 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
             width: 120,
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
             ),
           ),
         ],

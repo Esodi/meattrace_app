@@ -8,9 +8,9 @@ import '../../utils/app_theme.dart';
 /// Reusable input widgets with consistent styling
 
 enum TextFieldVariant {
-  outlined,   // Outlined border
-  filled,     // Filled background
-  underline,  // Underline only (Material Design default)
+  outlined, // Outlined border
+  filled, // Filled background
+  underline, // Underline only (Material Design default)
 }
 
 class CustomTextField extends StatefulWidget {
@@ -39,7 +39,7 @@ class CustomTextField extends StatefulWidget {
   final AutovalidateMode? autovalidateMode;
 
   const CustomTextField({
-    Key? key,
+    super.key,
     this.label,
     this.hint,
     this.helperText,
@@ -63,7 +63,7 @@ class CustomTextField extends StatefulWidget {
     this.variant = TextFieldVariant.underline,
     this.focusNode,
     this.autovalidateMode,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -76,6 +76,19 @@ class _CustomTextFieldState extends State<CustomTextField> {
   void initState() {
     super.initState();
     _obscureText = widget.obscureText;
+  }
+
+  @override
+  void didUpdateWidget(CustomTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.obscureText != oldWidget.obscureText) {
+      _obscureText = widget.obscureText;
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
@@ -102,7 +115,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           borderSide: BorderSide.none,
         );
-        fillColor = isDark ? AppColors.darkSurfaceVariant : AppColors.backgroundGray;
+        fillColor = isDark
+            ? AppColors.darkSurfaceVariant
+            : AppColors.backgroundGray;
         filled = true;
         break;
       case TextFieldVariant.underline:
@@ -148,9 +163,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       validator: widget.validator,
       inputFormatters: widget.inputFormatters,
       autovalidateMode: widget.autovalidateMode,
-      style: AppTypography.bodyLarge(
-        color: theme.colorScheme.onSurface,
-      ),
+      style: AppTypography.bodyLarge(color: theme.colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
@@ -163,22 +176,13 @@ class _CustomTextFieldState extends State<CustomTextField> {
         border: border,
         enabledBorder: border,
         focusedBorder: border.copyWith(
-          borderSide: BorderSide(
-            color: theme.colorScheme.primary,
-            width: 2,
-          ),
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
         ),
         errorBorder: border.copyWith(
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1,
-          ),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         focusedErrorBorder: border.copyWith(
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
         disabledBorder: border.copyWith(
           borderSide: BorderSide(
@@ -205,14 +209,14 @@ class SearchTextField extends StatelessWidget {
   final bool autofocus;
 
   const SearchTextField({
-    Key? key,
+    super.key,
     this.hint,
     this.controller,
     this.onChanged,
     this.onSubmitted,
     this.onClear,
     this.autofocus = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +253,7 @@ class CustomDropdownField<T> extends StatelessWidget {
   final TextFieldVariant variant;
 
   const CustomDropdownField({
-    Key? key,
+    super.key,
     this.label,
     this.hint,
     this.value,
@@ -258,7 +262,7 @@ class CustomDropdownField<T> extends StatelessWidget {
     this.validator,
     this.enabled = true,
     this.variant = TextFieldVariant.underline,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -284,7 +288,9 @@ class CustomDropdownField<T> extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           borderSide: BorderSide.none,
         );
-        fillColor = isDark ? AppColors.darkSurfaceVariant : AppColors.backgroundGray;
+        fillColor = isDark
+            ? AppColors.darkSurfaceVariant
+            : AppColors.backgroundGray;
         filled = true;
         break;
       case TextFieldVariant.underline:
@@ -298,7 +304,7 @@ class CustomDropdownField<T> extends StatelessWidget {
     }
 
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       items: items,
       onChanged: enabled ? onChanged : null,
       validator: validator,
@@ -310,24 +316,16 @@ class CustomDropdownField<T> extends StatelessWidget {
         border: border,
         enabledBorder: border,
         focusedBorder: border.copyWith(
-          borderSide: BorderSide(
-            color: theme.colorScheme.primary,
-            width: 2,
-          ),
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
         ),
         errorBorder: border.copyWith(
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1,
-          ),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         contentPadding: variant == TextFieldVariant.underline
             ? const EdgeInsets.symmetric(vertical: AppTheme.space8)
             : const EdgeInsets.all(AppTheme.space16),
       ),
-      style: AppTypography.bodyLarge(
-        color: theme.colorScheme.onSurface,
-      ),
+      style: AppTypography.bodyLarge(color: theme.colorScheme.onSurface),
       dropdownColor: theme.colorScheme.surface,
       icon: const Icon(Icons.arrow_drop_down, size: AppTheme.iconMedium),
     );
@@ -348,7 +346,7 @@ class NumberTextField extends StatelessWidget {
   final String? prefix;
 
   const NumberTextField({
-    Key? key,
+    super.key,
     this.label,
     this.hint,
     this.controller,
@@ -359,7 +357,7 @@ class NumberTextField extends StatelessWidget {
     this.maxLength,
     this.suffix,
     this.prefix,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +388,9 @@ class NumberTextField extends StatelessWidget {
                 child: Text(
                   suffix!,
                   style: AppTypography.bodyMedium(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -404,7 +404,9 @@ class NumberTextField extends StatelessWidget {
                 child: Text(
                   prefix!,
                   style: AppTypography.bodyMedium(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -426,7 +428,7 @@ class DatePickerField extends StatelessWidget {
   final TextFieldVariant variant;
 
   const DatePickerField({
-    Key? key,
+    super.key,
     this.label,
     this.hint,
     this.selectedDate,
@@ -435,7 +437,7 @@ class DatePickerField extends StatelessWidget {
     this.lastDate,
     this.validator,
     this.variant = TextFieldVariant.underline,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

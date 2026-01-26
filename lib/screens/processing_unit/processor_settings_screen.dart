@@ -13,7 +13,8 @@ class ProcessorSettingsScreen extends StatefulWidget {
   const ProcessorSettingsScreen({super.key});
 
   @override
-  State<ProcessorSettingsScreen> createState() => _ProcessorSettingsScreenState();
+  State<ProcessorSettingsScreen> createState() =>
+      _ProcessorSettingsScreenState();
 }
 
 class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
@@ -29,18 +30,29 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
     final user = authProvider.user;
 
     return Scaffold(
-      backgroundColor: themeProvider.isDarkMode ? const Color(0xFF1A1A1A) : AppColors.backgroundLight,
+      backgroundColor: themeProvider.isDarkMode
+          ? const Color(0xFF1A1A1A)
+          : AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: themeProvider.isDarkMode
+            ? const Color(0xFF1E1E1E)
+            : Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back,
+            color: themeProvider.isDarkMode
+                ? Colors.white
+                : AppColors.textPrimary,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Settings',
           style: AppTypography.headlineMedium().copyWith(
-            color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary,
+            color: themeProvider.isDarkMode
+                ? Colors.white
+                : AppColors.textPrimary,
           ),
         ),
       ),
@@ -228,8 +240,12 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                   ),
                   onTap: () {
                     // Get current processing unit ID from auth provider
-                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                    final processingUnitId = authProvider.user?.processingUnitId;
+                    final authProvider = Provider.of<AuthProvider>(
+                      context,
+                      listen: false,
+                    );
+                    final processingUnitId =
+                        authProvider.user?.processingUnitId;
 
                     if (processingUnitId != null) {
                       // Use context.push instead of goNamed to maintain navigation stack
@@ -345,27 +361,38 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
       child: Text(
         title,
         style: AppTypography.labelLarge().copyWith(
-          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          color: themeProvider.isDarkMode
+              ? Colors.white.withOpacity(0.7)
+              : AppColors.textSecondary,
           fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
-  Widget _buildSettingsCard(List<Widget> children, ThemeProvider themeProvider) {
+  Widget _buildSettingsCard(
+    List<Widget> children,
+    ThemeProvider themeProvider,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppTheme.space16),
       decoration: BoxDecoration(
-        color: themeProvider.isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+        color: themeProvider.isDarkMode
+            ? const Color(0xFF2D2D2D)
+            : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: themeProvider.isDarkMode ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
-        boxShadow: themeProvider.isDarkMode ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: themeProvider.isDarkMode
+            ? Border.all(color: Colors.white.withOpacity(0.1))
+            : null,
+        boxShadow: themeProvider.isDarkMode
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(children: children),
     );
@@ -392,19 +419,23 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         title,
         style: AppTypography.bodyLarge().copyWith(
           fontWeight: FontWeight.w500,
-          color: themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary,
+          color: themeProvider.isDarkMode
+              ? Colors.white
+              : AppColors.textPrimary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium().copyWith(
-          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          color: themeProvider.isDarkMode
+              ? Colors.white.withOpacity(0.7)
+              : AppColors.textSecondary,
         ),
       ),
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.processorPrimary,
+        activeThumbColor: AppColors.processorPrimary,
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppTheme.space16,
@@ -427,7 +458,9 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(AppTheme.space8),
         decoration: BoxDecoration(
-          color: (iconColor ?? AppColors.processorPrimary).withValues(alpha: 0.1),
+          color: (iconColor ?? AppColors.processorPrimary).withValues(
+            alpha: 0.1,
+          ),
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
         ),
         child: Icon(
@@ -440,13 +473,17 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         title,
         style: AppTypography.bodyLarge().copyWith(
           fontWeight: FontWeight.w500,
-          color: textColor ?? (themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
+          color:
+              textColor ??
+              (themeProvider.isDarkMode ? Colors.white : AppColors.textPrimary),
         ),
       ),
       subtitle: Text(
         subtitle,
         style: AppTypography.bodyMedium().copyWith(
-          color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          color: themeProvider.isDarkMode
+              ? Colors.white.withOpacity(0.7)
+              : AppColors.textSecondary,
         ),
       ),
       trailing: trailing,
@@ -497,10 +534,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Version 1.0.0',
-              style: AppTypography.bodyLarge(),
-            ),
+            Text('Version 1.0.0', style: AppTypography.bodyLarge()),
             const SizedBox(height: AppTheme.space16),
             Text(
               'MeatTrace is a comprehensive meat traceability system for farmers, processors, and retailers.',
@@ -625,7 +659,9 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
             Text(
               'Adjust the text size for better readability',
               style: AppTypography.bodyMedium().copyWith(
-                color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+                color: isDark
+                    ? Colors.white.withOpacity(0.7)
+                    : AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 16),
@@ -699,7 +735,9 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         content: Text(
           'Are you sure you want to logout?',
           style: TextStyle(
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+            color: isDark
+                ? Colors.white.withOpacity(0.7)
+                : AppColors.textSecondary,
           ),
         ),
         actions: [
@@ -707,7 +745,11 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary),
+              style: TextStyle(
+                color: isDark
+                    ? Colors.white.withOpacity(0.7)
+                    : AppColors.textSecondary,
+              ),
             ),
           ),
           TextButton(
@@ -716,10 +758,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               Provider.of<AuthProvider>(context, listen: false).logout();
               context.go('/login');
             },
-            child: Text(
-              'Logout',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Logout', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),

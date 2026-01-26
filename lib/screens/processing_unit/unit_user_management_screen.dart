@@ -14,11 +14,8 @@ import '../../widgets/core/custom_text_field.dart';
 
 class ProcessingUnitUserManagementScreen extends StatefulWidget {
   final int unitId;
-  
-  const ProcessingUnitUserManagementScreen({
-    super.key,
-    required this.unitId,
-  });
+
+  const ProcessingUnitUserManagementScreen({super.key, required this.unitId});
 
   @override
   State<ProcessingUnitUserManagementScreen> createState() =>
@@ -38,7 +35,7 @@ class _ProcessingUnitUserManagementScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     // Load data with error handling
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProvider();
@@ -55,8 +52,12 @@ class _ProcessingUnitUserManagementScreenState
     debugPrint('🚀 [UNIT_USER_MGMT] AuthProvider user: ${authProvider.user}');
     if (authProvider.user != null) {
       provider.setCurrentUserId(authProvider.user!.id);
-      debugPrint('✅ [UNIT_USER_MGMT] Set current user ID: ${authProvider.user!.id}');
-      debugPrint('✅ [UNIT_USER_MGMT] Provider currentUserId after set: ${provider.currentUserId}');
+      debugPrint(
+        '✅ [UNIT_USER_MGMT] Set current user ID: ${authProvider.user!.id}',
+      );
+      debugPrint(
+        '✅ [UNIT_USER_MGMT] Provider currentUserId after set: ${provider.currentUserId}',
+      );
     } else {
       debugPrint('⚠️ [UNIT_USER_MGMT] No current user found in AuthProvider');
     }
@@ -71,20 +72,28 @@ class _ProcessingUnitUserManagementScreenState
   }
 
   Future<void> _loadDataWithErrorHandling() async {
-    debugPrint('🚀 [UNIT_USER_MGMT] _loadDataWithErrorHandling called for unit ${widget.unitId}');
+    debugPrint(
+      '🚀 [UNIT_USER_MGMT] _loadDataWithErrorHandling called for unit ${widget.unitId}',
+    );
     try {
       final provider = context.read<ProcessingUnitManagementProvider>();
-      debugPrint('🚀 [UNIT_USER_MGMT] Got provider instance: ${provider.hashCode}');
+      debugPrint(
+        '🚀 [UNIT_USER_MGMT] Got provider instance: ${provider.hashCode}',
+      );
 
       // CRITICAL: Load members FIRST before join requests
       // This ensures permission checks work correctly when rendering request cards
       debugPrint('🚀 [UNIT_USER_MGMT] About to call loadUnitMembers...');
       await provider.loadUnitMembers(widget.unitId);
-      debugPrint('✅ [UNIT_USER_MGMT] Members loaded: ${provider.members.length}');
+      debugPrint(
+        '✅ [UNIT_USER_MGMT] Members loaded: ${provider.members.length}',
+      );
 
       debugPrint('🚀 [UNIT_USER_MGMT] About to call loadJoinRequests...');
       await provider.loadJoinRequests(widget.unitId);
-      debugPrint('✅ [UNIT_USER_MGMT] Join requests loaded: ${provider.joinRequests.length}');
+      debugPrint(
+        '✅ [UNIT_USER_MGMT] Join requests loaded: ${provider.joinRequests.length}',
+      );
 
       if (mounted) {
         setState(() => _loadError = null);
@@ -102,7 +111,7 @@ class _ProcessingUnitUserManagementScreenState
     // Load members first, then join requests (sequential, not parallel)
     await provider.loadUnitMembers(widget.unitId);
     await provider.loadJoinRequests(widget.unitId);
-    
+
     if (mounted) {
       setState(() => _loadError = null);
     }
@@ -177,10 +186,7 @@ class _ProcessingUnitUserManagementScreenState
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [
-                _buildMembersTab(),
-                _buildRequestsTab(),
-              ],
+              children: [_buildMembersTab(), _buildRequestsTab()],
             ),
           ),
         ],
@@ -275,23 +281,31 @@ class _ProcessingUnitUserManagementScreenState
       builder: (context, provider, child) {
         // Show loading if members aren't loaded yet (required for permission checks)
         if (!provider.membersLoaded) {
-          debugPrint('🔄 [REQUESTS_TAB] Showing loading: members not loaded yet');
+          debugPrint(
+            '🔄 [REQUESTS_TAB] Showing loading: members not loaded yet',
+          );
           return _buildLoadingSkeleton();
         }
 
         // Show loading if currently loading AND no join requests loaded yet
         if (provider.isLoading && provider.joinRequests.isEmpty) {
-          debugPrint('🔄 [REQUESTS_TAB] Showing loading: currently loading and no requests');
+          debugPrint(
+            '🔄 [REQUESTS_TAB] Showing loading: currently loading and no requests',
+          );
           return _buildLoadingSkeleton();
         }
 
         if (_loadError != null || provider.error != null) {
-          debugPrint('❌ [REQUESTS_TAB] Showing error: ${_loadError ?? provider.error}');
+          debugPrint(
+            '❌ [REQUESTS_TAB] Showing error: ${_loadError ?? provider.error}',
+          );
           return _buildErrorState(_loadError ?? provider.error!);
         }
 
         final requests = provider.pendingJoinRequests;
-        debugPrint('✅ [REQUESTS_TAB] Rendering ${requests.length} join requests');
+        debugPrint(
+          '✅ [REQUESTS_TAB] Rendering ${requests.length} join requests',
+        );
 
         if (requests.isEmpty) {
           return _buildEmptyState(
@@ -318,18 +332,23 @@ class _ProcessingUnitUserManagementScreenState
 
   List<ProcessingUnitUser> _filterMembers(List<ProcessingUnitUser> members) {
     if (_searchQuery.isEmpty) return members;
-    
+
     return members.where((member) {
       return member.username.toLowerCase().contains(_searchQuery) ||
-             member.email.toLowerCase().contains(_searchQuery) ||
-             member.displayRole.toLowerCase().contains(_searchQuery);
+          member.email.toLowerCase().contains(_searchQuery) ||
+          member.displayRole.toLowerCase().contains(_searchQuery);
     }).toList();
   }
 
-  Widget _buildMemberCard(ProcessingUnitUser member, ProcessingUnitManagementProvider provider) {
+  Widget _buildMemberCard(
+    ProcessingUnitUser member,
+    ProcessingUnitManagementProvider provider,
+  ) {
     // Members should be loaded by the time this renders, but add safety check
-    final canManage = provider.membersLoaded ? provider.canManageUsers() : false;
-    
+    final canManage = provider.membersLoaded
+        ? provider.canManageUsers()
+        : false;
+
     return Card(
       margin: EdgeInsets.only(bottom: AppTheme.space12),
       elevation: 2,
@@ -355,7 +374,7 @@ class _ProcessingUnitUserManagementScreenState
                 ),
               ),
               SizedBox(width: AppTheme.space16),
-              
+
               // Member info
               Expanded(
                 child: Column(
@@ -414,18 +433,22 @@ class _ProcessingUnitUserManagementScreenState
                   ],
                 ),
               ),
-              
+
               // Actions menu
               if (canManage && !member.isOwner)
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_vert, color: AppColors.textSecondary),
-                  onSelected: (value) => _handleMemberAction(value, member, provider),
+                  onSelected: (value) =>
+                      _handleMemberAction(value, member, provider),
                   itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'change_role',
                       child: Row(
                         children: [
-                          Icon(Icons.swap_horiz, color: AppColors.processorPrimary),
+                          Icon(
+                            Icons.swap_horiz,
+                            color: AppColors.processorPrimary,
+                          ),
                           SizedBox(width: AppTheme.space8),
                           Text('Change Role'),
                         ],
@@ -472,7 +495,10 @@ class _ProcessingUnitUserManagementScreenState
     );
   }
 
-  Widget _buildRequestCard(JoinRequest request, ProcessingUnitManagementProvider provider) {
+  Widget _buildRequestCard(
+    JoinRequest request,
+    ProcessingUnitManagementProvider provider,
+  ) {
     // Use synchronous permission check - members should already be loaded
     // by the time this widget renders (loaded in _loadDataWithErrorHandling)
     final canManage = provider.canManageUsers();
@@ -481,11 +507,15 @@ class _ProcessingUnitUserManagementScreenState
     debugPrint('🔍 [REQUEST_CARD] Building card for ${request.username}');
     debugPrint('🔍 [REQUEST_CARD] canManage = $canManage');
     debugPrint('🔍 [REQUEST_CARD] Members count = ${provider.members.length}');
-    debugPrint('🔍 [REQUEST_CARD] Current user ID in provider = ${provider.currentUserId}');
+    debugPrint(
+      '🔍 [REQUEST_CARD] Current user ID in provider = ${provider.currentUserId}',
+    );
     if (provider.members.isNotEmpty) {
-      debugPrint('🔍 [REQUEST_CARD] Sample member: userId=${provider.members.first.userId}, role=${provider.members.first.role}');
+      debugPrint(
+        '🔍 [REQUEST_CARD] Sample member: userId=${provider.members.first.userId}, role=${provider.members.first.role}',
+      );
     }
-    
+
     return Card(
       margin: EdgeInsets.only(bottom: AppTheme.space12),
       elevation: 2,
@@ -515,10 +545,14 @@ class _ProcessingUnitUserManagementScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(request.username ?? 'No username',
-                        style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.bold),
+                      Text(
+                        request.username ?? 'No username',
+                        style: AppTypography.bodyLarge().copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      Text(request.email ?? 'No email',
+                      Text(
+                        request.email ?? 'No email',
                         style: AppTypography.bodyMedium(
                           color: AppColors.textSecondary,
                         ),
@@ -529,10 +563,14 @@ class _ProcessingUnitUserManagementScreenState
               ],
             ),
             SizedBox(height: AppTheme.space12),
-            
+
             Row(
               children: [
-                Icon(Icons.work_outline, size: 16, color: AppColors.textSecondary),
+                Icon(
+                  Icons.work_outline,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
                 SizedBox(width: AppTheme.space4),
                 Text(
                   'Requested Role: ',
@@ -543,7 +581,7 @@ class _ProcessingUnitUserManagementScreenState
                 _buildRoleBadge(request.requestedRole),
               ],
             ),
-            
+
             if (request.message != null && request.message!.isNotEmpty) ...[
               SizedBox(height: AppTheme.space12),
               Container(
@@ -562,32 +600,31 @@ class _ProcessingUnitUserManagementScreenState
                       ).copyWith(fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: AppTheme.space4),
-                    Text(
-                      request.message!,
-                      style: AppTypography.bodyMedium(),
-                    ),
+                    Text(request.message!, style: AppTypography.bodyMedium()),
                   ],
                 ),
               ),
             ],
-            
+
             SizedBox(height: AppTheme.space8),
             Text(
               'Requested: ${request.requestedAt != null ? _formatDate(request.requestedAt!) : 'Unknown'}',
-              style: AppTypography.caption(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.caption(color: AppColors.textSecondary),
             ),
-            
+
             SizedBox(height: AppTheme.space16),
             Row(
               children: [
                 Expanded(
                   child: CustomButton(
                     label: 'Reject',
-                    onPressed: canManage ? () => _handleRejectRequest(request, provider) : null,
+                    onPressed: canManage
+                        ? () => _handleRejectRequest(request, provider)
+                        : null,
                     variant: ButtonVariant.secondary,
-                    customColor: canManage ? AppColors.error : AppColors.textSecondary,
+                    customColor: canManage
+                        ? AppColors.error
+                        : AppColors.textSecondary,
                     size: ButtonSize.small,
                   ),
                 ),
@@ -595,9 +632,13 @@ class _ProcessingUnitUserManagementScreenState
                 Expanded(
                   child: CustomButton(
                     label: 'Approve',
-                    onPressed: canManage ? () => _handleApproveRequest(request, provider) : null,
+                    onPressed: canManage
+                        ? () => _handleApproveRequest(request, provider)
+                        : null,
                     variant: ButtonVariant.primary,
-                    customColor: canManage ? AppColors.success : AppColors.textSecondary,
+                    customColor: canManage
+                        ? AppColors.success
+                        : AppColors.textSecondary,
                     size: ButtonSize.small,
                   ),
                 ),
@@ -612,7 +653,7 @@ class _ProcessingUnitUserManagementScreenState
   Widget _buildStatusBadge(ProcessingUnitUser member) {
     Color color;
     String status = member.status;
-    
+
     if (member.isSuspended) {
       color = AppColors.error;
     } else if (!member.isActive) {
@@ -622,7 +663,7 @@ class _ProcessingUnitUserManagementScreenState
     } else {
       color = AppColors.success;
     }
-    
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: AppTheme.space8,
@@ -644,10 +685,11 @@ class _ProcessingUnitUserManagementScreenState
 
   Widget _buildRoleBadge(String role) {
     final color = _getRoleColor(role);
-    final displayRole = role.split('_').map((word) => 
-      word[0].toUpperCase() + word.substring(1)
-    ).join(' ');
-    
+    final displayRole = role
+        .split('_')
+        .map((word) => word[0].toUpperCase() + word.substring(1))
+        .join(' ');
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: AppTheme.space8,
@@ -683,26 +725,18 @@ class _ProcessingUnitUserManagementScreenState
                 color: AppColors.processorPrimary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 64,
-                color: AppColors.processorPrimary,
-              ),
+              child: Icon(icon, size: 64, color: AppColors.processorPrimary),
             ),
             SizedBox(height: AppTheme.space24),
             Text(
               title,
-              style: AppTypography.headlineMedium(
-                color: AppColors.textPrimary,
-              ),
+              style: AppTypography.headlineMedium(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: AppTheme.space8),
             Text(
               message,
-              style: AppTypography.bodyMedium(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.bodyMedium(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             if (_searchQuery.isEmpty) ...[
@@ -727,24 +761,16 @@ class _ProcessingUnitUserManagementScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 80,
-              color: AppColors.error,
-            ),
+            Icon(Icons.error_outline, size: 80, color: AppColors.error),
             SizedBox(height: AppTheme.space24),
             Text(
               'Error Loading Data',
-              style: AppTypography.headlineMedium(
-                color: AppColors.error,
-              ),
+              style: AppTypography.headlineMedium(color: AppColors.error),
             ),
             SizedBox(height: AppTheme.space8),
             Text(
               error,
-              style: AppTypography.bodyMedium(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.bodyMedium(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: AppTheme.space24),
@@ -868,7 +894,7 @@ class _ProcessingUnitUserManagementScreenState
   String _formatLastActive(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inMinutes < 1) {
       return 'Just now';
     } else if (difference.inHours < 1) {
@@ -885,7 +911,7 @@ class _ProcessingUnitUserManagementScreenState
   String _formatDate(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inDays < 1) {
       return 'Today at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays < 2) {
@@ -900,17 +926,17 @@ class _ProcessingUnitUserManagementScreenState
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLarge)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLarge),
+        ),
       ),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         maxChildSize: 0.9,
         minChildSize: 0.5,
         expand: false,
-        builder: (context, scrollController) => _buildMemberDetailsSheet(
-          member,
-          scrollController,
-        ),
+        builder: (context, scrollController) =>
+            _buildMemberDetailsSheet(member, scrollController),
       ),
     );
   }
@@ -935,7 +961,7 @@ class _ProcessingUnitUserManagementScreenState
             ),
           ),
           SizedBox(height: AppTheme.space24),
-          
+
           // Avatar and name
           Center(
             child: Column(
@@ -953,7 +979,9 @@ class _ProcessingUnitUserManagementScreenState
                 SizedBox(height: AppTheme.space16),
                 Text(
                   member.username,
-                  style: AppTypography.headlineMedium().copyWith(fontWeight: FontWeight.bold),
+                  style: AppTypography.headlineMedium().copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(height: AppTheme.space4),
                 Text(
@@ -965,11 +993,11 @@ class _ProcessingUnitUserManagementScreenState
               ],
             ),
           ),
-          
+
           SizedBox(height: AppTheme.space24),
           Divider(),
           SizedBox(height: AppTheme.space16),
-          
+
           // Details
           _buildDetailRow('Role', member.displayRole),
           _buildDetailRow('Permissions', member.permissions.toUpperCase()),
@@ -980,12 +1008,17 @@ class _ProcessingUnitUserManagementScreenState
           if (member.joinedAt != null)
             _buildDetailRow('Joined At', _formatDate(member.joinedAt!)),
           if (member.lastActive != null)
-            _buildDetailRow('Last Active', _formatLastActive(member.lastActive!)),
+            _buildDetailRow(
+              'Last Active',
+              _formatLastActive(member.lastActive!),
+            ),
           if (member.isSuspended && member.suspensionReason != null) ...[
             SizedBox(height: AppTheme.space16),
             Text(
               'Suspension Reason:',
-              style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.bold),
+              style: AppTypography.bodyLarge().copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             SizedBox(height: AppTheme.space8),
             Text(
@@ -1006,13 +1039,13 @@ class _ProcessingUnitUserManagementScreenState
         children: [
           Text(
             label,
-            style: AppTypography.bodyMedium(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTypography.bodyMedium(color: AppColors.textSecondary),
           ),
           Text(
             value,
-            style: AppTypography.bodyMedium().copyWith(fontWeight: FontWeight.w600),
+            style: AppTypography.bodyMedium().copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -1044,7 +1077,7 @@ class _ProcessingUnitUserManagementScreenState
     final emailController = TextEditingController();
     String selectedRole = 'worker';
     final formKey = GlobalKey<FormState>();
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1073,7 +1106,7 @@ class _ProcessingUnitUserManagementScreenState
                     }
                     // Improved email validation regex
                     final emailRegex = RegExp(
-                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
                     );
                     if (!emailRegex.hasMatch(value)) {
                       return 'Please enter a valid email address';
@@ -1083,17 +1116,25 @@ class _ProcessingUnitUserManagementScreenState
                 ),
                 SizedBox(height: AppTheme.space16),
                 DropdownButtonFormField<String>(
-                  value: selectedRole,
+                  initialValue: selectedRole,
                   decoration: InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
                   ),
                   items: [
                     DropdownMenuItem(value: 'worker', child: Text('Worker')),
-                    DropdownMenuItem(value: 'quality_control', child: Text('Quality Control')),
-                    DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
+                    DropdownMenuItem(
+                      value: 'quality_control',
+                      child: Text('Quality Control'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'supervisor',
+                      child: Text('Supervisor'),
+                    ),
                     DropdownMenuItem(value: 'manager', child: Text('Manager')),
                   ],
                   onChanged: (value) => setState(() => selectedRole = value!),
@@ -1128,7 +1169,7 @@ class _ProcessingUnitUserManagementScreenState
 
   Future<void> _sendInvitation(String email, String role) async {
     final provider = context.read<ProcessingUnitManagementProvider>();
-    
+
     // Show loading indicator
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1149,17 +1190,17 @@ class _ProcessingUnitUserManagementScreenState
         duration: Duration(seconds: 30),
       ),
     );
-    
+
     final success = await provider.inviteUser(
       unitId: widget.unitId,
       email: email,
       role: role,
     );
-    
+
     if (mounted) {
       // Hide loading indicator
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      
+
       // Show result
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1183,7 +1224,7 @@ class _ProcessingUnitUserManagementScreenState
           duration: Duration(seconds: 3),
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
@@ -1196,7 +1237,7 @@ class _ProcessingUnitUserManagementScreenState
   ) {
     String selectedRole = member.role;
     String selectedPermission = member.permissions;
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1206,7 +1247,7 @@ class _ProcessingUnitUserManagementScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 decoration: InputDecoration(
                   labelText: 'Role',
                   border: OutlineInputBorder(
@@ -1215,15 +1256,21 @@ class _ProcessingUnitUserManagementScreenState
                 ),
                 items: [
                   DropdownMenuItem(value: 'worker', child: Text('Worker')),
-                  DropdownMenuItem(value: 'quality_control', child: Text('Quality Control')),
-                  DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
+                  DropdownMenuItem(
+                    value: 'quality_control',
+                    child: Text('Quality Control'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'supervisor',
+                    child: Text('Supervisor'),
+                  ),
                   DropdownMenuItem(value: 'manager', child: Text('Manager')),
                 ],
                 onChanged: (value) => setState(() => selectedRole = value!),
               ),
               SizedBox(height: AppTheme.space16),
               DropdownButtonFormField<String>(
-                value: selectedPermission,
+                initialValue: selectedPermission,
                 decoration: InputDecoration(
                   labelText: 'Permission Level',
                   border: OutlineInputBorder(
@@ -1235,7 +1282,8 @@ class _ProcessingUnitUserManagementScreenState
                   DropdownMenuItem(value: 'write', child: Text('Read & Write')),
                   DropdownMenuItem(value: 'admin', child: Text('Admin')),
                 ],
-                onChanged: (value) => setState(() => selectedPermission = value!),
+                onChanged: (value) =>
+                    setState(() => selectedPermission = value!),
               ),
             ],
           ),
@@ -1276,7 +1324,7 @@ class _ProcessingUnitUserManagementScreenState
       role: newRole,
       permission: newPermission,
     );
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1288,7 +1336,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
@@ -1301,7 +1349,7 @@ class _ProcessingUnitUserManagementScreenState
   ) {
     final reasonController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1336,7 +1384,8 @@ class _ProcessingUnitUserManagementScreenState
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel'),
           ),
-            CustomButton(label: 'Suspend',
+          CustomButton(
+            label: 'Suspend',
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 Navigator.pop(context);
@@ -1365,7 +1414,7 @@ class _ProcessingUnitUserManagementScreenState
       memberId: member.id,
       reason: reason,
     );
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1377,12 +1426,14 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.warning : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
     }
-  }  Future<void> _handleActivateUser(
+  }
+
+  Future<void> _handleActivateUser(
     ProcessingUnitUser member,
     ProcessingUnitManagementProvider provider,
   ) async {
@@ -1390,7 +1441,7 @@ class _ProcessingUnitUserManagementScreenState
       unitId: widget.unitId,
       memberId: member.id,
     );
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1402,7 +1453,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
@@ -1450,8 +1501,11 @@ class _ProcessingUnitUserManagementScreenState
     ProcessingUnitUser member,
     ProcessingUnitManagementProvider provider,
   ) async {
-    final success = await provider.removeMember(unitId: widget.unitId, memberId: member.id);
-    
+    final success = await provider.removeMember(
+      unitId: widget.unitId,
+      memberId: member.id,
+    );
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1463,7 +1517,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
@@ -1474,11 +1528,21 @@ class _ProcessingUnitUserManagementScreenState
     JoinRequest request,
     ProcessingUnitManagementProvider provider,
   ) async {
-    debugPrint('🔥 [APPROVE_BUTTON] Approve button pressed for request ${request.id} from ${request.username}');
-    debugPrint('🔥 [APPROVE_BUTTON] Request details: id=${request.id}, username=${request.username}, email=${request.email}');
-    debugPrint('🔥 [APPROVE_BUTTON] Provider canManageUsers: ${provider.canManageUsers()}');
-    debugPrint('🔥 [APPROVE_BUTTON] Provider currentUserId: ${provider.currentUserId}');
-    debugPrint('🔥 [APPROVE_BUTTON] Provider members count: ${provider.members.length}');
+    debugPrint(
+      '🔥 [APPROVE_BUTTON] Approve button pressed for request ${request.id} from ${request.username}',
+    );
+    debugPrint(
+      '🔥 [APPROVE_BUTTON] Request details: id=${request.id}, username=${request.username}, email=${request.email}',
+    );
+    debugPrint(
+      '🔥 [APPROVE_BUTTON] Provider canManageUsers: ${provider.canManageUsers()}',
+    );
+    debugPrint(
+      '🔥 [APPROVE_BUTTON] Provider currentUserId: ${provider.currentUserId}',
+    );
+    debugPrint(
+      '🔥 [APPROVE_BUTTON] Provider members count: ${provider.members.length}',
+    );
 
     final success = await provider.approveJoinRequest(
       request.id!,
@@ -1514,7 +1578,7 @@ class _ProcessingUnitUserManagementScreenState
   ) {
     final reasonController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1566,16 +1630,28 @@ class _ProcessingUnitUserManagementScreenState
     String reason,
     ProcessingUnitManagementProvider provider,
   ) async {
-    debugPrint('🔥 [REJECT_BUTTON] Reject button pressed for request ${request.id} from ${request.username}');
-    debugPrint('🔥 [REJECT_BUTTON] Request details: id=${request.id}, username=${request.username}, email=${request.email}');
+    debugPrint(
+      '🔥 [REJECT_BUTTON] Reject button pressed for request ${request.id} from ${request.username}',
+    );
+    debugPrint(
+      '🔥 [REJECT_BUTTON] Request details: id=${request.id}, username=${request.username}, email=${request.email}',
+    );
     debugPrint('🔥 [REJECT_BUTTON] Reason: "$reason"');
-    debugPrint('🔥 [REJECT_BUTTON] Provider canManageUsers: ${provider.canManageUsers()}');
-    debugPrint('🔥 [REJECT_BUTTON] Provider currentUserId: ${provider.currentUserId}');
-    debugPrint('🔥 [REJECT_BUTTON] Provider members count: ${provider.members.length}');
+    debugPrint(
+      '🔥 [REJECT_BUTTON] Provider canManageUsers: ${provider.canManageUsers()}',
+    );
+    debugPrint(
+      '🔥 [REJECT_BUTTON] Provider currentUserId: ${provider.currentUserId}',
+    );
+    debugPrint(
+      '🔥 [REJECT_BUTTON] Provider members count: ${provider.members.length}',
+    );
 
     final success = await provider.rejectJoinRequest(
       request.id!,
-      responseMessage: reason.isNotEmpty ? reason : 'Your request has been rejected.',
+      responseMessage: reason.isNotEmpty
+          ? reason
+          : 'Your request has been rejected.',
     );
 
     debugPrint('🔥 [REJECT_BUTTON] API call completed: success=$success');

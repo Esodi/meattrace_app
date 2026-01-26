@@ -47,7 +47,7 @@ class ShopProfileScreen extends StatelessWidget {
                   radius: 50,
                   backgroundColor: AppColors.shopPrimary,
                   child: Text(
-                    user?.username?.substring(0, 1).toUpperCase() ?? 'S',
+                    user?.username.substring(0, 1).toUpperCase() ?? 'S',
                     style: AppTypography.headlineLarge().copyWith(
                       color: Colors.white,
                       fontSize: 40,
@@ -55,11 +55,16 @@ class ShopProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppTheme.space16),
-                Text(user?.username ?? 'Shop User', style: AppTypography.headlineMedium()),
+                Text(
+                  user?.username ?? 'Shop User',
+                  style: AppTypography.headlineMedium(),
+                ),
                 const SizedBox(height: AppTheme.space4),
                 Text(
                   user?.email ?? 'email@example.com',
-                  style: AppTypography.bodyMedium().copyWith(color: AppColors.textSecondary),
+                  style: AppTypography.bodyMedium().copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: AppTheme.space8),
                 Container(
@@ -73,14 +78,21 @@ class ShopProfileScreen extends StatelessWidget {
                   ),
                   child: Text(
                     'Shop Owner',
-                    style: AppTypography.labelMedium().copyWith(color: AppColors.shopPrimary),
+                    style: AppTypography.labelMedium().copyWith(
+                      color: AppColors.shopPrimary,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: AppTheme.space16),
-          Text('Shop Management', style: AppTypography.titleMedium().copyWith(color: AppColors.textSecondary)),
+          Text(
+            'Shop Management',
+            style: AppTypography.titleMedium().copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: AppTheme.space8),
           CustomCard(
             padding: EdgeInsets.zero,
@@ -101,7 +113,10 @@ class ShopProfileScreen extends StatelessWidget {
                   subtitle: 'Manage shop users and roles',
                   onTap: () {
                     // Get current shop ID from auth provider
-                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                    final authProvider = Provider.of<AuthProvider>(
+                      context,
+                      listen: false,
+                    );
                     final shopId = authProvider.user?.shopId;
 
                     if (shopId != null) {
@@ -109,7 +124,9 @@ class ShopProfileScreen extends StatelessWidget {
                       context.push('/shop/users?shopId=$shopId');
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Shop ID not found. Please try again.')),
+                        const SnackBar(
+                          content: Text('Shop ID not found. Please try again.'),
+                        ),
                       );
                     }
                   },
@@ -118,7 +135,12 @@ class ShopProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppTheme.space16),
-          Text('App Settings', style: AppTypography.titleMedium().copyWith(color: AppColors.textSecondary)),
+          Text(
+            'App Settings',
+            style: AppTypography.titleMedium().copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: AppTheme.space8),
           CustomCard(
             padding: EdgeInsets.zero,
@@ -151,7 +173,10 @@ class ShopProfileScreen extends StatelessWidget {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: Text('Logout', style: AppTypography.headlineMedium()),
-                  content: Text('Are you sure you want to logout?', style: AppTypography.bodyMedium()),
+                  content: Text(
+                    'Are you sure you want to logout?',
+                    style: AppTypography.bodyMedium(),
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
@@ -175,7 +200,9 @@ class ShopProfileScreen extends StatelessWidget {
           Center(
             child: Text(
               'MeatTrace Pro v2.0.0',
-              style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
+              style: AppTypography.bodySmall().copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
         ],
@@ -200,7 +227,12 @@ class ShopProfileScreen extends StatelessWidget {
         child: Icon(icon, color: AppColors.shopPrimary, size: 24),
       ),
       title: Text(title, style: AppTypography.titleMedium()),
-      subtitle: Text(subtitle, style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary)),
+      subtitle: Text(
+        subtitle,
+        style: AppTypography.bodySmall().copyWith(
+          color: AppColors.textSecondary,
+        ),
+      ),
       trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
       onTap: onTap,
     );

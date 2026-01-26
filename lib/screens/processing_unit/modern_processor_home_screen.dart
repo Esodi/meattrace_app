@@ -22,21 +22,22 @@ class ModernProcessorHomeScreen extends StatefulWidget {
   const ModernProcessorHomeScreen({super.key});
 
   @override
-  State<ModernProcessorHomeScreen> createState() => _ModernProcessorHomeScreenState();
+  State<ModernProcessorHomeScreen> createState() =>
+      _ModernProcessorHomeScreenState();
 }
 
 class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-   late AnimationController _fadeController;
-   late Animation<double> _fadeAnimation;
-   late AnimationController _productsAnimationController;
-   late List<Animation<double>> _productAnimations;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late AnimationController _productsAnimationController;
+  late List<Animation<double>> _productAnimations;
 
-   int _pendingAnimalsCount = 0;
-   bool _isLoadingPending = false;
-   int _selectedIndex = 0;
-   ProductionStats? _productionStats;
-   bool _isLoadingStats = false;
+  int _pendingAnimalsCount = 0;
+  bool _isLoadingPending = false;
+  int _selectedIndex = 0;
+  ProductionStats? _productionStats;
+  bool _isLoadingStats = false;
   Timer? _autoRefreshTimer;
 
   // Getter to return pending count from production stats or fallback to local count
@@ -58,9 +59,10 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
     _productsAnimationController = AnimationController(
       vsync: this,
@@ -104,7 +106,6 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       // Pause auto-refresh when app is in background
       debugPrint('⏸️ App paused - stopping auto-refresh');
       _autoRefreshTimer?.cancel();
-      
     }
   }
 
@@ -130,7 +131,10 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
   Future<void> _loadData() async {
     final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
     final apiService = ApiService();
 
     await Future.wait([
@@ -148,14 +152,18 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     setState(() => _isLoadingPending = true);
 
     try {
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      final animalProvider = Provider.of<AnimalProvider>(
+        context,
+        listen: false,
+      );
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final processingUnitId = authProvider.user?.processingUnitId;
 
       if (processingUnitId != null) {
         // Count whole animals transferred to this processor but not yet received
         final pendingWholeAnimals = animalProvider.animals.where((animal) {
-          return animal.transferredTo == processingUnitId && animal.receivedBy == null;
+          return animal.transferredTo == processingUnitId &&
+              animal.receivedBy == null;
         }).length;
 
         // Count slaughter parts transferred to this processor but not yet received
@@ -163,7 +171,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         try {
           final allParts = await animalProvider.getSlaughterPartsList();
           pendingParts = allParts.where((part) {
-            return part.transferredTo == processingUnitId && part.receivedBy == null;
+            return part.transferredTo == processingUnitId &&
+                part.receivedBy == null;
           }).length;
         } catch (e) {
           debugPrint('Error loading pending parts: $e');
@@ -216,7 +225,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
   void _onNavItemTapped(int index) {
     setState(() => _selectedIndex = index);
-    
+
     switch (index) {
       case 0: // Dashboard - already here
         break;
@@ -250,32 +259,66 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
           tooltip: 'Menu',
           onPressed: () => scaffoldKey.currentState?.openDrawer(),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              'Processing Unit',
-              style: AppTypography.headlineMedium(),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.processorPrimary,
+                    AppColors.processorPrimary.withValues(alpha: 0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Image.asset(
+                  'assets/icons/MEATTRACE_ICON.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
-            Text(
-              'Production Dashboard',
-              style: AppTypography.bodyMedium().copyWith(
-                color: AppColors.textSecondary,
+            const SizedBox(width: AppTheme.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Processing Unit',
+                    style: AppTypography.headlineMedium(),
+                  ),
+                  Text(
+                    'Production Dashboard',
+                    style: AppTypography.bodyMedium().copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+
         actions: [
           IconButton(
             icon: Badge(
               label: pendingCount > 0 ? Text('$pendingCount') : null,
-              child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+              child: const Icon(
+                Icons.notifications_outlined,
+                color: AppColors.textPrimary,
+              ),
             ),
             tooltip: 'Notifications',
             onPressed: () => context.push('/processor/notifications'),
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.settings_outlined,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Settings',
             onPressed: () => context.push('/processor/settings'),
           ),
@@ -311,9 +354,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               ),
 
               // Quick Actions
-              SliverToBoxAdapter(
-                child: _buildQuickActions(),
-              ),
+              SliverToBoxAdapter(child: _buildQuickActions()),
 
               // Processing Pipeline removed
 
@@ -368,7 +409,9 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                     );
                   }
 
-                  final recentProducts = productProvider.products.take(5).toList();
+                  final recentProducts = productProvider.products
+                      .take(5)
+                      .toList();
 
                   if (recentProducts.isEmpty) {
                     return SliverToBoxAdapter(
@@ -392,30 +435,32 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                       AppTheme.space24,
                     ),
                     sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final product = recentProducts[index];
-                          return AnimatedBuilder(
-                            animation: _productAnimations[index],
-                            builder: (context, child) {
-                              return Transform.translate(
-                                offset: Offset(0, 50 * (1 - _productAnimations[index].value)),
-                                child: Opacity(
-                                  opacity: _productAnimations[index].value,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: AppTheme.space16),
-                                    child: _buildEnhancedProductCard(
-                                      product: product,
-                                      index: index,
-                                    ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final product = recentProducts[index];
+                        return AnimatedBuilder(
+                          animation: _productAnimations[index],
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset: Offset(
+                                0,
+                                50 * (1 - _productAnimations[index].value),
+                              ),
+                              child: Opacity(
+                                opacity: _productAnimations[index].value,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppTheme.space16,
+                                  ),
+                                  child: _buildEnhancedProductCard(
+                                    product: product,
+                                    index: index,
                                   ),
                                 ),
-                              );
-                            },
-                          );
-                        },
-                        childCount: recentProducts.length,
-                      ),
+                              ),
+                            );
+                          },
+                        );
+                      }, childCount: recentProducts.length),
                     ),
                   );
                 },
@@ -468,18 +513,25 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
   Widget _buildWelcomeHeader(String username) {
     // Gather provider-driven stats inside the welcome card so the overview
-    // appears within the same hero card (following the farmer dashboard pattern)
+    // appears within the same hero card (following the abbatoir dashboard pattern)
     final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
-    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUserId = authProvider.user?.id;
     final processingUnitId = authProvider.user?.processingUnitId;
-    final processingUnitName = authProvider.user?.processingUnitName ?? 'Processing Unit';
+    final processingUnitName =
+        authProvider.user?.processingUnitName ?? 'Processing Unit';
 
     // RECEIVED: Total number of received animals/parts since account creation
     // Use the getter which prioritizes production stats
-    int receivedAnimals = receivedCount > 0 ? receivedCount : 
-        animalProvider.animals.where((a) => a.receivedBy == currentUserId).length;
+    int receivedAnimals = receivedCount > 0
+        ? receivedCount
+        : animalProvider.animals
+              .where((a) => a.receivedBy == currentUserId)
+              .length;
 
     // PENDING: Total number of animals/parts not yet received/accepted or rejected
     // Use the getter which prioritizes production stats
@@ -504,9 +556,9 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     } else {
       // Fallback: Count products not transferred (transferredTo is null)
       inStockProducts = productProvider.products
-          .where((p) => 
-              p.processingUnit == processingUnitId && 
-              p.transferredTo == null
+          .where(
+            (p) =>
+                p.processingUnit == processingUnitId && p.transferredTo == null,
           )
           .length;
     }
@@ -543,7 +595,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 ),
-                child: const Icon(
+                child: Icon(
                   CustomIcons.processingPlant,
                   color: Colors.white,
                   size: 32,
@@ -616,11 +668,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.info_outline,
-                  color: Colors.white,
-                  size: 18,
-                ),
+                const Icon(Icons.info_outline, color: Colors.white, size: 18),
                 const SizedBox(width: AppTheme.space8),
                 Expanded(
                   child: Text(
@@ -634,7 +682,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
             ),
           ),
           const SizedBox(height: AppTheme.space24),
-          // Production Overview inside the welcome card (farmer-style)
+          // Production Overview inside the welcome card (abbatoir-style)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -708,7 +756,10 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     );
   }
 
-  Widget _buildStatsSection(AnimalProvider animalProvider, ProductProvider productProvider) {
+  Widget _buildStatsSection(
+    AnimalProvider animalProvider,
+    ProductProvider productProvider,
+  ) {
     // Overview moved into welcome header; keep this section minimal or use for
     // additional, wider stats in future. For now render nothing to avoid
     // duplicate overview UI.
@@ -733,11 +784,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         children: [
           Row(
             children: [
-              Icon(
-                icon,
-                color: color,
-                size: 20,
-              ),
+              Icon(icon, color: color, size: 20),
               const SizedBox(width: AppTheme.space8),
               Text(
                 label,
@@ -811,16 +858,13 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Quick Actions',
-            style: AppTypography.headlineMedium(),
-          ),
+          Text('Quick Actions', style: AppTypography.headlineMedium()),
           const SizedBox(height: AppTheme.space12),
           LayoutBuilder(
             builder: (context, constraints) {
               // Responsive column count based on available width
               // For small screens (< 360px): 3 columns
-              // For medium screens (360-500px): 4 columns  
+              // For medium screens (360-500px): 4 columns
               // For larger screens (> 500px): 5 columns
               final int crossAxisCount;
               if (constraints.maxWidth < 360) {
@@ -830,7 +874,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               } else {
                 crossAxisCount = 5;
               }
-              
+
               return GridView.count(
                 crossAxisCount: crossAxisCount,
                 crossAxisSpacing: AppTheme.space8,
@@ -838,7 +882,9 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                 childAspectRatio: 0.85,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                children: actions.map((action) => _buildQuickActionButton(action)).toList(),
+                children: actions
+                    .map((action) => _buildQuickActionButton(action))
+                    .toList(),
               );
             },
           ),
@@ -859,7 +905,9 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: AppColors.textSecondary.withValues(alpha: 0.2),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -880,11 +928,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                     color: action.color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),
-                  child: Icon(
-                    action.icon,
-                    color: action.color,
-                    size: 22,
-                  ),
+                  child: Icon(action.icon, color: action.color, size: 22),
                 ),
                 if (action.badge != null)
                   Positioned(
@@ -939,7 +983,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       child: EmptyStateCard(
         icon: CustomIcons.meatCut,
         message: 'No Products Yet',
-        subtitle: 'Start by receiving animals and creating your first products.',
+        subtitle:
+            'Start by receiving animals and creating your first products.',
         action: CustomButton(
           label: 'Receive Animals',
           onPressed: () => context.push('/receive-animals'),
@@ -1036,7 +1081,10 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     );
   }
 
-  Widget _buildEnhancedProductCard({required dynamic product, required int index}) {
+  Widget _buildEnhancedProductCard({
+    required dynamic product,
+    required int index,
+  }) {
     return InkWell(
       onTap: () => context.push('/products/${product.id}'),
       borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
@@ -1113,7 +1161,9 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.success.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
                           border: Border.all(
                             color: AppColors.success.withValues(alpha: 0.3),
                           ),
@@ -1312,9 +1362,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
             leading: const Icon(Icons.logout, color: AppColors.error),
             title: Text(
               'Logout',
-              style: AppTypography.bodyLarge().copyWith(
-                color: AppColors.error,
-              ),
+              style: AppTypography.bodyLarge().copyWith(color: AppColors.error),
             ),
             onTap: () {
               Navigator.pop(context);
@@ -1348,10 +1396,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   color: AppColors.error,
                   shape: BoxShape.circle,
                 ),
-                constraints: const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
-                ),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                 child: Center(
                   child: Text(
                     '$badge',
@@ -1365,10 +1410,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
             ),
         ],
       ),
-      title: Text(
-        title,
-        style: AppTypography.bodyLarge(),
-      ),
+      title: Text(title, style: AppTypography.bodyLarge()),
       onTap: onTap,
     );
   }
@@ -1418,12 +1460,16 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       builder: (context) => Container(
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLarge)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusLarge),
+          ),
         ),
         padding: const EdgeInsets.all(AppTheme.space16),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.7, // Max 70% of screen height
+            maxHeight:
+                MediaQuery.of(context).size.height *
+                0.7, // Max 70% of screen height
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1438,10 +1484,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              Text(
-                'Quick Actions',
-                style: AppTypography.headlineMedium(),
-              ),
+              Text('Quick Actions', style: AppTypography.headlineMedium()),
               const SizedBox(height: AppTheme.space16),
               Flexible(
                 child: SingleChildScrollView(
@@ -1604,7 +1647,10 @@ class DashedBorderPainter extends CustomPainter {
       final endAngle = ((i * dashAndGapLength) + dashLength) / radius;
 
       canvas.drawArc(
-        Rect.fromCircle(center: Offset(radius, radius), radius: radius - strokeWidth / 2),
+        Rect.fromCircle(
+          center: Offset(radius, radius),
+          radius: radius - strokeWidth / 2,
+        ),
         startAngle,
         endAngle - startAngle,
         false,

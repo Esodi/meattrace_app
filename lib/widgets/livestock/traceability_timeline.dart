@@ -36,11 +36,11 @@ class TraceabilityTimeline extends StatelessWidget {
   final bool reverseOrder; // Show newest first
 
   const TraceabilityTimeline({
-    Key? key,
+    super.key,
     required this.events,
     this.showConnectors = true,
     this.reverseOrder = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -68,10 +68,10 @@ class TimelineEventItem extends StatelessWidget {
   final bool showConnector;
 
   const TimelineEventItem({
-    Key? key,
+    super.key,
     required this.event,
     this.showConnector = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -95,10 +95,7 @@ class TimelineEventItem extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: eventColor.withOpacity(isDark ? 0.2 : 0.1),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: eventColor,
-                      width: 2,
-                    ),
+                    border: Border.all(color: eventColor, width: 2),
                   ),
                   child: Icon(
                     event.icon ?? Icons.circle,
@@ -106,22 +103,24 @@ class TimelineEventItem extends StatelessWidget {
                     color: eventColor,
                   ),
                 ),
-                
+
                 // Connector Line
                 if (showConnector)
                   Expanded(
                     child: Container(
                       width: 2,
-                      margin: const EdgeInsets.symmetric(vertical: AppTheme.space4),
+                      margin: const EdgeInsets.symmetric(
+                        vertical: AppTheme.space4,
+                      ),
                       color: isDark ? AppColors.darkDivider : AppColors.divider,
                     ),
                   ),
               ],
             ),
           ),
-          
+
           const SizedBox(width: AppTheme.space16),
-          
+
           // Event Content
           Expanded(
             child: Padding(
@@ -150,9 +149,9 @@ class TimelineEventItem extends StatelessWidget {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: AppTheme.space4),
-                  
+
                   // Event Date
                   Text(
                     _formatDate(event.timestamp),
@@ -160,18 +159,20 @@ class TimelineEventItem extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  
+
                   // Description
                   if (event.description != null) ...[
                     const SizedBox(height: AppTheme.space8),
                     Text(
                       event.description!,
                       style: AppTypography.bodyMedium(
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
-                  
+
                   // Location
                   if (event.location != null) ...[
                     const SizedBox(height: AppTheme.space8),
@@ -194,7 +195,7 @@ class TimelineEventItem extends StatelessWidget {
                       ],
                     ),
                   ],
-                  
+
                   // Performed By
                   if (event.performedBy != null) ...[
                     const SizedBox(height: AppTheme.space8),
@@ -224,21 +225,27 @@ class TimelineEventItem extends StatelessWidget {
                       ],
                     ),
                   ],
-                  
+
                   // Metadata
                   if (event.metadata != null && event.metadata!.isNotEmpty) ...[
                     const SizedBox(height: AppTheme.space12),
                     Container(
                       padding: const EdgeInsets.all(AppTheme.space12),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurfaceVariant : AppColors.backgroundGray,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        color: isDark
+                            ? AppColors.darkSurfaceVariant
+                            : AppColors.backgroundGray,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: event.metadata!.entries.map((entry) {
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: AppTheme.space4),
+                            padding: const EdgeInsets.only(
+                              bottom: AppTheme.space4,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -278,8 +285,18 @@ class TimelineEventItem extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -298,10 +315,10 @@ class CompactTraceabilityTimeline extends StatelessWidget {
   final bool reverseOrder;
 
   const CompactTraceabilityTimeline({
-    Key? key,
+    super.key,
     required this.events,
     this.reverseOrder = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -334,22 +351,14 @@ class CompactTraceabilityTimeline extends StatelessWidget {
           ),
           title: Text(
             event.title,
-            style: AppTypography.bodyMedium(
-              color: theme.colorScheme.onSurface,
-            ),
+            style: AppTypography.bodyMedium(color: theme.colorScheme.onSurface),
           ),
           subtitle: Text(
             _formatDateTime(event.timestamp),
-            style: AppTypography.bodySmall(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTypography.bodySmall(color: AppColors.textSecondary),
           ),
           trailing: event.location != null
-              ? Icon(
-                  Icons.location_on,
-                  size: 16,
-                  color: AppColors.textTertiary,
-                )
+              ? Icon(Icons.location_on, size: 16, color: AppColors.textTertiary)
               : null,
         );
       },
@@ -368,11 +377,11 @@ class TimelineSummaryCard extends StatelessWidget {
   final VoidCallback? onViewAll;
 
   const TimelineSummaryCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.events,
     this.onViewAll,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -408,9 +417,9 @@ class TimelineSummaryCard extends StatelessWidget {
                   ),
               ],
             ),
-            
+
             const SizedBox(height: AppTheme.space16),
-            
+
             // Timeline
             if (events.isEmpty)
               Center(
@@ -421,7 +430,9 @@ class TimelineSummaryCard extends StatelessWidget {
                       Icon(
                         Icons.timeline,
                         size: 48,
-                        color: isDark ? AppColors.darkTextTertiary : AppColors.textTertiary,
+                        color: isDark
+                            ? AppColors.darkTextTertiary
+                            : AppColors.textTertiary,
                       ),
                       const SizedBox(height: AppTheme.space12),
                       Text(

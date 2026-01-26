@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../models/animal.dart';
 import '../../providers/animal_provider.dart';
 import '../../utils/app_colors.dart';
-import '../../utils/app_typography.dart';
 import '../../widgets/core/custom_button.dart';
 
 class TransferScreen extends StatefulWidget {
@@ -29,7 +28,10 @@ class _TransferScreenState extends State<TransferScreen> {
   Future<void> _fetchProcessingUnits() async {
     setState(() => _isLoading = true);
     try {
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      final animalProvider = Provider.of<AnimalProvider>(
+        context,
+        listen: false,
+      );
       final units = await animalProvider.getProcessingUnits();
       setState(() {
         _processingUnits = units;
@@ -71,7 +73,10 @@ class _TransferScreenState extends State<TransferScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      final animalProvider = Provider.of<AnimalProvider>(
+        context,
+        listen: false,
+      );
       await animalProvider.transferAnimals(
         _selectedAnimals.map((a) => a.id).toList(),
         _selectedProcessingUnit!,
@@ -82,9 +87,9 @@ class _TransferScreenState extends State<TransferScreen> {
       );
       context.pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to transfer animals: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to transfer animals: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -95,7 +100,7 @@ class _TransferScreenState extends State<TransferScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transfer Animals'),
-        backgroundColor: AppColors.farmerPrimary,
+        backgroundColor: AppColors.abbatoirPrimary,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -113,7 +118,7 @@ class _TransferScreenState extends State<TransferScreen> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: DropdownButtonFormField<int>(
-        value: _selectedProcessingUnit,
+        initialValue: _selectedProcessingUnit,
         hint: const Text('Select Processing Unit'),
         onChanged: (value) {
           setState(() {
@@ -138,11 +143,15 @@ class _TransferScreenState extends State<TransferScreen> {
     return Consumer<AnimalProvider>(
       builder: (context, animalProvider, child) {
         final animals = animalProvider.animals
-            .where((animal) => animal.slaughtered && animal.transferredTo == null)
+            .where(
+              (animal) => animal.slaughtered && animal.transferredTo == null,
+            )
             .toList();
 
         if (animals.isEmpty) {
-          return const Center(child: Text('No animals available for transfer.'));
+          return const Center(
+            child: Text('No animals available for transfer.'),
+          );
         }
 
         return ListView.builder(

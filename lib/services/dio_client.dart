@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:developer' as developer;
 import 'dart:ui';
 import '../utils/constants.dart';
@@ -71,8 +70,11 @@ class _AuthInterceptor extends Interceptor {
     RequestInterceptorHandler handler,
   ) async {
     // Skip adding authorization header for authentication endpoints
-    if (options.path.contains('/register/') || options.path.contains('/token/')) {
-      developer.log('AuthInterceptor: Skipping Authorization header for auth endpoint ${options.path}');
+    if (options.path.contains('/register/') ||
+        options.path.contains('/token/')) {
+      developer.log(
+        'AuthInterceptor: Skipping Authorization header for auth endpoint ${options.path}',
+      );
       super.onRequest(options, handler);
       return;
     }
@@ -81,7 +83,9 @@ class _AuthInterceptor extends Interceptor {
     final token = prefs.getString(DioClient.accessTokenKey);
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
-      developer.log('AuthInterceptor: Added Authorization header for ${options.path}');
+      developer.log(
+        'AuthInterceptor: Added Authorization header for ${options.path}',
+      );
     } else {
       developer.log('AuthInterceptor: No token found for ${options.path}');
     }
@@ -92,16 +96,22 @@ class _AuthInterceptor extends Interceptor {
 class _LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    print('╔════════════════════════════════════════════════════════════════════════════');
+    print(
+      '╔════════════════════════════════════════════════════════════════════════════',
+    );
     print('║ 📤 HTTP REQUEST');
-    print('╠════════════════════════════════════════════════════════════════════════════');
+    print(
+      '╠════════════════════════════════════════════════════════════════════════════',
+    );
     print('║ Method: ${options.method}');
     print('║ URL: ${options.uri}');
     print('║ Headers: ${options.headers}');
     print('║ Data Type: ${options.data.runtimeType}');
     print('║ Data: ${options.data}');
-    print('╚════════════════════════════════════════════════════════════════════════════');
-    
+    print(
+      '╚════════════════════════════════════════════════════════════════════════════',
+    );
+
     developer.log('REQUEST[${options.method}] => PATH: ${options.path}');
     developer.log('REQUEST DATA: ${options.data}');
     super.onRequest(options, handler);
@@ -109,15 +119,21 @@ class _LoggingInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print('╔════════════════════════════════════════════════════════════════════════════');
+    print(
+      '╔════════════════════════════════════════════════════════════════════════════',
+    );
     print('║ 📥 HTTP RESPONSE');
-    print('╠════════════════════════════════════════════════════════════════════════════');
+    print(
+      '╠════════════════════════════════════════════════════════════════════════════',
+    );
     print('║ Status: ${response.statusCode}');
     print('║ URL: ${response.requestOptions.uri}');
     print('║ Data Type: ${response.data.runtimeType}');
     print('║ Data: ${response.data}');
-    print('╚════════════════════════════════════════════════════════════════════════════');
-    
+    print(
+      '╚════════════════════════════════════════════════════════════════════════════',
+    );
+
     developer.log(
       'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}',
     );
@@ -166,10 +182,14 @@ class _ErrorInterceptor extends Interceptor {
     }
 
     if (err.response?.data is List) {
-      developer.log('Data is List with length: ${(err.response?.data as List).length}');
+      developer.log(
+        'Data is List with length: ${(err.response?.data as List).length}',
+      );
       developer.log('List contents: ${err.response?.data}');
     } else if (err.response?.data is Map) {
-      developer.log('Data is Map with keys: ${(err.response?.data as Map).keys}');
+      developer.log(
+        'Data is Map with keys: ${(err.response?.data as Map).keys}',
+      );
       developer.log('Map contents: ${err.response?.data}');
     } else {
       developer.log('Data is neither List nor Map: ${err.response?.data}');
@@ -178,7 +198,9 @@ class _ErrorInterceptor extends Interceptor {
 
     // Handle 401 Unauthorized responses by triggering logout
     if (err.response?.statusCode == 401) {
-      developer.log('🚪 401 Unauthorized detected - triggering automatic logout');
+      developer.log(
+        '🚪 401 Unauthorized detected - triggering automatic logout',
+      );
       _clearTokensAsync();
       if (_dioClient._onUnauthorized != null) {
         _dioClient._onUnauthorized!();
@@ -261,11 +283,3 @@ class NoInternetException implements Exception {
   @override
   String toString() => message;
 }
-
-
-
-
-
-
-
-

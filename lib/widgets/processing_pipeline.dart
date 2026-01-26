@@ -1,15 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 
 /// Represents the state of a pipeline stage
-enum PipelineState {
-  pending,
-  processing,
-  completed,
-  error,
-  cancelled,
-}
+enum PipelineState { pending, processing, completed, error, cancelled }
 
 /// Configuration for pipeline appearance and behavior
 class PipelineConfig {
@@ -82,11 +75,13 @@ class PipelineConfig {
       animationDuration: animationDuration ?? this.animationDuration,
       stageHeight: stageHeight ?? this.stageHeight,
       progressBarHeight: progressBarHeight ?? this.progressBarHeight,
-      showProgressPercentage: showProgressPercentage ?? this.showProgressPercentage,
+      showProgressPercentage:
+          showProgressPercentage ?? this.showProgressPercentage,
       showStageLabels: showStageLabels ?? this.showStageLabels,
       animateTransitions: animateTransitions ?? this.animateTransitions,
       enableHapticFeedback: enableHapticFeedback ?? this.enableHapticFeedback,
-      usePlatformAdaptiveStyling: usePlatformAdaptiveStyling ?? this.usePlatformAdaptiveStyling,
+      usePlatformAdaptiveStyling:
+          usePlatformAdaptiveStyling ?? this.usePlatformAdaptiveStyling,
     );
   }
 }
@@ -114,14 +109,21 @@ class PipelineStage {
   });
 
   /// Update the stage state and progress
-  void updateState(PipelineState newState, {double? progress, String? errorMessage}) {
-    this.state = newState;
+  void updateState(
+    PipelineState newState, {
+    double? progress,
+    String? errorMessage,
+  }) {
+    state = newState;
     if (progress != null) this.progress = progress.clamp(0.0, 1.0);
     if (errorMessage != null) this.errorMessage = errorMessage;
 
     if (newState == PipelineState.processing && startTime == null) {
       startTime = DateTime.now();
-    } else if ((newState == PipelineState.completed || newState == PipelineState.error || newState == PipelineState.cancelled) && endTime == null) {
+    } else if ((newState == PipelineState.completed ||
+            newState == PipelineState.error ||
+            newState == PipelineState.cancelled) &&
+        endTime == null) {
       endTime = DateTime.now();
     }
   }
@@ -143,10 +145,15 @@ class PipelineStage {
   }
 
   /// Check if the stage is in a final state
-  bool get isFinished => state == PipelineState.completed || state == PipelineState.error || state == PipelineState.cancelled;
+  bool get isFinished =>
+      state == PipelineState.completed ||
+      state == PipelineState.error ||
+      state == PipelineState.cancelled;
 
   /// Get duration of processing if available
-  Duration? get duration => startTime != null && endTime != null ? endTime!.difference(startTime!) : null;
+  Duration? get duration => startTime != null && endTime != null
+      ? endTime!.difference(startTime!)
+      : null;
 }
 
 /// Main processing pipeline widget
@@ -168,7 +175,8 @@ class ProcessingPipeline extends StatefulWidget {
   State<ProcessingPipeline> createState() => _ProcessingPipelineState();
 }
 
-class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProviderStateMixin {
+class _ProcessingPipelineState extends State<ProcessingPipeline>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Map<String, AnimationController> _stageControllers;
 
@@ -260,11 +268,7 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
               // Header
               Row(
                 children: [
-                  Icon(
-                    _getOverallIcon(),
-                    color: _getOverallColor(),
-                    size: 24,
-                  ),
+                  Icon(_getOverallIcon(), color: _getOverallColor(), size: 24),
                   const SizedBox(width: 8),
                   Text(
                     'Processing Pipeline',
@@ -316,7 +320,9 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
 
   Widget _buildActionButtons() {
     final hasErrors = _hasErrors();
-    final isProcessing = widget.stages.any((s) => s.state == PipelineState.processing);
+    final isProcessing = widget.stages.any(
+      (s) => s.state == PipelineState.processing,
+    );
     final canCancel = !widget.stages.every((s) => s.isFinished);
 
     return Row(
@@ -341,7 +347,8 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
   }
 
   Widget _buildStageItem(PipelineStage stage) {
-    final animation = _stageControllers[stage.id]?.view ?? const AlwaysStoppedAnimation(1.0);
+    final animation =
+        _stageControllers[stage.id]?.view ?? const AlwaysStoppedAnimation(1.0);
 
     return AnimatedBuilder(
       animation: animation,
@@ -378,7 +385,8 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
                       ),
                     ),
                   ),
-                  if (widget.config.showProgressPercentage && stage.state == PipelineState.processing)
+                  if (widget.config.showProgressPercentage &&
+                      stage.state == PipelineState.processing)
                     Text(
                       '${(stage.progress * 100).round()}%',
                       style: TextStyle(
@@ -391,14 +399,12 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
               ),
 
               // Description
-              if (stage.description != null && widget.config.showStageLabels) ...[
+              if (stage.description != null &&
+                  widget.config.showStageLabels) ...[
                 const SizedBox(height: 4),
                 Text(
                   stage.description!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
 
@@ -406,10 +412,14 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
               if (stage.state == PipelineState.processing) ...[
                 const SizedBox(height: 8),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(widget.config.progressBarHeight / 2),
+                  borderRadius: BorderRadius.circular(
+                    widget.config.progressBarHeight / 2,
+                  ),
                   child: LinearProgressIndicator(
                     value: stage.progress,
-                    backgroundColor: stage.getColor(widget.config).withOpacity(0.2),
+                    backgroundColor: stage
+                        .getColor(widget.config)
+                        .withOpacity(0.2),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       stage.getColor(widget.config),
                     ),
@@ -419,7 +429,8 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
               ],
 
               // Error message
-              if (stage.state == PipelineState.error && stage.errorMessage != null) ...[
+              if (stage.state == PipelineState.error &&
+                  stage.errorMessage != null) ...[
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -454,10 +465,7 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
                 const SizedBox(height: 4),
                 Text(
                   'Duration: ${_formatDuration(stage.duration!)}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[500],
-                  ),
+                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                 ),
               ],
             ],
@@ -483,7 +491,9 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
   }
 
   Widget _buildErrorSummary() {
-    final errorStages = widget.stages.where((s) => s.state == PipelineState.error).toList();
+    final errorStages = widget.stages
+        .where((s) => s.state == PipelineState.error)
+        .toList();
 
     return Container(
       margin: const EdgeInsets.only(top: 16),
@@ -491,20 +501,14 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
       decoration: BoxDecoration(
         color: widget.config.errorColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: widget.config.errorColor.withOpacity(0.3),
-        ),
+        border: Border.all(color: widget.config.errorColor.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.warning,
-                color: widget.config.errorColor,
-                size: 20,
-              ),
+              Icon(Icons.warning, color: widget.config.errorColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 '${errorStages.length} Stage${errorStages.length > 1 ? 's' : ''} Failed',
@@ -516,16 +520,15 @@ class _ProcessingPipelineState extends State<ProcessingPipeline> with TickerProv
             ],
           ),
           const SizedBox(height: 8),
-          ...errorStages.map((stage) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              '• ${stage.name}: ${stage.errorMessage ?? 'Unknown error'}',
-              style: TextStyle(
-                color: widget.config.errorColor,
-                fontSize: 12,
+          ...errorStages.map(
+            (stage) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '• ${stage.name}: ${stage.errorMessage ?? 'Unknown error'}',
+                style: TextStyle(color: widget.config.errorColor, fontSize: 12),
               ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -563,7 +566,12 @@ class PipelineManager {
   List<PipelineStage> get stages => List.unmodifiable(_stages);
 
   /// Update a stage's state
-  void updateStage(String stageId, PipelineState state, {double? progress, String? errorMessage}) {
+  void updateStage(
+    String stageId,
+    PipelineState state, {
+    double? progress,
+    String? errorMessage,
+  }) {
     final stage = _stages.firstWhere((s) => s.id == stageId);
     stage.updateState(state, progress: progress, errorMessage: errorMessage);
     onStateChanged?.call();
@@ -611,11 +619,13 @@ class PipelineManager {
   }
 
   /// Check if all stages are completed
-  bool get isCompleted => _stages.every((s) => s.state == PipelineState.completed);
+  bool get isCompleted =>
+      _stages.every((s) => s.state == PipelineState.completed);
 
   /// Check if any stage has errors
   bool get hasErrors => _stages.any((s) => s.state == PipelineState.error);
 
   /// Check if processing is in progress
-  bool get isProcessing => _stages.any((s) => s.state == PipelineState.processing);
+  bool get isProcessing =>
+      _stages.any((s) => s.state == PipelineState.processing);
 }

@@ -10,7 +10,8 @@ import '../../widgets/core/custom_button.dart';
 import 'package:intl/intl.dart';
 
 class ReceiptPrinter {
-  static final BluetoothPrintingService _printingService = BluetoothPrintingService();
+  static final BluetoothPrintingService _printingService =
+      BluetoothPrintingService();
 
   /// Print sale receipt with all details
   static Future<void> printSaleReceipt(BuildContext context, Sale sale) async {
@@ -26,14 +27,14 @@ class ReceiptPrinter {
       if (!_printingService.isConnected) {
         // Try to connect to saved printer
         final connected = await _printingService.connectToSavedPrinter();
-        
+
         if (!connected) {
           // No saved printer, show printer selection
           Navigator.of(context).pop(); // Close printing dialog
-          
+
           final shouldPrint = await _showPrinterSelectionDialog(context);
           if (shouldPrint != true) return;
-          
+
           // Show printing dialog again
           if (context.mounted) {
             showDialog(
@@ -54,7 +55,7 @@ class ReceiptPrinter {
       // Close printing dialog
       if (context.mounted) {
         Navigator.of(context).pop();
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -67,7 +68,7 @@ class ReceiptPrinter {
       // Close printing dialog
       if (context.mounted) {
         Navigator.of(context).pop();
-        
+
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -84,9 +85,9 @@ class ReceiptPrinter {
   static Future<Uint8List> _generateReceiptBytes(Sale sale) async {
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm58, profile);
-    
+
     List<int> bytes = [];
-    
+
     // Header
     bytes += generator.text(
       '================================',
@@ -105,7 +106,7 @@ class ReceiptPrinter {
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.feed(1);
-    
+
     // Sale info
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
     // Convert UTC time to local time for display
@@ -123,19 +124,19 @@ class ReceiptPrinter {
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.feed(1);
-    
+
     // Items header
     bytes += generator.text(
       'ITEMS:',
       styles: PosStyles(align: PosAlign.left, bold: true),
     );
     bytes += generator.feed(1);
-    
+
     // Items list
     for (final item in sale.items) {
       // Product name and batch
       bytes += generator.text(
-        '${item.productName ?? 'Product'}',
+        item.productName ?? 'Product',
         styles: PosStyles(align: PosAlign.left, bold: true),
       );
       if (item.batchNumber != null) {
@@ -144,7 +145,7 @@ class ReceiptPrinter {
           styles: PosStyles(align: PosAlign.left),
         );
       }
-      
+
       // Quantity, price, and subtotal
       bytes += generator.text(
         '  ${item.quantity.toStringAsFixed(2)} kg x TZS ${item.unitPrice.toStringAsFixed(2)} = TZS ${item.subtotal.toStringAsFixed(2)}',
@@ -152,12 +153,12 @@ class ReceiptPrinter {
       );
       bytes += generator.feed(1);
     }
-    
+
     bytes += generator.text(
       '--------------------------------',
       styles: PosStyles(align: PosAlign.center),
     );
-    
+
     // Total
     bytes += generator.text(
       'TOTAL: TZS ${sale.totalAmount.toStringAsFixed(2)}',
@@ -176,7 +177,7 @@ class ReceiptPrinter {
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.feed(1);
-    
+
     // Customer info (if provided)
     if (sale.customerName != null || sale.customerPhone != null) {
       bytes += generator.text(
@@ -201,7 +202,7 @@ class ReceiptPrinter {
       );
       bytes += generator.feed(1);
     }
-    
+
     // QR Codes for each product (for traceability)
     if (sale.items.isNotEmpty) {
       bytes += generator.text(
@@ -217,7 +218,7 @@ class ReceiptPrinter {
         styles: PosStyles(align: PosAlign.center),
       );
       bytes += generator.feed(1);
-      
+
       for (final item in sale.items) {
         // Product name
         bytes += generator.text(
@@ -231,10 +232,11 @@ class ReceiptPrinter {
           );
         }
         bytes += generator.feed(1);
-        
+
         // Generate QR code URL for this product
-        final productQrUrl = '${Constants.baseUrl}/product-info/view/${item.product}/';
-        
+        final productQrUrl =
+            '${Constants.baseUrl}/product-info/view/${item.product}/';
+
         bytes += generator.qrcode(
           productQrUrl,
           size: QRSize.Size4,
@@ -245,7 +247,7 @@ class ReceiptPrinter {
           styles: PosStyles(align: PosAlign.center),
         );
         bytes += generator.feed(1);
-        
+
         // Separator between products if there are multiple
         if (sale.items.length > 1 && item != sale.items.last) {
           bytes += generator.text(
@@ -256,7 +258,7 @@ class ReceiptPrinter {
         }
       }
     }
-    
+
     // Footer
     bytes += generator.text(
       '================================',
@@ -272,7 +274,7 @@ class ReceiptPrinter {
     );
     bytes += generator.feed(3);
     bytes += generator.cut();
-    
+
     return Uint8List.fromList(bytes);
   }
 
@@ -311,9 +313,7 @@ class _PrintingDialog extends StatelessWidget {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(
-            color: AppColors.shopPrimary,
-          ),
+          const CircularProgressIndicator(color: AppColors.shopPrimary),
           const SizedBox(height: 16),
           Text(
             'Printing receipt...',
@@ -330,7 +330,8 @@ class _PrinterSelectionDialog extends StatefulWidget {
   const _PrinterSelectionDialog();
 
   @override
-  State<_PrinterSelectionDialog> createState() => _PrinterSelectionDialogState();
+  State<_PrinterSelectionDialog> createState() =>
+      _PrinterSelectionDialogState();
 }
 
 class _PrinterSelectionDialogState extends State<_PrinterSelectionDialog> {
@@ -425,65 +426,76 @@ class _PrinterSelectionDialogState extends State<_PrinterSelectionDialog> {
                 ],
               )
             : _error != null
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline, color: AppColors.error, size: 48),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error: $_error',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                      const SizedBox(height: 16),
-                      CustomButton(
-                        label: 'Retry',
-                        icon: Icons.refresh,
-                        onPressed: _scanForPrinters,
-                      ),
-                    ],
-                  )
-                : _printers.isEmpty
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.bluetooth_disabled, size: 48, color: AppColors.textSecondary),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No printers found',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Make sure your printer is turned on and in pairing mode',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 16),
-                          CustomButton(
-                            label: 'Scan Again',
-                            icon: Icons.refresh,
-                            onPressed: _scanForPrinters,
-                          ),
-                        ],
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _printers.length,
-                        itemBuilder: (context, index) {
-                          final printer = _printers[index];
-                          final name = printer.platformName.isNotEmpty
-                              ? printer.platformName
-                              : printer.remoteId.toString();
-                          
-                          return ListTile(
-                            leading: const Icon(Icons.print, color: AppColors.shopPrimary),
-                            title: Text(name),
-                            subtitle: Text(printer.remoteId.toString()),
-                            onTap: () => _connectToPrinter(printer),
-                          );
-                        },
-                      ),
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error: $_error',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                  const SizedBox(height: 16),
+                  CustomButton(
+                    label: 'Retry',
+                    icon: Icons.refresh,
+                    onPressed: _scanForPrinters,
+                  ),
+                ],
+              )
+            : _printers.isEmpty
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.bluetooth_disabled,
+                    size: 48,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No printers found',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Make sure your printer is turned on and in pairing mode',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  CustomButton(
+                    label: 'Scan Again',
+                    icon: Icons.refresh,
+                    onPressed: _scanForPrinters,
+                  ),
+                ],
+              )
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: _printers.length,
+                itemBuilder: (context, index) {
+                  final printer = _printers[index];
+                  final name = printer.platformName.isNotEmpty
+                      ? printer.platformName
+                      : printer.remoteId.toString();
+
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.print,
+                      color: AppColors.shopPrimary,
+                    ),
+                    title: Text(name),
+                    subtitle: Text(printer.remoteId.toString()),
+                    onTap: () => _connectToPrinter(printer),
+                  );
+                },
+              ),
       ),
       actions: [
         CustomButton(

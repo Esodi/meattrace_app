@@ -17,7 +17,8 @@ class ProcessingUnitSignupScreen extends StatefulWidget {
   const ProcessingUnitSignupScreen({super.key});
 
   @override
-  State<ProcessingUnitSignupScreen> createState() => _ProcessingUnitSignupScreenState();
+  State<ProcessingUnitSignupScreen> createState() =>
+      _ProcessingUnitSignupScreenState();
 }
 
 class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
@@ -66,9 +67,10 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
   }
 
@@ -173,11 +175,11 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
         // For creating a new processing unit:
         // The backend register endpoint will automatically create the processing unit
         // We need to pass the facility details as part of the registration
-        
+
         // For now, we'll use a modified approach:
         // 1. Register with basic info (backend creates default processing unit)
         // 2. Then update it with full facility details
-        
+
         final success = await authProvider.register(
           _usernameController.text.trim(),
           _emailController.text.trim(),
@@ -185,7 +187,8 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
           'ProcessingUnit',
           additionalData: {
             'processing_unit_name': _facilityNameController.text.trim(),
-            'location': '${_addressController.text}, ${_cityController.text}, ${_stateController.text} ${_zipController.text}',
+            'location':
+                '${_addressController.text}, ${_cityController.text}, ${_stateController.text} ${_zipController.text}',
             'phone': _phoneController.text.trim(),
             'license_number': _licenseController.text.trim(),
             'description': _descriptionController.text.trim(),
@@ -197,7 +200,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
         }
 
         if (mounted) {
-          _showSuccessSnackbar('Processing unit created successfully! Welcome to MeatTrace Pro.');
+          _showSuccessSnackbar(
+            'Processing unit created successfully! Welcome to MeatTrace Pro.',
+          );
           _navigateToRoleBasedHome('ProcessingUnit');
         }
       } else {
@@ -215,7 +220,7 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
           'ProcessingUnit',
           additionalData: {
             'processing_unit_id': _selectedUnit!.id,
-            'requested_role': 'worker',  // Default role, can be made selectable
+            'requested_role': 'worker', // Default role, can be made selectable
             'message': 'I would like to join this processing unit',
           },
         );
@@ -227,11 +232,11 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
         // User is now registered and logged in automatically
         // The router will detect the pending join request and redirect to pending-approval screen
         if (mounted) {
-          _showSuccessSnackbar(
-            'Join request submitted! Waiting for approval.',
-          );
+          _showSuccessSnackbar('Join request submitted! Waiting for approval.');
           // Router will automatically redirect to /pending-approval based on user.hasPendingJoinRequest
-          context.go('/processor-home'); // This will be intercepted by router and redirected to /pending-approval
+          context.go(
+            '/processor-home',
+          ); // This will be intercepted by router and redirected to /pending-approval
         }
       }
     } catch (e) {
@@ -269,8 +274,8 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
 
   void _navigateToRoleBasedHome(String role) {
     switch (role.toLowerCase()) {
-      case 'farmer':
-        context.go('/farmer-home');
+      case 'abbatoir':
+        context.go('/abbatoir-home');
         break;
       case 'processingunit':
       case 'processing_unit':
@@ -356,7 +361,7 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             ),
-            child: const Icon(
+            child: Icon(
               CustomIcons.processingPlant,
               color: Colors.white,
               size: 28,
@@ -369,7 +374,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
               children: [
                 Text(
                   'Processing Unit Registration',
-                  style: AppTypography.headlineMedium().copyWith(color: Colors.white),
+                  style: AppTypography.headlineMedium().copyWith(
+                    color: Colors.white,
+                  ),
                 ),
                 if (_currentStep > 0)
                   Text(
@@ -394,9 +401,7 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
           final isActive = index < _currentStep;
           return Expanded(
             child: Container(
-              margin: EdgeInsets.only(
-                right: index < 2 ? AppTheme.space8 : 0,
-              ),
+              margin: EdgeInsets.only(right: index < 2 ? AppTheme.space8 : 0),
               height: 4,
               decoration: BoxDecoration(
                 color: isActive
@@ -417,17 +422,16 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Choose an Option',
-            style: AppTypography.headlineLarge(),
-          ),
+          Text('Choose an Option', style: AppTypography.headlineLarge()),
           const SizedBox(height: AppTheme.space8),
           Text(
             'Create a new processing unit or join an existing one',
-            style: AppTypography.bodyMedium().copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMedium().copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppTheme.space32),
-          
+
           // Create new option
           _buildModeCard(
             icon: Icons.add_business,
@@ -435,14 +439,15 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             description: 'Set up your own facility and become the owner',
             onTap: () => _selectMode('create'),
           ),
-          
+
           const SizedBox(height: AppTheme.space16),
-          
+
           // Join existing option
           _buildModeCard(
             icon: Icons.group_add,
             title: 'Join Existing Unit',
-            description: 'Request to join an already registered processing facility',
+            description:
+                'Request to join an already registered processing facility',
             onTap: () => _selectMode('join'),
           ),
         ],
@@ -462,7 +467,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
       child: Container(
         padding: const EdgeInsets.all(AppTheme.space20),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.processorPrimary.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: AppColors.processorPrimary.withValues(alpha: 0.3),
+          ),
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           color: AppColors.processorPrimary.withValues(alpha: 0.05),
         ),
@@ -509,7 +516,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
           const SizedBox(height: AppTheme.space8),
           Text(
             'Choose a username and secure password',
-            style: AppTypography.bodyMedium().copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMedium().copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppTheme.space32),
           CustomTextField(
@@ -518,8 +527,12 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             hint: 'Enter your username',
             prefixIcon: const Icon(Icons.person_outline),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter username';
-              if (value.length < 3) return 'Username must be at least 3 characters';
+              if (value == null || value.isEmpty) {
+                return 'Please enter username';
+              }
+              if (value.length < 3) {
+                return 'Username must be at least 3 characters';
+              }
               return null;
             },
           ),
@@ -532,13 +545,20 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             obscureText: _obscurePassword,
             suffixIcon: IconButton(
               icon: Icon(
-                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                _obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
               ),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter password';
-              if (value.length < 6) return 'Password must be at least 6 characters';
+              if (value == null || value.isEmpty) {
+                return 'Please enter password';
+              }
+              if (value.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
               return null;
             },
           ),
@@ -551,13 +571,21 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             obscureText: _obscureConfirmPassword,
             suffixIcon: IconButton(
               icon: Icon(
-                _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                _obscureConfirmPassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
               ),
-              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+              onPressed: () => setState(
+                () => _obscureConfirmPassword = !_obscureConfirmPassword,
+              ),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please confirm password';
-              if (value != _passwordController.text) return 'Passwords do not match';
+              if (value == null || value.isEmpty) {
+                return 'Please confirm password';
+              }
+              if (value != _passwordController.text) {
+                return 'Passwords do not match';
+              }
               return null;
             },
           ),
@@ -594,7 +622,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             prefixIcon: const Icon(Icons.phone_outlined),
             keyboardType: TextInputType.phone,
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter phone number';
+              if (value == null || value.isEmpty) {
+                return 'Please enter phone number';
+              }
               return null;
             },
           ),
@@ -622,9 +652,11 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             controller: _facilityNameController,
             label: 'Facility Name',
             hint: 'Enter facility name',
-            prefixIcon: const Icon(CustomIcons.processingPlant),
+            prefixIcon: Icon(CustomIcons.processingPlant),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter facility name';
+              if (value == null || value.isEmpty) {
+                return 'Please enter facility name';
+              }
               return null;
             },
           ),
@@ -635,7 +667,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             hint: 'Enter license number',
             prefixIcon: const Icon(Icons.badge_outlined),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter license number';
+              if (value == null || value.isEmpty) {
+                return 'Please enter license number';
+              }
               return null;
             },
           ),
@@ -659,7 +693,8 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
                   controller: _cityController,
                   label: 'City',
                   hint: 'City',
-                  validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Required' : null,
                 ),
               ),
               const SizedBox(width: AppTheme.space12),
@@ -668,7 +703,8 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
                   controller: _stateController,
                   label: 'State',
                   hint: 'ST',
-                  validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Required' : null,
                 ),
               ),
               const SizedBox(width: AppTheme.space12),
@@ -678,7 +714,8 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
                   label: 'ZIP',
                   hint: '12345',
                   keyboardType: TextInputType.number,
-                  validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Required' : null,
                 ),
               ),
             ],
@@ -705,7 +742,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
           const SizedBox(height: AppTheme.space8),
           Text(
             'Choose a processing unit to request membership',
-            style: AppTypography.bodyMedium().copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMedium().copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppTheme.space24),
           if (_isLoading)
@@ -714,7 +753,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             Center(
               child: Text(
                 'No processing units available',
-                style: AppTypography.bodyMedium().copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodyMedium().copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             )
           else
@@ -733,9 +774,7 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
         padding: const EdgeInsets.all(AppTheme.space16),
         decoration: BoxDecoration(
           border: Border.all(
-            color: isSelected
-                ? AppColors.processorPrimary
-                : AppColors.divider,
+            color: isSelected ? AppColors.processorPrimary : AppColors.divider,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
@@ -744,7 +783,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
           children: [
             Icon(
               CustomIcons.processingPlant,
-              color: isSelected ? AppColors.processorPrimary : AppColors.textSecondary,
+              color: isSelected
+                  ? AppColors.processorPrimary
+                  : AppColors.textSecondary,
             ),
             const SizedBox(width: AppTheme.space12),
             Expanded(
@@ -801,7 +842,9 @@ class _ProcessingUnitSignupScreenState extends State<ProcessingUnitSignupScreen>
             flex: _currentStep > 0 ? 1 : 2,
             child: CustomButton(
               label: _currentStep == 3 ? 'Complete Registration' : 'Continue',
-              onPressed: _isLoading ? null : (_currentStep == 0 ? null : _nextStep),
+              onPressed: _isLoading
+                  ? null
+                  : (_currentStep == 0 ? null : _nextStep),
               variant: ButtonVariant.primary,
               fullWidth: true,
               loading: _isLoading,

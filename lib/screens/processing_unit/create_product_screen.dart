@@ -31,13 +31,14 @@ class CreateProductScreen extends StatefulWidget {
 class _CreateProductScreenState extends State<CreateProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _batchNumberController = TextEditingController();
-  final TextEditingController _processingUnitController = TextEditingController();
+  final TextEditingController _processingUnitController =
+      TextEditingController();
 
   Animal? _selectedAnimal;
-  List<ProductCategory> _selectedCategories = [];
-  Map<int, TextEditingController> _weightControllers = {};
-  Map<int, String> _weightUnits = {};
-  Map<int, TextEditingController> _quantityControllers = {};
+  final List<ProductCategory> _selectedCategories = [];
+  final Map<int, TextEditingController> _weightControllers = {};
+  final Map<int, String> _weightUnits = {};
+  final Map<int, TextEditingController> _quantityControllers = {};
   bool _isSubmitting = false;
   bool _isPrinting = false;
   List<Product> _createdProducts = [];
@@ -51,7 +52,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   List<SlaughterPart> _availableSlaughterParts = [];
   bool _isLoadingAnimals = false;
   String? _animalsError;
-  
+
   // Selection mode: 'animal' or 'part'
   String _selectionMode = 'animal';
   SlaughterPart? _selectedPart;
@@ -72,18 +73,24 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       // Auto-fill processing unit field with the name of the logged-in processing unit
       final authProvider = context.read<AuthProvider>();
       final processingUnitName = authProvider.user?.processingUnitName ?? '';
-      
-      print('🏭 [CREATE_PRODUCT] Processing Unit Name from AuthProvider: "$processingUnitName"');
-      print('🏭 [CREATE_PRODUCT] Processing Unit ID: ${authProvider.user?.processingUnitId}');
+
+      print(
+        '🏭 [CREATE_PRODUCT] Processing Unit Name from AuthProvider: "$processingUnitName"',
+      );
+      print(
+        '🏭 [CREATE_PRODUCT] Processing Unit ID: ${authProvider.user?.processingUnitId}',
+      );
       print('🏭 [CREATE_PRODUCT] User Role: ${authProvider.user?.role}');
-      
+
       _processingUnitController.text = processingUnitName;
-      
+
       if (processingUnitName.isEmpty) {
         print('⚠️  [CREATE_PRODUCT] WARNING: Processing unit name is empty!');
-        print('⚠️  [CREATE_PRODUCT] This may indicate the user profile is not fully loaded.');
+        print(
+          '⚠️  [CREATE_PRODUCT] This may indicate the user profile is not fully loaded.',
+        );
       }
-      
+
       await _loadData();
     });
   }
@@ -124,12 +131,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   Future<void> _loadData() async {
-     final authProvider = context.read<AuthProvider>();
-     final procUnitId = authProvider.user?.processingUnitId;
-     await Future.wait([
+    final authProvider = context.read<AuthProvider>();
+    final procUnitId = authProvider.user?.processingUnitId;
+    await Future.wait([
       context.read<AnimalProvider>().fetchAnimals(),
       context.read<ProductCategoryProvider>().fetchCategories(),
-      context.read<ProductProvider>().fetchProducts(processingUnitId: procUnitId),
+      context.read<ProductProvider>().fetchProducts(
+        processingUnitId: procUnitId,
+      ),
     ]);
     await _loadAvailableAnimals();
   }
@@ -143,10 +152,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     });
 
     try {
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🔍 [CREATE_PRODUCT] Loading available animals and slaughter parts...');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      print(
+        '🔍 [CREATE_PRODUCT] Loading available animals and slaughter parts...',
+      );
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+
       final animalProvider = context.read<AnimalProvider>();
       final productProvider = context.read<ProductProvider>();
       final authProvider = context.read<AuthProvider>();
@@ -157,9 +172,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       }
 
       print('👤 [CREATE_PRODUCT] Current user ID: $currentUserId');
-      print('📦 [CREATE_PRODUCT] Total animals in provider: ${animalProvider.animals.length}');
+      print(
+        '📦 [CREATE_PRODUCT] Total animals in provider: ${animalProvider.animals.length}',
+      );
 
-      print('🏭 [CREATE_PRODUCT] Total products: ${productProvider.products.length}');
+      print(
+        '🏭 [CREATE_PRODUCT] Total products: ${productProvider.products.length}',
+      );
 
       // Filter available whole animals (received and has remaining weight)
       // Note: We don't check if animal was "used" - we only check remaining_weight
@@ -168,22 +187,28 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         final isSlaughtered = animal.slaughtered;
         final hasReceivedBy = animal.receivedBy != null;
         final matchesUser = animal.receivedBy == currentUserId;
-        final hasRemainingWeight = animal.remainingWeight != null && animal.remainingWeight! > 0;
-        
-        final isAvailable = isSlaughtered && hasReceivedBy && matchesUser && hasRemainingWeight;
-        
+        final hasRemainingWeight =
+            animal.remainingWeight != null && animal.remainingWeight! > 0;
+
+        final isAvailable =
+            isSlaughtered && hasReceivedBy && matchesUser && hasRemainingWeight;
+
         if (animal.transferredTo != null || animal.receivedBy != null) {
           print('  🐄 Animal ${animal.animalId}:');
           print('     - slaughtered: $isSlaughtered');
-          print('     - received_by: ${animal.receivedBy} (matches user: $matchesUser)');
+          print(
+            '     - received_by: ${animal.receivedBy} (matches user: $matchesUser)',
+          );
           print('     - remaining_weight: ${animal.remainingWeight}');
           print('     - AVAILABLE: $isAvailable');
         }
-        
+
         return isAvailable;
       }).toList();
 
-      print('✨ [CREATE_PRODUCT] Found ${availableAnimals.length} available whole animals');
+      print(
+        '✨ [CREATE_PRODUCT] Found ${availableAnimals.length} available whole animals',
+      );
 
       // Load slaughter parts
       print('🔍 [CREATE_PRODUCT] Fetching slaughter parts...');
@@ -195,30 +220,41 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       final availableSlaughterParts = allSlaughterParts.where((part) {
         final isReceived = part.receivedBy != null;
         final matchesUser = part.receivedBy == currentUserId;
-        final hasRemainingWeight = part.remainingWeight != null && part.remainingWeight! > 0;
-        
+        final hasRemainingWeight =
+            part.remainingWeight != null && part.remainingWeight! > 0;
+
         final isAvailable = isReceived && matchesUser && hasRemainingWeight;
-        
+
         if (part.receivedBy != null) {
           print('  🥩 Part ${part.id} (${part.partType.displayName}):');
-          print('     - received_by: ${part.receivedBy} (matches user: $matchesUser)');
+          print(
+            '     - received_by: ${part.receivedBy} (matches user: $matchesUser)',
+          );
           print('     - remaining_weight: ${part.remainingWeight}');
           print('     - AVAILABLE: $isAvailable');
         }
-        
+
         return isAvailable;
       }).toList();
 
-      print('🥩 [CREATE_PRODUCT] Found ${availableSlaughterParts.length} available slaughter parts');
+      print(
+        '🥩 [CREATE_PRODUCT] Found ${availableSlaughterParts.length} available slaughter parts',
+      );
       for (var part in availableSlaughterParts) {
-        print('   ✅ Part ID ${part.id}: ${part.partType.displayName} from Animal ${part.animalId}');
+        print(
+          '   ✅ Part ID ${part.id}: ${part.partType.displayName} from Animal ${part.animalId}',
+        );
       }
 
       if (availableAnimals.isEmpty && availableSlaughterParts.isEmpty) {
         print('⚠️  [CREATE_PRODUCT] NO ANIMALS OR PARTS AVAILABLE!');
         print('   Possible reasons:');
-        print('   1. No animals/parts have been RECEIVED yet (only transferred)');
-        print('   2. All received animals/parts have remaining_weight = 0 (fully used)');
+        print(
+          '   1. No animals/parts have been RECEIVED yet (only transferred)',
+        );
+        print(
+          '   2. All received animals/parts have remaining_weight = 0 (fully used)',
+        );
         print('   3. Animals/parts received by different user');
       }
 
@@ -282,31 +318,35 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   child: _isLoadingAnimals
                       ? const Center(child: CircularProgressIndicator())
                       : _animalsError != null
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.error, color: Colors.red, size: 48),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Error loading: $_animalsError',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(color: Colors.red),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                      _loadAvailableAnimals();
-                                    },
-                                    child: const Text('Retry'),
-                                  ),
-                                ],
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error,
+                                color: Colors.red,
+                                size: 48,
                               ),
-                            )
-                          : _selectionMode == 'animal'
-                              ? _buildAnimalsList()
-                              : _buildSlaughterPartsList(),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Error loading: $_animalsError',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  _loadAvailableAnimals();
+                                },
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _selectionMode == 'animal'
+                      ? _buildAnimalsList()
+                      : _buildSlaughterPartsList(),
                 ),
               ],
             ),
@@ -352,9 +392,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   Future<void> _connectScale() async {
     if (_scaleService.isConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scale already connected')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Scale already connected')));
       return;
     }
 
@@ -367,7 +407,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       setState(() {
         _isScaleConnected = true;
       });
-      
+
       _weightSubscription?.cancel();
       _weightSubscription = _scaleService.weightStream.listen((weight) {
         print('Scale weight: $weight');
@@ -382,7 +422,10 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Reading from scale...'), duration: Duration(milliseconds: 500)),
+      const SnackBar(
+        content: Text('Reading from scale...'),
+        duration: Duration(milliseconds: 500),
+      ),
     );
 
     StreamSubscription? singleRead;
@@ -392,7 +435,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       });
       singleRead?.cancel();
     });
-    
+
     Future.delayed(const Duration(seconds: 2), () {
       singleRead?.cancel();
     });
@@ -414,8 +457,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       itemBuilder: (context, index) {
         final animal = _availableAnimals[index];
         final isSelected = _selectedAnimal?.id == animal.id;
-        final remainingWeight = animal.remainingWeight ?? animal.liveWeight ?? 0.0;
-        
+        final remainingWeight =
+            animal.remainingWeight ?? animal.liveWeight ?? 0.0;
+
         return ListTile(
           leading: const Icon(Icons.pets),
           title: Text(
@@ -424,13 +468,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 : '${animal.species} - ${animal.animalId}',
           ),
           subtitle: Text(
-            'ID: ${animal.animalId} • Farm: ${animal.abbatoirName}\nRemaining: ${remainingWeight.toStringAsFixed(2)} kg',
+            'ID: ${animal.animalId} • Abbatoir: ${animal.abbatoirName}\nRemaining: ${remainingWeight.toStringAsFixed(2)} kg',
           ),
-          trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
-          onTap: () => Navigator.of(context).pop({
-            'type': 'animal',
-            'data': animal,
-          }),
+          trailing: isSelected
+              ? const Icon(Icons.check, color: Colors.green)
+              : null,
+          onTap: () =>
+              Navigator.of(context).pop({'type': 'animal', 'data': animal}),
         );
       },
     );
@@ -453,7 +497,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         final part = _availableSlaughterParts[index];
         final isSelected = _selectedPart?.id == part.id;
         final remainingWeight = part.remainingWeight ?? part.weight;
-        
+
         return ListTile(
           leading: const Icon(Icons.clear_all),
           title: Text(part.partType.displayName),
@@ -461,11 +505,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             'Total: ${part.weight} ${part.weightUnit} • Remaining: ${remainingWeight.toStringAsFixed(2)} ${part.weightUnit}\nOrigin Animal: ${part.animalId}',
             style: const TextStyle(fontSize: 13),
           ),
-          trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
-          onTap: () => Navigator.of(context).pop({
-            'type': 'part',
-            'data': part,
-          }),
+          trailing: isSelected
+              ? const Icon(Icons.check, color: Colors.green)
+              : null,
+          onTap: () =>
+              Navigator.of(context).pop({'type': 'part', 'data': part}),
         );
       },
     );
@@ -480,9 +524,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Create Products',
-        leading: EnhancedBackButton(
-          fallbackRoute: '/processor-home',
-        ),
+        leading: EnhancedBackButton(fallbackRoute: '/processor-home'),
       ),
       body: _createdProducts.isNotEmpty
           ? _buildSuccessView()
@@ -530,7 +572,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
           : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}';
     } else if (_selectedPart != null) {
-      selectionText = '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - Origin Animal: ${_selectedPart!.animalId}';
+      selectionText =
+          '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - Origin Animal: ${_selectedPart!.animalId}';
     } else {
       selectionText = 'Select an animal or slaughter part...';
     }
@@ -546,7 +589,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             ),
             const SizedBox(width: 8),
             Tooltip(
-              message: 'Select a whole animal or slaughter part that has been confirmed as received at your processing unit. Only items not yet used for product creation are available.',
+              message:
+                  'Select a whole animal or slaughter part that has been confirmed as received at your processing unit. Only items not yet used for product creation are available.',
               child: const Icon(Icons.help_outline, size: 18),
             ),
           ],
@@ -566,8 +610,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   child: Text(
                     selectionText,
                     style: TextStyle(
-                      color: (_selectedAnimal != null || _selectedPart != null) 
-                          ? Colors.black 
+                      color: (_selectedAnimal != null || _selectedPart != null)
+                          ? Colors.black
                           : Colors.grey,
                     ),
                   ),
@@ -603,7 +647,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 ),
                 const SizedBox(width: 8),
                 Tooltip(
-                  message: 'Choose one or more product categories. For each selected category, you will specify the quantity and weight of the product created.',
+                  message:
+                      'Choose one or more product categories. For each selected category, you will specify the quantity and weight of the product created.',
                   child: const Icon(Icons.help_outline, size: 18),
                 ),
               ],
@@ -622,9 +667,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                       if (selected) {
                         _selectedCategories.add(category);
                         if (category.id != null) {
-                          _weightControllers[category.id!] = TextEditingController();
+                          _weightControllers[category.id!] =
+                              TextEditingController();
                           _weightUnits[category.id!] = 'kg';
-                          _quantityControllers[category.id!] = TextEditingController(text: '1');
+                          _quantityControllers[category.id!] =
+                              TextEditingController(text: '1');
                         }
                       } else {
                         _selectedCategories.remove(category);
@@ -686,12 +733,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   Widget _buildWeightFields() {
     // Calculate available weight for validation (always in kg)
     final double maxAvailableWeight = _selectedAnimal != null
-        ? (_selectedAnimal!.remainingWeight ?? _selectedAnimal!.liveWeight ?? 0.0)
+        ? (_selectedAnimal!.remainingWeight ??
+              _selectedAnimal!.liveWeight ??
+              0.0)
         : _selectedPart != null
-            ? (_selectedPart!.remainingWeight ?? _selectedPart!.weight)
-            : 0.0;
+        ? (_selectedPart!.remainingWeight ?? _selectedPart!.weight)
+        : 0.0;
 
-    print('🔍 [CreateProductScreen] Max available weight: $maxAvailableWeight kg');
+    print(
+      '🔍 [CreateProductScreen] Max available weight: $maxAvailableWeight kg',
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,7 +755,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             ),
             const SizedBox(width: 8),
             Tooltip(
-              message: 'Specify the quantity and weight for each selected product category. Total weight cannot exceed ${maxAvailableWeight.toStringAsFixed(2)} kg.',
+              message:
+                  'Specify the quantity and weight for each selected product category. Total weight cannot exceed ${maxAvailableWeight.toStringAsFixed(2)} kg.',
               child: const Icon(Icons.help_outline, size: 18),
             ),
           ],
@@ -757,7 +809,10 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Quantity',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
@@ -806,13 +861,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           setState(() {
                             weightController.text = weight.toStringAsFixed(2);
                           });
-                          
+
                           // Validate against max weight
                           final weightInKg = _convertToKg(weight, unit);
                           if (weightInKg > maxAvailableWeight) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Warning: Weight exceeds available amount (${maxAvailableWeight.toStringAsFixed(2)} kg)'),
+                                content: Text(
+                                  'Warning: Weight exceeds available amount (${maxAvailableWeight.toStringAsFixed(2)} kg)',
+                                ),
                                 backgroundColor: Colors.orange,
                                 duration: const Duration(seconds: 4),
                               ),
@@ -820,13 +877,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Weight recorded: ${weight.toStringAsFixed(2)} $unit'),
+                                content: Text(
+                                  'Weight recorded: ${weight.toStringAsFixed(2)} $unit',
+                                ),
                                 backgroundColor: Colors.green,
                                 duration: const Duration(seconds: 2),
                               ),
                             );
                           }
-                          
+
                           singleRead?.cancel();
                         }
                       });
@@ -874,7 +933,6 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     );
   }
 
-
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
@@ -901,55 +959,67 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               label: 'Products created successfully',
               child: Text(
                 '${_createdProducts.length} Product${_createdProducts.length > 1 ? 's' : ''} Created Successfully!',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 20),
-            ..._createdProducts.map((product) => Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ..._createdProducts.map(
+              (product) => Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: _isPrinting ? null : () => _printSingleProduct(product),
-                          icon: const Icon(Icons.print),
-                          tooltip: 'Print QR Code',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Semantics(
-                      label: 'QR code for product batch ${product.batchNumber}',
-                      child: QrImageView(
-                        data: '${Constants.baseUrl}/product-info/view/${product.id}/',
-                        version: QrVersions.auto,
-                        size: qrSize,
+                          IconButton(
+                            onPressed: _isPrinting
+                                ? null
+                                : () => _printSingleProduct(product),
+                            icon: const Icon(Icons.print),
+                            tooltip: 'Print QR Code',
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Semantics(
-                      label: 'Product batch number',
-                      child: Text(
-                        'Batch: ${product.batchNumber}',
-                        style: const TextStyle(fontSize: 14),
-                        textAlign: TextAlign.center,
+                      const SizedBox(height: 8),
+                      Semantics(
+                        label:
+                            'QR code for product batch ${product.batchNumber}',
+                        child: QrImageView(
+                          data:
+                              '${Constants.baseUrl}/product-info/view/${product.id}/',
+                          version: QrVersions.auto,
+                          size: qrSize,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Semantics(
+                        label: 'Product batch number',
+                        child: Text(
+                          'Batch: ${product.batchNumber}',
+                          style: const TextStyle(fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            )),
+            ),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -998,7 +1068,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     // Check if an animal or part is selected
     if (_selectedAnimal == null && _selectedPart == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an animal or slaughter part')),
+        const SnackBar(
+          content: Text('Please select an animal or slaughter part'),
+        ),
       );
       return;
     }
@@ -1016,7 +1088,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     print('🚀 [CreateProductScreen] Starting product creation process...');
     print('📊 [CreateProductScreen] Source: $sourceName');
     print('📊 [CreateProductScreen] Animal ID: $animalId');
-    print('📂 [CreateProductScreen] Selected categories: ${_selectedCategories.map((c) => c.name).join(', ')}');
+    print(
+      '📂 [CreateProductScreen] Selected categories: ${_selectedCategories.map((c) => c.name).join(', ')}',
+    );
 
     setState(() => _isSubmitting = true);
     final currentContext = context;
@@ -1032,8 +1106,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
     // Get processing unit info from AuthProvider
     final authProvider = context.read<AuthProvider>();
-    final processingUnitName = authProvider.user?.processingUnitName ?? _processingUnitController.text;
-    final processingUnitId = authProvider.user?.processingUnitId?.toString() ?? _processingUnitController.text;
+    final processingUnitName =
+        authProvider.user?.processingUnitName ?? _processingUnitController.text;
+    final processingUnitId =
+        authProvider.user?.processingUnitId?.toString() ??
+        _processingUnitController.text;
 
     try {
       // Validation stage complete
@@ -1059,7 +1136,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         final progress = (i + 1) / _selectedCategories.length;
         _pipelineManager.updateProgress('submission', progress);
 
-        print('🔄 [CreateProductScreen] Creating product ${i + 1}/${_selectedCategories.length} for category: ${category.name}');
+        print(
+          '🔄 [CreateProductScreen] Creating product ${i + 1}/${_selectedCategories.length} for category: ${category.name}',
+        );
 
         final productName = _selectedAnimal != null
             ? '${category.name} from ${_selectedAnimal!.species}'
@@ -1067,7 +1146,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
         final product = Product(
           animal: animalId,
-          slaughterPartId: _selectedPart?.id, // Include slaughter part ID if selected
+          slaughterPartId:
+              _selectedPart?.id, // Include slaughter part ID if selected
           productType: 'meat', // Must match backend choices
           createdAt: DateTime.now(),
           name: productName,
@@ -1085,21 +1165,27 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           id: null, // Will be set by backend
         );
 
-        print('📦 [CreateProductScreen] Product data: ${product.toMapForCreate()}');
+        print(
+          '📦 [CreateProductScreen] Product data: ${product.toMapForCreate()}',
+        );
 
         try {
           final createdProduct = await provider.createProduct(product);
           if (createdProduct != null) {
-            print('✅ [CreateProductScreen] Product created successfully: ${createdProduct.name} (Batch: ${createdProduct.batchNumber})');
+            print(
+              '✅ [CreateProductScreen] Product created successfully: ${createdProduct.name} (Batch: ${createdProduct.batchNumber})',
+            );
             createdProducts.add(createdProduct);
           } else {
-            final errorMsg = 'Product creation returned null for ${category.name}';
+            final errorMsg =
+                'Product creation returned null for ${category.name}';
             print('❌ [CreateProductScreen] $errorMsg');
             print('🔍 [CreateProductScreen] Provider error: ${provider.error}');
             errors.add(errorMsg);
           }
         } catch (e) {
-          final errorMsg = 'Exception creating product for ${category.name}: $e';
+          final errorMsg =
+              'Exception creating product for ${category.name}: $e';
           print('💥 [CreateProductScreen] $errorMsg');
           errors.add(errorMsg);
         }
@@ -1117,17 +1203,21 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       _pipelineManager.completeStage('completion');
 
       // Reload available animals and parts to reflect updated weights
-      print('🔄 [CreateProductScreen] Reloading available animals/parts after product creation...');
+      print(
+        '🔄 [CreateProductScreen] Reloading available animals/parts after product creation...',
+      );
       await _loadAvailableAnimals();
       print('✅ [CreateProductScreen] Available list reloaded');
-      
+
       // Clear selection to allow creating more products
       _selectedAnimal = null;
       _selectedPart = null;
-
     } catch (e) {
       print('💥 [CreateProductScreen] Pipeline error: $e');
-      _pipelineManager.failStage('submission', 'Unexpected error during processing: $e');
+      _pipelineManager.failStage(
+        'submission',
+        'Unexpected error during processing: $e',
+      );
     }
 
     setState(() {
@@ -1135,7 +1225,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       _createdProducts = createdProducts;
     });
 
-    print('📈 [CreateProductScreen] Creation summary: ${createdProducts.length} successful, ${errors.length} failed');
+    print(
+      '📈 [CreateProductScreen] Creation summary: ${createdProducts.length} successful, ${errors.length} failed',
+    );
 
     if (createdProducts.isEmpty) {
       // Show detailed error message
@@ -1153,14 +1245,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         SnackBar(
           content: Text(errorMessage),
           duration: const Duration(seconds: 10),
-          action: SnackBarAction(
-            label: 'OK',
-            onPressed: () {},
-          ),
+          action: SnackBarAction(label: 'OK', onPressed: () {}),
         ),
       );
     } else if (createdProducts.length < _selectedCategories.length) {
-      final message = 'Created ${createdProducts.length} of ${_selectedCategories.length} products';
+      final message =
+          'Created ${createdProducts.length} of ${_selectedCategories.length} products';
       print('⚠️ [CreateProductScreen] Partial success: $message');
 
       if (errors.isNotEmpty) {
@@ -1171,9 +1261,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(currentContext).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          currentContext,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } else {
       print('🎉 [CreateProductScreen] All products created successfully');
@@ -1190,9 +1280,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     // Cancel the current submission
     setState(() => _isSubmitting = false);
     _pipelineManager.cancelStage('submission');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Product creation cancelled')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Product creation cancelled')));
   }
 
   Future<void> _printSingleProduct(Product product) async {
@@ -1203,9 +1293,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     await _showPrinterSelectionDialog(products: _createdProducts);
   }
 
-  Future<void> _showPrinterSelectionDialog({Product? product, List<Product>? products}) async {
+  Future<void> _showPrinterSelectionDialog({
+    Product? product,
+    List<Product>? products,
+  }) async {
     if (!mounted) return;
-    
+
     setState(() => _isPrinting = true);
 
     try {
@@ -1236,7 +1329,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       if (printers.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No Bluetooth printers found. Make sure your printer is turned on and in pairing mode.'),
+            content: Text(
+              'No Bluetooth printers found. Make sure your printer is turned on and in pairing mode.',
+            ),
             duration: Duration(seconds: 5),
           ),
         );
@@ -1257,9 +1352,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 final printer = printers[index];
                 return ListTile(
                   leading: const Icon(Icons.print),
-                  title: Text(printer.platformName.isNotEmpty
-                    ? printer.platformName
-                    : 'Unknown Printer'),
+                  title: Text(
+                    printer.platformName.isNotEmpty
+                        ? printer.platformName
+                        : 'Unknown Printer',
+                  ),
                   subtitle: Text(printer.remoteId.toString()),
                   onTap: () => Navigator.of(context).pop(printer),
                 );
@@ -1281,8 +1378,10 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         return;
       }
 
-      print('🔗 [CreateProductScreen] Connecting to printer: ${selectedPrinter.platformName}');
-      
+      print(
+        '🔗 [CreateProductScreen] Connecting to printer: ${selectedPrinter.platformName}',
+      );
+
       // Show connecting dialog
       if (mounted) {
         showDialog(
@@ -1304,7 +1403,10 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       // Connect to printer with retry logic
       bool connected = false;
       try {
-        connected = await printingService.connectToPrinter(selectedPrinter, maxRetries: 3);
+        connected = await printingService.connectToPrinter(
+          selectedPrinter,
+          maxRetries: 3,
+        );
       } catch (e) {
         print('❌ [CreateProductScreen] Connection error: $e');
         connected = false;
@@ -1330,16 +1432,18 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
       // Print
       if (product != null) {
-        print('🖨️ [CreateProductScreen] Printing single product: ${product.name}');
+        print(
+          '🖨️ [CreateProductScreen] Printing single product: ${product.name}',
+        );
         final qrData = '${Constants.baseUrl}/product-info/view/${product.id}/';
         print('📊 [CreateProductScreen] QR Data: $qrData');
-        
+
         await printingService.printQRCode(
           qrData,
           product.name,
           product.batchNumber,
         );
-        
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1352,21 +1456,25 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       } else if (products != null && products.isNotEmpty) {
         print('🖨️ [CreateProductScreen] Printing ${products.length} products');
         int successCount = 0;
-        
+
         for (int i = 0; i < products.length; i++) {
           final prod = products[i];
           try {
-            print('🖨️ [CreateProductScreen] Printing ${i + 1}/${products.length}: ${prod.name}');
+            print(
+              '🖨️ [CreateProductScreen] Printing ${i + 1}/${products.length}: ${prod.name}',
+            );
             final qrData = '${Constants.baseUrl}/product-info/view/${prod.id}/';
-            
+
             await printingService.printQRCode(
               qrData,
               prod.name,
               prod.batchNumber,
             );
             successCount++;
-            print('✅ [CreateProductScreen] Printed ${i + 1}/${products.length}');
-            
+            print(
+              '✅ [CreateProductScreen] Printed ${i + 1}/${products.length}',
+            );
+
             // Small delay between prints
             if (i < products.length - 1) {
               await Future.delayed(const Duration(milliseconds: 500));
@@ -1375,23 +1483,28 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             print('❌ [CreateProductScreen] Failed to print ${prod.name}: $e');
           }
         }
-        
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Printed $successCount of ${products.length} QR codes'),
-            backgroundColor: successCount == products.length ? Colors.green : Colors.orange,
+            content: Text(
+              '✅ Printed $successCount of ${products.length} QR codes',
+            ),
+            backgroundColor: successCount == products.length
+                ? Colors.green
+                : Colors.orange,
             duration: const Duration(seconds: 3),
           ),
         );
-        print('✅ [CreateProductScreen] Batch print completed: $successCount/${products.length}');
+        print(
+          '✅ [CreateProductScreen] Batch print completed: $successCount/${products.length}',
+        );
       }
 
       // Disconnect
       print('🔌 [CreateProductScreen] Disconnecting from printer...');
       await printingService.disconnect();
       print('✅ [CreateProductScreen] Disconnected successfully');
-
     } catch (e) {
       print('💥 [CreateProductScreen] Printing error: $e');
       if (mounted) {
@@ -1410,15 +1523,4 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       print('🏁 [CreateProductScreen] Printing process completed');
     }
   }
-
-
-
 }
-
-
-
-
-
-
-
-

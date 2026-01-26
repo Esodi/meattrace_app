@@ -10,7 +10,8 @@ import '../core/role_avatar.dart';
 
 class TransferCard extends StatelessWidget {
   final String transferId;
-  final String status; // 'pending', 'in_transit', 'delivered', 'rejected', 'cancelled'
+  final String
+  status; // 'pending', 'in_transit', 'delivered', 'rejected', 'cancelled'
   final String? fromName;
   final String? fromRole;
   final String? toName;
@@ -26,7 +27,7 @@ class TransferCard extends StatelessWidget {
   final Widget? trailing;
 
   const TransferCard({
-    Key? key,
+    super.key,
     required this.transferId,
     required this.status,
     this.fromName,
@@ -42,7 +43,7 @@ class TransferCard extends StatelessWidget {
     this.onTap,
     this.isSelected = false,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -78,19 +79,16 @@ class TransferCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  TransferStatusBadge(
-                    status: status,
-                    size: BadgeSize.medium,
-                  ),
+                  TransferStatusBadge(status: status, size: BadgeSize.medium),
                   if (trailing != null) ...[
                     const SizedBox(width: AppTheme.space8),
                     trailing!,
                   ],
                 ],
               ),
-              
+
               const SizedBox(height: AppTheme.space16),
-              
+
               // Route: From -> To
               Row(
                 children: [
@@ -104,17 +102,19 @@ class TransferCard extends StatelessWidget {
                       isDark: isDark,
                     ),
                   ),
-                  
+
                   // Arrow
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.space8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.space8,
+                    ),
                     child: Icon(
                       Icons.arrow_forward,
                       size: AppTheme.iconMedium,
                       color: _getStatusColor(),
                     ),
                   ),
-                  
+
                   // To
                   Expanded(
                     child: _buildLocation(
@@ -127,11 +127,11 @@ class TransferCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: AppTheme.space16),
               const Divider(height: 1),
               const SizedBox(height: AppTheme.space16),
-              
+
               // Transfer Details
               Row(
                 children: [
@@ -152,18 +152,14 @@ class TransferCard extends StatelessWidget {
                     ),
                 ],
               ),
-              
+
               if (driverName != null || vehicleNumber != null) ...[
                 const SizedBox(height: AppTheme.space12),
                 Row(
                   children: [
                     if (driverName != null)
                       Expanded(
-                        child: _buildDetail(
-                          Icons.person,
-                          driverName!,
-                          isDark,
-                        ),
+                        child: _buildDetail(Icons.person, driverName!, isDark),
                       ),
                     if (vehicleNumber != null)
                       Expanded(
@@ -176,7 +172,7 @@ class TransferCard extends StatelessWidget {
                   ],
                 ),
               ],
-              
+
               if (deliveryDate != null && status == 'delivered') ...[
                 const SizedBox(height: AppTheme.space12),
                 Container(
@@ -231,11 +227,7 @@ class TransferCard extends StatelessWidget {
         Row(
           children: [
             if (role != null) ...[
-              RoleAvatar(
-                name: name,
-                role: role,
-                size: AvatarSize.extraSmall,
-              ),
+              RoleAvatar(name: name, role: role, size: AvatarSize.extraSmall),
               const SizedBox(width: AppTheme.space8),
             ],
             Expanded(
@@ -252,10 +244,7 @@ class TransferCard extends StatelessWidget {
         ),
         if (role != null) ...[
           const SizedBox(height: AppTheme.space4),
-          RoleBadge(
-            role: role,
-            size: BadgeSize.small,
-          ),
+          RoleBadge(role: role, size: BadgeSize.small),
         ],
       ],
     );
@@ -274,7 +263,9 @@ class TransferCard extends StatelessWidget {
           child: Text(
             text,
             style: AppTypography.bodySmall(
-              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+              color: isDark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -317,7 +308,7 @@ class CompactTransferCard extends StatelessWidget {
   final bool isSelected;
 
   const CompactTransferCard({
-    Key? key,
+    super.key,
     required this.transferId,
     required this.status,
     this.fromName,
@@ -325,7 +316,7 @@ class CompactTransferCard extends StatelessWidget {
     required this.itemCount,
     this.onTap,
     this.isSelected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -379,10 +370,7 @@ class CompactTransferCard extends StatelessWidget {
                   ],
                 ),
               ),
-              TransferStatusBadge(
-                status: status,
-                size: BadgeSize.small,
-              ),
+              TransferStatusBadge(status: status, size: BadgeSize.small),
               const SizedBox(width: AppTheme.space8),
               Icon(
                 Icons.chevron_right,
@@ -424,14 +412,14 @@ class TransferStatsCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const TransferStatsCard({
-    Key? key,
+    super.key,
     required this.totalTransfers,
     this.pendingCount = 0,
     this.inTransitCount = 0,
     this.deliveredCount = 0,
     this.rejectedCount = 0,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -477,11 +465,11 @@ class TransferStatsCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: AppTheme.space16),
               const Divider(height: 1),
               const SizedBox(height: AppTheme.space16),
-              
+
               // Status Breakdown
               Wrap(
                 spacing: AppTheme.space16,
@@ -531,23 +519,22 @@ class TransferStatsCard extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: AppTheme.space8),
         Text(
           '$label: ',
           style: AppTypography.bodySmall(
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            color: isDark
+                ? AppColors.darkTextSecondary
+                : AppColors.textSecondary,
           ),
         ),
         Text(
           count.toString(),
-          style: AppTypography.bodySmall(color: color).copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTypography.bodySmall(
+            color: color,
+          ).copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );

@@ -3,12 +3,13 @@ import '../models/user.dart';
 import '../services/user_management_service.dart';
 
 enum UserStatus { active, suspended, invited }
-enum UserRole { farmer, processingUnit, shop, admin }
+
+enum UserRole { abbatoir, processingUnit, shop, admin }
 
 class UserManagementProvider with ChangeNotifier {
   final UserManagementService _service = UserManagementService();
 
-  List<User> _users = [];
+  final List<User> _users = [];
   bool _isLoading = false;
   String? _error;
   String _searchQuery = '';
@@ -69,8 +70,8 @@ class UserManagementProvider with ChangeNotifier {
 
   UserRole _getUserRole(User user) {
     switch (user.role.toLowerCase()) {
-      case 'farmer':
-        return UserRole.farmer;
+      case 'abbatoir':
+        return UserRole.abbatoir;
       case 'processingunit':
       case 'processing_unit':
         return UserRole.processingUnit;
@@ -79,7 +80,7 @@ class UserManagementProvider with ChangeNotifier {
       case 'admin':
         return UserRole.admin;
       default:
-        return UserRole.farmer;
+        return UserRole.abbatoir;
     }
   }
 

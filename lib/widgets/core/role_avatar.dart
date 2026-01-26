@@ -8,9 +8,9 @@ import '../../utils/app_theme.dart';
 
 enum AvatarSize {
   extraSmall, // 24px
-  small,      // 32px
-  medium,     // 40px
-  large,      // 56px
+  small, // 32px
+  medium, // 40px
+  large, // 56px
   extraLarge, // 72px
 }
 
@@ -18,7 +18,7 @@ enum AvatarSize {
 class RoleAvatar extends StatelessWidget {
   final String? name;
   final String? imageUrl;
-  final String? role; // 'farmer', 'processing_unit', 'shop', 'admin'
+  final String? role; // 'abbatoir', 'processing_unit', 'shop', 'admin'
   final AvatarSize size;
   final VoidCallback? onTap;
   final bool showBorder;
@@ -26,7 +26,7 @@ class RoleAvatar extends StatelessWidget {
   final bool isOnline;
 
   const RoleAvatar({
-    Key? key,
+    super.key,
     this.name,
     this.imageUrl,
     this.role,
@@ -35,7 +35,7 @@ class RoleAvatar extends StatelessWidget {
     this.showBorder = false,
     this.showOnlineIndicator = false,
     this.isOnline = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -101,20 +101,16 @@ class RoleAvatar extends StatelessWidget {
               )
             : null,
         image: imageUrl != null
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
+            ? DecorationImage(image: NetworkImage(imageUrl!), fit: BoxFit.cover)
             : null,
       ),
       child: imageUrl == null
           ? Center(
               child: Text(
                 initials,
-                style: AppTypography.labelLarge(color: Colors.white).copyWith(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: AppTypography.labelLarge(
+                  color: Colors.white,
+                ).copyWith(fontSize: fontSize, fontWeight: FontWeight.w600),
               ),
             )
           : null,
@@ -178,13 +174,13 @@ class AvatarGroup extends StatelessWidget {
   final VoidCallback? onMoreTap;
 
   const AvatarGroup({
-    Key? key,
+    super.key,
     required this.avatars,
     this.size = AvatarSize.small,
     this.maxVisible = 3,
     this.overlap = 0.3,
     this.onMoreTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -255,12 +251,7 @@ class AvatarData {
   final String? role;
   final VoidCallback? onTap;
 
-  const AvatarData({
-    this.name,
-    this.imageUrl,
-    this.role,
-    this.onTap,
-  });
+  const AvatarData({this.name, this.imageUrl, this.role, this.onTap});
 }
 
 /// More Avatar - Shows "+N" for remaining avatars
@@ -269,11 +260,7 @@ class _MoreAvatar extends StatelessWidget {
   final double size;
   final VoidCallback? onTap;
 
-  const _MoreAvatar({
-    required this.count,
-    required this.size,
-    this.onTap,
-  });
+  const _MoreAvatar({required this.count, required this.size, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -295,10 +282,7 @@ class _MoreAvatar extends StatelessWidget {
           '+$count',
           style: AppTypography.labelMedium(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ).copyWith(
-            fontSize: size * 0.3,
-            fontWeight: FontWeight.w600,
-          ),
+          ).copyWith(fontSize: size * 0.3, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -328,7 +312,7 @@ class AvatarWithDetails extends StatelessWidget {
   final bool isOnline;
 
   const AvatarWithDetails({
-    Key? key,
+    super.key,
     this.name,
     this.subtitle,
     this.imageUrl,
@@ -338,7 +322,7 @@ class AvatarWithDetails extends StatelessWidget {
     this.trailing,
     this.showOnlineIndicator = false,
     this.isOnline = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -408,13 +392,13 @@ class IconAvatar extends StatelessWidget {
   final VoidCallback? onTap;
 
   const IconAvatar({
-    Key? key,
+    super.key,
     required this.icon,
     this.backgroundColor,
     this.iconColor,
     this.size = AvatarSize.medium,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

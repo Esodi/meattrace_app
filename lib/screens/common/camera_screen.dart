@@ -50,7 +50,9 @@ class _CameraScreenState extends State<CameraScreen> {
           children: [
             Text(
               widget.title,
-              style: AppTypography.headlineMedium().copyWith(color: Colors.white),
+              style: AppTypography.headlineMedium().copyWith(
+                color: Colors.white,
+              ),
             ),
             if (widget.subtitle != null)
               Text(
@@ -73,12 +75,10 @@ class _CameraScreenState extends State<CameraScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            )
+          ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : _selectedImages.isEmpty
-              ? _buildCameraView()
-              : _buildImagePreview(),
+          ? _buildCameraView()
+          : _buildImagePreview(),
       bottomNavigationBar: _buildBottomBar(),
     );
   }
@@ -108,12 +108,16 @@ class _CameraScreenState extends State<CameraScreen> {
                 const SizedBox(height: AppTheme.space24),
                 Text(
                   'Camera Preview',
-                  style: AppTypography.headlineMedium().copyWith(color: Colors.white),
+                  style: AppTypography.headlineMedium().copyWith(
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: AppTheme.space8),
                 Text(
                   'Use camera or gallery to add photos',
-                  style: AppTypography.bodyMedium().copyWith(color: Colors.white70),
+                  style: AppTypography.bodyMedium().copyWith(
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
@@ -121,11 +125,7 @@ class _CameraScreenState extends State<CameraScreen> {
         ),
 
         // Grid overlay
-        if (_showGrid)
-          CustomPaint(
-            painter: GridPainter(),
-            child: Container(),
-          ),
+        if (_showGrid) CustomPaint(painter: GridPainter(), child: Container()),
 
         // Top controls
         Positioned(
@@ -199,7 +199,9 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black54,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusFull,
+                        ),
                       ),
                       child: Text(
                         '${index + 1} / ${_selectedImages.length}',
@@ -230,9 +232,7 @@ class _CameraScreenState extends State<CameraScreen> {
       decoration: BoxDecoration(
         color: Colors.black87,
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-          ),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
       ),
       child: Row(
@@ -290,9 +290,7 @@ class _CameraScreenState extends State<CameraScreen> {
       decoration: BoxDecoration(
         color: Colors.black87,
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-          ),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
       ),
       child: ListView.builder(
@@ -304,18 +302,12 @@ class _CameraScreenState extends State<CameraScreen> {
             width: 64,
             margin: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.white70,
-                width: 2,
-              ),
+              border: Border.all(color: Colors.white70, width: 2),
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall - 2),
-              child: Image.file(
-                _selectedImages[index],
-                fit: BoxFit.cover,
-              ),
+              child: Image.file(_selectedImages[index], fit: BoxFit.cover),
             ),
           );
         },
@@ -329,9 +321,7 @@ class _CameraScreenState extends State<CameraScreen> {
       decoration: BoxDecoration(
         color: Colors.black87,
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-          ),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
       ),
       child: SafeArea(
@@ -353,10 +343,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 height: 72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 4,
-                  ),
+                  border: Border.all(color: Colors.white, width: 4),
                 ),
                 child: Container(
                   margin: const EdgeInsets.all(4),
@@ -396,11 +383,11 @@ class _CameraScreenState extends State<CameraScreen> {
           vertical: AppTheme.space8,
         ),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.info.withValues(alpha: 0.3) : Colors.black54,
+          color: isActive
+              ? AppColors.info.withValues(alpha: 0.3)
+              : Colors.black54,
           borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-          border: isActive
-              ? Border.all(color: AppColors.info, width: 2)
-              : null,
+          border: isActive ? Border.all(color: AppColors.info, width: 2) : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -563,7 +550,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
         if (images.length > remainingSlots) {
           _showSnackBar(
-            'Only ${remainingSlots} more images allowed. Selected first $remainingSlots.',
+            'Only $remainingSlots more images allowed. Selected first $remainingSlots.',
           );
         }
       }
@@ -649,7 +636,4 @@ class GridPainter extends CustomPainter {
 }
 
 /// Camera mode enum
-enum CameraMode {
-  photo,
-  product,
-}
+enum CameraMode { photo, product }

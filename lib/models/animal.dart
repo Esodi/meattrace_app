@@ -124,12 +124,12 @@ class SlaughterPart {
   final int? receivedBy;
   final DateTime? receivedAt;
   final String? receivedByUsername;
-  
+
   // Rejection fields
   final String? rejectionStatus;
   final int? rejectedBy;
   final DateTime? rejectedAt;
-  
+
   // Selection and usage tracking
   final bool usedInProduct;
   final bool isSelectedForTransfer;
@@ -163,22 +163,38 @@ class SlaughterPart {
       partId: json['part_id'],
       animalId: int.parse(json['animal'].toString()),
       partType: SlaughterPartTypeExtension.fromString(json['part_type']),
-      weight: json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString()),
-      remainingWeight: json['remaining_weight'] != null 
-          ? (json['remaining_weight'] is num ? (json['remaining_weight'] as num).toDouble() : double.parse(json['remaining_weight'].toString()))
+      weight: json['weight'] is num
+          ? (json['weight'] as num).toDouble()
+          : double.parse(json['weight'].toString()),
+      remainingWeight: json['remaining_weight'] != null
+          ? (json['remaining_weight'] is num
+                ? (json['remaining_weight'] as num).toDouble()
+                : double.parse(json['remaining_weight'].toString()))
           : null,
       weightUnit: json['weight_unit'],
       description: json['description'],
       createdAt: DateTime.parse(json['created_at']),
-      transferredTo: json['transferred_to'] != null ? int.parse(json['transferred_to'].toString()) : null,
+      transferredTo: json['transferred_to'] != null
+          ? int.parse(json['transferred_to'].toString())
+          : null,
       transferredToName: json['transferred_to_name'],
-      transferredAt: json['transferred_at'] != null ? DateTime.parse(json['transferred_at']) : null,
-      receivedBy: json['received_by'] != null ? int.parse(json['received_by'].toString()) : null,
-      receivedAt: json['received_at'] != null ? DateTime.parse(json['received_at']) : null,
+      transferredAt: json['transferred_at'] != null
+          ? DateTime.parse(json['transferred_at'])
+          : null,
+      receivedBy: json['received_by'] != null
+          ? int.parse(json['received_by'].toString())
+          : null,
+      receivedAt: json['received_at'] != null
+          ? DateTime.parse(json['received_at'])
+          : null,
       receivedByUsername: json['received_by_username'],
       rejectionStatus: json['rejection_status'],
-      rejectedBy: json['rejected_by'] != null ? int.parse(json['rejected_by'].toString()) : null,
-      rejectedAt: json['rejected_at'] != null ? DateTime.parse(json['rejected_at']) : null,
+      rejectedBy: json['rejected_by'] != null
+          ? int.parse(json['rejected_by'].toString())
+          : null,
+      rejectedAt: json['rejected_at'] != null
+          ? DateTime.parse(json['rejected_at'])
+          : null,
       usedInProduct: json['used_in_product'] ?? false,
       isSelectedForTransfer: json['is_selected_for_transfer'] ?? false,
     );
@@ -221,17 +237,15 @@ class SlaughterPart {
     };
   }
 
-  String get displayName => '${partType.displayName} (${weight.toStringAsFixed(2)} $weightUnit)';
-  
+  String get displayName =>
+      '${partType.displayName} (${weight.toStringAsFixed(2)} $weightUnit)';
+
   bool get isTransferred => transferredTo != null;
   bool get isReceived => receivedBy != null;
   bool get isRejected => rejectionStatus == 'rejected';
 }
 
-enum CarcassType {
-  whole,
-  split,
-}
+enum CarcassType { whole, split }
 
 extension CarcassTypeExtension on CarcassType {
   String get value {
@@ -268,7 +282,8 @@ class CarcassMeasurement {
   final int? id;
   final int animalId;
   final CarcassType carcassType;
-  final Map<String, Map<String, dynamic>> measurements; // {'head_weight': {'value': 5.2, 'unit': 'kg'}}
+  final Map<String, Map<String, dynamic>>
+  measurements; // {'head_weight': {'value': 5.2, 'unit': 'kg'}}
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -290,14 +305,15 @@ class CarcassMeasurement {
         if (value is Map) {
           // Convert nested map properly
           measurementsMap[key] = Map<String, dynamic>.from(value);
-        } else {
-        }
+        } else {}
       });
     }
     return CarcassMeasurement(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       animalId: int.parse(json['animal'].toString()),
-      carcassType: CarcassTypeExtension.fromString(json['carcass_type'] ?? 'whole'),
+      carcassType: CarcassTypeExtension.fromString(
+        json['carcass_type'] ?? 'whole',
+      ),
       measurements: measurementsMap,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
@@ -326,11 +342,15 @@ class CarcassMeasurement {
 
   // Get all measurements as a list
   List<Map<String, dynamic>> getAllMeasurements() {
-    return measurements.entries.map((entry) => {
-      'name': entry.key,
-      'value': entry.value['value'],
-      'unit': entry.value['unit'],
-    }).toList();
+    return measurements.entries
+        .map(
+          (entry) => {
+            'name': entry.key,
+            'value': entry.value['value'],
+            'unit': entry.value['unit'],
+          },
+        )
+        .toList();
   }
 
   // Get a specific measurement
@@ -399,8 +419,8 @@ extension AnimalLifecycleStatusExtension on AnimalLifecycleStatus {
 
 class Animal {
   final int? id;
-  final int farmer;
-  final String? farmerUsername; // Farmer's username for display
+  final int abbatoir;
+  final String? farmerUsername; // Abbatoir's username for display
   final String species;
   final double age;
   final double? liveWeight;
@@ -426,19 +446,19 @@ class Animal {
   final DateTime? receivedAt;
   // Product tracking
   final bool usedInProduct;
-  
+
   // Rejection fields
   final String? rejectionStatus;
   final int? rejectedBy;
   final DateTime? rejectedAt;
-  
+
   // Carcass measurement
   final CarcassMeasurement? carcassMeasurement;
   // Slaughter parts
   final List<SlaughterPart> slaughterParts;
   // Photo field
   final String? photo;
-  
+
   // Lifecycle status fields
   final AnimalLifecycleStatus? lifecycleStatus;
   final bool? isHealthy;
@@ -448,7 +468,7 @@ class Animal {
 
   Animal({
     this.id,
-    required this.farmer,
+    required this.abbatoir,
     this.farmerUsername,
     required this.species,
     required this.age,
@@ -492,9 +512,10 @@ class Animal {
       CarcassMeasurement? carcassMeasurement;
       if (json['carcass_measurement'] != null) {
         if (json['carcass_measurement'] is Map) {
-          carcassMeasurement = CarcassMeasurement.fromMap(json['carcass_measurement'] as Map<String, dynamic>);
-        } else {
-        }
+          carcassMeasurement = CarcassMeasurement.fromMap(
+            json['carcass_measurement'] as Map<String, dynamic>,
+          );
+        } else {}
       }
 
       // Safely parse slaughter_parts
@@ -504,29 +525,41 @@ class Animal {
           for (var part in json['slaughter_parts'] as List) {
             if (part is Map) {
               try {
-                slaughterParts.add(SlaughterPart.fromMap(part as Map<String, dynamic>));
-              } catch (e) {
-              }
+                slaughterParts.add(
+                  SlaughterPart.fromMap(part as Map<String, dynamic>),
+                );
+              } catch (e) {}
             }
           }
-        } else {
-        }
+        } else {}
       }
 
       // Parse lifecycle status
       AnimalLifecycleStatus? lifecycleStatus;
       if (json['lifecycle_status'] != null) {
-        lifecycleStatus = AnimalLifecycleStatusExtension.fromString(json['lifecycle_status']);
+        lifecycleStatus = AnimalLifecycleStatusExtension.fromString(
+          json['lifecycle_status'],
+        );
       }
-      
+
       return Animal(
         id: json['id'] != null ? int.parse(json['id'].toString()) : null,
-        farmer: int.parse(json['farmer'].toString()),
+        abbatoir: int.parse(json['abbatoir'].toString()),
         farmerUsername: json['farmer_username'],
         species: json['species'],
-        age: json['age'] is num ? (json['age'] as num).toDouble() : double.parse(json['age'].toString()),
-        liveWeight: json['live_weight'] != null ? (json['live_weight'] is num ? (json['live_weight'] as num).toDouble() : double.parse(json['live_weight'].toString())) : null,
-        remainingWeight: json['remaining_weight'] != null ? (json['remaining_weight'] is num ? (json['remaining_weight'] as num).toDouble() : double.parse(json['remaining_weight'].toString())) : null,
+        age: json['age'] is num
+            ? (json['age'] as num).toDouble()
+            : double.parse(json['age'].toString()),
+        liveWeight: json['live_weight'] != null
+            ? (json['live_weight'] is num
+                  ? (json['live_weight'] as num).toDouble()
+                  : double.parse(json['live_weight'].toString()))
+            : null,
+        remainingWeight: json['remaining_weight'] != null
+            ? (json['remaining_weight'] is num
+                  ? (json['remaining_weight'] as num).toDouble()
+                  : double.parse(json['remaining_weight'].toString()))
+            : null,
         createdAt: DateTime.parse(json['created_at']),
         slaughtered: json['slaughtered'],
         slaughteredAt: json['slaughtered_at'] != null
@@ -541,18 +574,24 @@ class Animal {
         notes: json['notes'],
         processed: json['processed'] ?? false,
         synced: json['synced'] ?? true,
-        transferredTo: json['transferred_to'] != null ? int.parse(json['transferred_to'].toString()) : null,
+        transferredTo: json['transferred_to'] != null
+            ? int.parse(json['transferred_to'].toString())
+            : null,
         transferredToName: json['transferred_to_name'],
         transferredAt: json['transferred_at'] != null
             ? DateTime.parse(json['transferred_at'])
             : null,
-        receivedBy: json['received_by'] != null ? int.parse(json['received_by'].toString()) : null,
+        receivedBy: json['received_by'] != null
+            ? int.parse(json['received_by'].toString())
+            : null,
         receivedAt: json['received_at'] != null
             ? DateTime.parse(json['received_at'])
             : null,
         usedInProduct: json['used_in_product'] ?? false,
         rejectionStatus: json['rejection_status'],
-        rejectedBy: json['rejected_by'] != null ? int.parse(json['rejected_by'].toString()) : null,
+        rejectedBy: json['rejected_by'] != null
+            ? int.parse(json['rejected_by'].toString())
+            : null,
         rejectedAt: json['rejected_at'] != null
             ? DateTime.parse(json['rejected_at'])
             : null,
@@ -565,7 +604,7 @@ class Animal {
         isTransferredStatus: json['is_transferred_status'],
         isSemiTransferredStatus: json['is_semi_transferred_status'],
       );
-    } catch (e, stackTrace) {
+    } catch (e) {
       rethrow;
     }
   }
@@ -573,7 +612,7 @@ class Animal {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'farmer': farmer,
+      'abbatoir': abbatoir,
       'farmer_username': farmerUsername,
       'species': species,
       'age': age,
@@ -607,41 +646,45 @@ class Animal {
   // For creating new animal (exclude id and auto-generated fields)
   Map<String, dynamic> toMapForCreate() {
     return {
-      'species': species.toLowerCase(), // Convert to lowercase to match backend choices
+      'species': species
+          .toLowerCase(), // Convert to lowercase to match backend choices
       'age': age,
       'live_weight': liveWeight,
       'animal_name': animalName, // Optional user-friendly name
       'breed': breed,
       'abbatoir_name': abbatoirName,
-        'health_status': healthStatus,
-        'gender': gender,
-        'notes': notes,
-      // Note: animal_id is auto-generated by backend, farmer is set automatically from authenticated user
+      'health_status': healthStatus,
+      'gender': gender,
+      'notes': notes,
+      // Note: animal_id is auto-generated by backend, abbatoir is set automatically from authenticated user
     };
   }
-  
+
   // Helper properties
-  bool get isSplitCarcass => carcassMeasurement?.carcassType == CarcassType.split;
+  bool get isSplitCarcass =>
+      carcassMeasurement?.carcassType == CarcassType.split;
   bool get hasSlaughterParts => slaughterParts.isNotEmpty;
-  
+
   // Computed lifecycle status (fallback if not provided by backend)
   AnimalLifecycleStatus get computedLifecycleStatus {
     if (lifecycleStatus != null) return lifecycleStatus!;
-    
+
     // Fallback computation - MUST match backend priority order
     // Priority 1: Check if animal is rejected (highest priority)
     if (rejectionStatus == 'rejected') {
       return AnimalLifecycleStatus.rejected;
     }
-    
+
     // Priority 2: Check if whole animal is transferred
     if (transferredTo != null) {
       return AnimalLifecycleStatus.transferred;
     }
-    
+
     // Priority 3: Check for partial or complete part transfers
     if (hasSlaughterParts) {
-      final transferredParts = slaughterParts.where((p) => p.transferredTo != null).toList();
+      final transferredParts = slaughterParts
+          .where((p) => p.transferredTo != null)
+          .toList();
       if (transferredParts.isNotEmpty) {
         // All parts transferred
         if (transferredParts.length == slaughterParts.length) {
@@ -653,21 +696,13 @@ class Animal {
         }
       }
     }
-    
+
     // Priority 4: Check if slaughtered (but not transferred)
     if (slaughtered) {
       return AnimalLifecycleStatus.slaughtered;
     }
-    
+
     // Default: Animal is healthy
     return AnimalLifecycleStatus.healthy;
   }
 }
-
-
-
-
-
-
-
-

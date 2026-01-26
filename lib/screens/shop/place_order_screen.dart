@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../models/product.dart';
 import '../../models/processing_unit.dart';
 import '../../services/dio_client.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/custom_card.dart';
-import '../../widgets/core/custom_text_field.dart';
-import '../../widgets/core/status_badge.dart';
 
 class PlaceOrderScreen extends StatefulWidget {
   const PlaceOrderScreen({super.key});
@@ -50,7 +46,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
       final units = (response.data['results'] as List)
           .map((json) => ProcessingUnit.fromJson(json))
           .toList();
-      
+
       setState(() => _processingUnits = units);
     } catch (e) {
       if (mounted) {
@@ -67,21 +63,24 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
     setState(() => _isLoading = true);
     try {
       final dio = DioClient().dio;
-      final response = await dio.get('/products/', queryParameters: {
-        'processing_unit': processingUnitId,
-      });
-      
+      final response = await dio.get(
+        '/products/',
+        queryParameters: {'processing_unit': processingUnitId},
+      );
+
       final products = (response.data['results'] as List)
           .map((json) => Product.fromMap(json))
-          .where((product) => product.quantity > 0 && product.transferredTo == null)
+          .where(
+            (product) => product.quantity > 0 && product.transferredTo == null,
+          )
           .toList();
-      
+
       setState(() => _availableProducts = products);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading products: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading products: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -99,7 +98,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
     setState(() => _isLoading = true);
     try {
       final dio = DioClient().dio;
-      
+
       // Calculate total
       double totalAmount = 0;
       final orderItems = _cart.entries.map((entry) {
@@ -112,7 +111,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
           'subtotal': subtotal,
         };
       }).toList();
-      
+
       // Create order
       final orderData = {
         'shop': _selectedUnit!.id,
@@ -121,9 +120,9 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
         'total_amount': totalAmount,
         'items': orderItems,
       };
-      
+
       await dio.post('/orders/', data: orderData);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -135,9 +134,9 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error placing order: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error placing order: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -202,79 +201,92 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
             )
           : Theme(
               data: Theme.of(context).copyWith(
-                colorScheme: ColorScheme.light(
-                  primary: AppColors.shopPrimary,
-                ),
+                colorScheme: ColorScheme.light(primary: AppColors.shopPrimary),
               ),
               child: Stepper(
-              currentStep: _currentStep,
-              onStepContinue: () {
-                if (_currentStep == 0 && _selectedUnit == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please select a supplier')),
-                  );
-                  return;
-                }
-                if (_currentStep == 1 && _cart.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please add items to your order')),
-                  );
-                  return;
-                }
-                if (_currentStep < 2) {
-                  setState(() => _currentStep++);
-                } else {
-                  _submitOrder();
-                }
-              },
-              onStepCancel: () {
-                if (_currentStep > 0) {
-                  setState(() => _currentStep--);
-                }
-              },
-              controlsBuilder: (context, details) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: AppTheme.space16),
-                  child: Row(
-                    children: [
-                      CustomButton(
-                        label: _currentStep == 2 ? 'Place Order' : 'Continue',
-                        customColor: AppColors.shopPrimary,
-                        onPressed: details.onStepContinue,
+                currentStep: _currentStep,
+                onStepContinue: () {
+                  if (_currentStep == 0 && _selectedUnit == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please select a supplier')),
+                    );
+                    return;
+                  }
+                  if (_currentStep == 1 && _cart.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please add items to your order'),
                       ),
-                      if (_currentStep > 0) ...[
-                        const SizedBox(width: AppTheme.space12),
+                    );
+                    return;
+                  }
+                  if (_currentStep < 2) {
+                    setState(() => _currentStep++);
+                  } else {
+                    _submitOrder();
+                  }
+                },
+                onStepCancel: () {
+                  if (_currentStep > 0) {
+                    setState(() => _currentStep--);
+                  }
+                },
+                controlsBuilder: (context, details) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: AppTheme.space16),
+                    child: Row(
+                      children: [
                         CustomButton(
-                          label: 'Back',
-                          variant: ButtonVariant.secondary,
-                          onPressed: details.onStepCancel,
+                          label: _currentStep == 2 ? 'Place Order' : 'Continue',
+                          customColor: AppColors.shopPrimary,
+                          onPressed: details.onStepContinue,
                         ),
+                        if (_currentStep > 0) ...[
+                          const SizedBox(width: AppTheme.space12),
+                          CustomButton(
+                            label: 'Back',
+                            variant: ButtonVariant.secondary,
+                            onPressed: details.onStepCancel,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
+                  );
+                },
+                steps: [
+                  Step(
+                    title: Text(
+                      'Select Supplier',
+                      style: AppTypography.titleMedium(),
+                    ),
+                    isActive: _currentStep >= 0,
+                    state: _currentStep > 0
+                        ? StepState.complete
+                        : StepState.indexed,
+                    content: _buildSelectSupplierStep(),
                   ),
-                );
-              },
-              steps: [
-                Step(
-                  title: Text('Select Supplier', style: AppTypography.titleMedium()),
-                  isActive: _currentStep >= 0,
-                  state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-                  content: _buildSelectSupplierStep(),
-                ),
-                Step(
-                  title: Text('Select Products', style: AppTypography.titleMedium()),
-                  isActive: _currentStep >= 1,
-                  state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-                  content: _buildSelectProductsStep(),
-                ),
-                Step(
-                  title: Text('Review & Confirm', style: AppTypography.titleMedium()),
-                  isActive: _currentStep >= 2,
-                  content: _buildReviewStep(),
-                ),
-              ],
+                  Step(
+                    title: Text(
+                      'Select Products',
+                      style: AppTypography.titleMedium(),
+                    ),
+                    isActive: _currentStep >= 1,
+                    state: _currentStep > 1
+                        ? StepState.complete
+                        : StepState.indexed,
+                    content: _buildSelectProductsStep(),
+                  ),
+                  Step(
+                    title: Text(
+                      'Review & Confirm',
+                      style: AppTypography.titleMedium(),
+                    ),
+                    isActive: _currentStep >= 2,
+                    content: _buildReviewStep(),
+                  ),
+                ],
+              ),
             ),
-          ),
     );
   }
 
@@ -332,8 +344,12 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                     Container(
                       padding: const EdgeInsets.all(AppTheme.space12),
                       decoration: BoxDecoration(
-                        color: AppColors.processorPrimary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        color: AppColors.processorPrimary.withValues(
+                          alpha: 0.1,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       child: Icon(
                         Icons.factory,
@@ -349,14 +365,20 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                           Text(
                             unit.name,
                             style: AppTypography.titleMedium().copyWith(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                           if (unit.location != null) ...[
                             const SizedBox(height: AppTheme.space4),
                             Row(
                               children: [
-                                Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
+                                Icon(
+                                  Icons.location_on,
+                                  size: 14,
+                                  color: AppColors.textSecondary,
+                                ),
                                 const SizedBox(width: AppTheme.space4),
                                 Expanded(
                                   child: Text(
@@ -373,7 +395,11 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                             const SizedBox(height: AppTheme.space4),
                             Row(
                               children: [
-                                Icon(Icons.phone, size: 14, color: AppColors.textSecondary),
+                                Icon(
+                                  Icons.phone,
+                                  size: 14,
+                                  color: AppColors.textSecondary,
+                                ),
                                 const SizedBox(width: AppTheme.space4),
                                 Text(
                                   unit.contactPhone!,
@@ -405,9 +431,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
 
   Widget _buildSelectProductsStep() {
     if (_selectedUnit == null) {
-      return const Center(
-        child: Text('Please select a supplier first'),
-      );
+      return const Center(child: Text('Please select a supplier first'));
     }
 
     if (_availableProducts.isEmpty) {
@@ -527,9 +551,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                         if (quantity > 0)
                           Text(
                             'Subtotal: \$${(product.price * quantity).toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                       ],
                     ),
@@ -593,12 +615,12 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
               title: Text(entry.key.name),
-              subtitle: Text('${entry.value} × \$${entry.key.price.toStringAsFixed(2)}'),
+              subtitle: Text(
+                '${entry.value} × \$${entry.key.price.toStringAsFixed(2)}',
+              ),
               trailing: Text(
                 '\$${(entry.key.price * entry.value).toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           );
@@ -636,10 +658,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
             children: [
               const Text(
                 'Total Amount',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               Text(
                 '\$${totalAmount.toStringAsFixed(2)}',

@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../models/animal.dart';
 import '../../providers/animal_provider.dart';
-import '../../services/animal_service.dart';
 import '../../services/bluetooth_scale_service.dart';
 import '../../widgets/dialogs/scale_connection_dialog.dart';
 import '../../widgets/bluetooth_weight_display.dart';
@@ -15,21 +13,19 @@ import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../widgets/core/custom_text_field.dart';
 
-/// Edit Animal Screen - Modern UI following design system
-/// Based on RegisterAnimalScreen but pre-populated with existing data
-class EditAnimalScreen extends StatefulWidget {
-  final String animalId;
-
-  const EditAnimalScreen({Key? key, required this.animalId}) : super(key: key);
+/// Register Animal Screen - Modern UI following design system
+/// Based on DESIGN_SCREENS_LAYOUTS.md specifications
+class RegisterAnimalScreen extends StatefulWidget {
+  const RegisterAnimalScreen({super.key});
 
   @override
-  State<EditAnimalScreen> createState() => _EditAnimalScreenState();
+  State<RegisterAnimalScreen> createState() => _RegisterAnimalScreenState();
 }
 
-class _EditAnimalScreenState extends State<EditAnimalScreen> {
+class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   final _formKey = GlobalKey<FormState>();
   final _imagePicker = ImagePicker();
-  
+
   // Form controllers
   final _tagIdController = TextEditingController();
   final _breedController = TextEditingController();
@@ -39,7 +35,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
 
   // Tag ID editing state
   bool _isTagIdEditable = false;
-  bool _isCheckingTagId = false;
+  final bool _isCheckingTagId = false;
 
   // Form state
   String? _selectedSpecies;
@@ -49,11 +45,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   String _selectedHealthStatus = 'healthy';
   File? _selectedImage;
   bool _isLoading = false;
-  bool _isLoadingAnimal = true;
-  bool _useManualWeightInput = false;
-
-  // Animal Data
-  Animal? _animal;
+  final bool _useManualWeightInput = false;
 
   // Bluetooth Scale
   final BluetoothScaleService _scaleService = BluetoothScaleService();
@@ -72,8 +64,8 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔵 [EditAnimalScreen] initState called for animalId: ${widget.animalId}');
-    _loadAnimal();
+    print('🔵 [RegisterAnimalScreen] initState called');
+    _generateTagId();
   }
 
   @override
@@ -87,61 +79,6 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     super.dispose();
   }
 
-  Future<void> _loadAnimal() async {
-    print('📋 [EditAnimalScreen] _loadAnimal - START for animalId: ${widget.animalId}');
-    setState(() => _isLoadingAnimal = true);
-
-    try {
-      final animalService = AnimalService();
-      final animalIdInt = int.tryParse(widget.animalId);
-      if (animalIdInt == null) {
-        throw Exception('Invalid animal ID: ${widget.animalId}');
-      }
-
-      final animal = await animalService.getAnimal(animalIdInt);
-
-      if (animal != null) {
-        setState(() {
-          _animal = animal;
-          _populateFormFields(animal);
-        });
-        print('✅ Animal loaded successfully: ${animal.animalId}');
-      } else {
-        print('❌ Animal not found');
-        _showErrorSnackbar('Animal not found');
-        if (mounted) context.pop();
-      }
-    } catch (e) {
-      print('❌ Error loading animal: $e');
-      _showErrorSnackbar('Failed to load animal: $e');
-      if (mounted) context.pop();
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingAnimal = false);
-      }
-    }
-  }
-
-  void _populateFormFields(Animal animal) {
-    setState(() {
-      _tagIdController.text = animal.animalId ?? '';
-      _selectedSpecies = animal.species;
-      _breedController.text = animal.breed ?? '';
-      _abbatoirController.text = animal.abbatoirName ?? '';
-      _weightValue = animal.liveWeight ?? 0.0;
-      _weightController.text = _weightValue.toStringAsFixed(1);
-      _selectedGender = animal.gender ?? 'male';
-      _selectedHealthStatus = animal.healthStatus ?? 'healthy';
-      _notesController.text = animal.notes ?? '';
-      
-      // Calculate birth date from age
-      if (animal.age != null && animal.age! > 0) {
-        final ageInDays = (animal.age! * 30.44).round();
-        _selectedDate = DateTime.now().subtract(Duration(days: ageInDays));
-      }
-    });
-  }
-
   Future<void> _connectScale() async {
     final result = await showDialog(
       context: context,
@@ -152,7 +89,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       setState(() {
         _isScaleConnected = true;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Scale connected successfully'),
@@ -169,8 +106,8 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       return;
     }
 
-    print('👆 [EditScreen] Reading weight from scale...');
-    
+    print('👆 [RegisterScreen] Reading weight from scale...');
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Reading from scale... Please ensure weight is stable.'),
@@ -179,17 +116,17 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     );
 
     bool gotWeight = false;
-    
+
     try {
-      print('👆 [EditScreen] Attempting manual read...');
+      print('👆 [RegisterScreen] Attempting manual read...');
       await _scaleService.readWeight();
     } catch (e) {
-      print('⚠️ [EditScreen] Manual read failed: $e');
+      print('⚠️ [RegisterScreen] Manual read failed: $e');
     }
-    
+
     StreamSubscription? singleRead;
     singleRead = _scaleService.weightStream.listen((weight) {
-      print('✅ [EditScreen] Received weight: $weight kg');
+      print('✅ [RegisterScreen] Received weight: $weight kg');
       if (!gotWeight) {
         gotWeight = true;
         setState(() {
@@ -197,7 +134,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           _weightController.text = weight.toStringAsFixed(2);
         });
         singleRead?.cancel();
-        
+
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -208,15 +145,17 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         );
       }
     });
-    
+
     Future.delayed(const Duration(seconds: 10), () {
       if (!gotWeight) {
-        print('⏱️ [EditScreen] Timeout waiting for weight');
+        print('⏱️ [RegisterScreen] Timeout waiting for weight');
         singleRead?.cancel();
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No weight received. Ensure weight is on scale and stable.'),
+            content: Text(
+              'No weight received. Ensure weight is on scale and stable.',
+            ),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 3),
           ),
@@ -243,17 +182,26 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     });
   }
 
+  void _generateTagId() {
+    final now = DateTime.now();
+    final species = _selectedSpecies?.toUpperCase() ?? 'ANIMAL';
+    final year = now.year;
+    final random = now.millisecondsSinceEpoch % 1000;
+    _tagIdController.text =
+        '$species-$year-${random.toString().padLeft(3, '0')}';
+  }
+
   Future<bool> _validateTagIdUniqueness(String tagId) async {
     if (tagId.isEmpty) return true;
 
     try {
       final animalProvider = context.read<AnimalProvider>();
-      // Check against existing animals (excluding current animal)
+      // Check against existing animals
       final existingAnimal = animalProvider.animals.firstWhere(
-        (animal) => animal.animalId.toLowerCase() == tagId.toLowerCase() && animal.id != _animal?.id,
+        (animal) => animal.animalId.toLowerCase() == tagId.toLowerCase(),
         orElse: () => Animal(
           id: -1,
-          farmer: 0,
+          abbatoir: 0,
           species: '',
           age: 0,
           liveWeight: 0,
@@ -273,9 +221,9 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   void _toggleTagIdEditing() {
     setState(() {
       _isTagIdEditable = !_isTagIdEditable;
-      if (!_isTagIdEditable && _animal != null) {
-        // Restore original tag ID if canceling edit
-        _tagIdController.text = _animal!.animalId ?? '';
+      if (!_isTagIdEditable) {
+        // Reset to auto-generated if canceling edit
+        _generateTagId();
       }
     });
   }
@@ -288,7 +236,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         maxHeight: 1024,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         setState(() {
           _selectedImage = File(image.path);
@@ -309,7 +257,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: AppColors.farmerPrimary,
+              primary: AppColors.abbatoirPrimary,
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: AppColors.textPrimary,
@@ -319,7 +267,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         );
       },
     );
-    
+
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
@@ -348,13 +296,13 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text(
-                'Add Photo',
-                style: AppTypography.titleLarge(),
-              ),
+              Text('Add Photo', style: AppTypography.titleLarge()),
               const SizedBox(height: 20),
               ListTile(
-                leading: const Icon(Icons.camera_alt, color: AppColors.farmerPrimary),
+                leading: const Icon(
+                  Icons.camera_alt,
+                  color: AppColors.abbatoirPrimary,
+                ),
                 title: Text('Take Photo', style: AppTypography.bodyLarge()),
                 onTap: () {
                   Navigator.pop(context);
@@ -362,8 +310,14 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: AppColors.farmerPrimary),
-                title: Text('Choose from Gallery', style: AppTypography.bodyLarge()),
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: AppColors.abbatoirPrimary,
+                ),
+                title: Text(
+                  'Choose from Gallery',
+                  style: AppTypography.bodyLarge(),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
@@ -376,11 +330,15 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     );
   }
 
-  Future<void> _updateAnimal() async {
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('🐄 UPDATE_ANIMAL - START');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+  Future<void> _registerAnimal() async {
+    print(
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    );
+    print('🐄 REGISTER_ANIMAL - START');
+    print(
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    );
+
     if (!_formKey.currentState!.validate()) {
       print('❌ Form validation failed');
       return;
@@ -392,14 +350,8 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       return;
     }
 
-    if (_animal == null) {
-      print('❌ No animal data available');
-      _showErrorSnackbar('Animal data not available');
-      return;
-    }
-
     print('✅ Form validated successfully');
-    print('📋 Updated Animal Details:');
+    print('📋 Animal Details:');
     print('   - Species: $_selectedSpecies');
     print('   - Tag ID: ${_tagIdController.text}');
     print('   - Breed: ${_breedController.text}');
@@ -407,63 +359,99 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     print('   - Gender: $_selectedGender');
     print('   - Health Status: $_selectedHealthStatus');
     print('   - Has Photo: ${_selectedImage != null}');
-    
+
     setState(() => _isLoading = true);
 
     try {
       final animalProvider = context.read<AnimalProvider>();
-      
+      print('📊 Provider state BEFORE creation:');
+      print('   - Current animals count: ${animalProvider.animals.length}');
+      print('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
+
       // Calculate age in months from birth date
       final now = DateTime.now();
-      final ageInMonths = ((now.difference(_selectedDate).inDays) / 30.44).round();
+      final ageInMonths = ((now.difference(_selectedDate).inDays) / 30.44)
+          .round();
       final finalAge = ageInMonths < 1 ? 1.0 : ageInMonths.toDouble();
-      
+
       print('📅 Age calculation:');
       print('   - Birth date: $_selectedDate');
       print('   - Current date: $now');
       print('   - Age in months: $finalAge');
-      
-      // Create updated animal object
-      final updatedAnimal = Animal(
-        id: _animal!.id,
-        farmer: _animal!.farmer,
+
+      final animal = Animal(
+        abbatoir: 0, // Will be set by backend from auth user
         species: _selectedSpecies!,
         age: finalAge,
         liveWeight: _weightValue,
-        createdAt: _animal!.createdAt,
-        slaughtered: _animal!.slaughtered,
+        createdAt: DateTime.now(),
+        slaughtered: false,
         animalId: _tagIdController.text,
         animalName: _tagIdController.text,
         breed: _breedController.text.isNotEmpty ? _breedController.text : null,
-        abbatoirName: _abbatoirController.text.isNotEmpty ? _abbatoirController.text : 'Default Abattoir',
+        abbatoirName: _abbatoirController.text.isNotEmpty
+            ? _abbatoirController.text
+            : 'Default Abattoir',
         healthStatus: _selectedHealthStatus,
         gender: _selectedGender,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
-        transferredTo: _animal!.transferredTo,
       );
 
       // Additional validation for manual tag IDs
       if (_isTagIdEditable) {
         final isUnique = await _validateTagIdUniqueness(_tagIdController.text);
         if (!isUnique) {
-          _showErrorSnackbar('Tag ID already exists. Please choose a different one.');
+          _showErrorSnackbar(
+            'Tag ID already exists. Please choose a different one.',
+          );
           return;
         }
       }
 
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('📡 Calling animalService.updateAnimal()...');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
-      final animalService = AnimalService();
-      final updatedAnimalFromServer = await animalService.updateAnimal(updatedAnimal);
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      print('📡 Calling animalProvider.createAnimal()...');
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
 
-      if (updatedAnimalFromServer != null) {
-        print('✅ Animal updated successfully');
-        _showSuccessSnackbar('Animal updated successfully!');
+      final createdAnimal = await animalProvider.createAnimal(
+        animal,
+        photo: _selectedImage,
+      );
 
-        // Refresh the animal list
-        await animalProvider.fetchAnimals(slaughtered: null);
+      print('🔄 Fetching updated animal list for abbatoir dashboard');
+      await animalProvider.fetchAnimals(slaughtered: null);
+
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      print('✅ CREATE_ANIMAL RESPONSE RECEIVED');
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      print('📊 Created animal details:');
+      print('   - Created: ${createdAnimal != null}');
+      if (createdAnimal != null) {
+        print('   - ID: ${createdAnimal.id}');
+        print('   - Animal ID: ${createdAnimal.animalId}');
+        print('   - Species: ${createdAnimal.species}');
+        print('   - Slaughtered: ${createdAnimal.slaughtered}');
+      }
+      print('📊 Provider state AFTER creation:');
+      print('   - Animals count: ${animalProvider.animals.length}');
+      print('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
+      print(
+        '   - Last animal in list: ${animalProvider.animals.isNotEmpty ? animalProvider.animals.last.animalId : "none"}',
+      );
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+
+      if (mounted && createdAnimal != null) {
+        print('✅ Animal created successfully, showing success message');
+        _showSuccessSnackbar('Animal registered successfully!');
 
         print('⏳ Waiting 500ms for snackbar visibility...');
         await Future.delayed(const Duration(milliseconds: 500));
@@ -471,25 +459,37 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         print('🔙 Navigating back to previous screen');
         if (mounted) {
           context.pop();
+          print(
+            '✅ Navigation complete - Dashboard should auto-refresh via didChangeDependencies',
+          );
         }
       } else {
-        print('❌ Animal update failed');
-        _showErrorSnackbar('Failed to update animal');
+        print('❌ Animal creation returned null or widget not mounted');
       }
 
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🏁 UPDATE_ANIMAL - COMPLETE');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      print('🏁 REGISTER_ANIMAL - COMPLETE');
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
     } catch (e) {
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('❌ UPDATE_ANIMAL - ERROR');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      print('❌ REGISTER_ANIMAL - ERROR');
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       print('❌ Error: $e');
       print('❌ Error type: ${e.runtimeType}');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+      print(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+
       if (mounted) {
-        _showErrorSnackbar('Failed to update animal: ${e.toString()}');
+        _showErrorSnackbar('Failed to register animal: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -537,30 +537,28 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('🔵 [EditAnimalScreen] build() called - isLoadingAnimal: $_isLoadingAnimal, isLoading: $_isLoading');
+    print('🔵 [RegisterAnimalScreen] build() called - isLoading: $_isLoading');
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: _buildAppBar(),
-      body: _isLoadingAnimal
-          ? const Center(child: CircularProgressIndicator())
-          : _buildBody(),
+      body: _buildBody(),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation: 0,
-      backgroundColor: AppColors.farmerPrimary,
+      backgroundColor: AppColors.abbatoirPrimary,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => context.pop(),
       ),
       title: Text(
-        'Edit Animal',
+        'Register Animal',
         style: AppTypography.appBarTitle(color: Colors.white),
       ),
       actions: [
-        if (!_isLoading && !_isLoadingAnimal)
+        if (!_isLoading)
           TextButton.icon(
             icon: const Icon(Icons.check, color: Colors.white),
             label: Text(
@@ -568,10 +566,14 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
               style: AppTypography.labelLarge(color: Colors.white),
             ),
             onPressed: () {
-              print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              print(
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+              );
               print('🔘 APPBAR SAVE BUTTON PRESSED');
-              print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              _updateAnimal();
+              print(
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+              );
+              _registerAnimal();
             },
           ),
         if (_isLoading)
@@ -608,7 +610,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           const SizedBox(height: 24),
           _buildNotesSection(),
           const SizedBox(height: 32),
-          _buildUpdateButton(),
+          _buildRegisterButton(),
           const SizedBox(height: 32),
         ],
       ),
@@ -632,10 +634,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Animal Photo (Optional)',
-            style: AppTypography.titleMedium(),
-          ),
+          Text('Animal Photo (Optional)', style: AppTypography.titleMedium()),
           const SizedBox(height: 16),
           Center(
             child: GestureDetector(
@@ -690,7 +689,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                   label: const Text('Change Photo'),
                   onPressed: _showImageSourceDialog,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.farmerPrimary,
+                    foregroundColor: AppColors.abbatoirPrimary,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -727,15 +726,12 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Basic Information',
-            style: AppTypography.titleMedium(),
-          ),
+          Text('Basic Information', style: AppTypography.titleMedium()),
           const SizedBox(height: 4),
           Divider(color: AppColors.divider),
           const SizedBox(height: 16),
-          
-          // Tag ID with Edit functionality
+
+          // Tag ID
           Container(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,7 +740,9 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                   children: [
                     Text(
                       'Tag ID *',
-                      style: AppTypography.labelLarge(color: AppColors.textPrimary),
+                      style: AppTypography.labelLarge(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     TextButton.icon(
@@ -758,7 +756,10 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                       ),
                       onPressed: _toggleTagIdEditing,
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         minimumSize: Size.zero,
                       ),
                     ),
@@ -768,7 +769,9 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                 CustomTextField(
                   controller: _tagIdController,
                   label: _isTagIdEditable ? 'Enter Tag ID' : 'Tag ID',
-                  hint: _isTagIdEditable ? 'Enter unique animal identifier' : 'Current animal identifier',
+                  hint: _isTagIdEditable
+                      ? 'Enter unique animal identifier'
+                      : 'Auto-generated identifier',
                   prefixIcon: const Icon(Icons.tag),
                   readOnly: !_isTagIdEditable,
                   validator: (value) {
@@ -793,15 +796,17 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      'Tap Edit to modify the Tag ID',
-                      style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                      'Auto-generated from species and date',
+                      style: AppTypography.bodySmall(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Species Dropdown
           Text(
             'Species *',
@@ -809,7 +814,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedSpecies,
+            initialValue: _selectedSpecies,
             decoration: InputDecoration(
               hintText: 'Select species',
               prefixIcon: const Icon(Icons.pets),
@@ -820,7 +825,10 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                 borderSide: BorderSide(color: AppColors.divider),
               ),
               focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: AppColors.farmerPrimary, width: 2),
+                borderSide: BorderSide(
+                  color: AppColors.abbatoirPrimary,
+                  width: 2,
+                ),
               ),
             ),
             items: _speciesOptions.map((species) {
@@ -828,10 +836,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                 value: species['value'],
                 child: Row(
                   children: [
-                    Text(
-                      species['icon'],
-                      style: const TextStyle(fontSize: 20),
-                    ),
+                    Text(species['icon'], style: const TextStyle(fontSize: 20)),
                     const SizedBox(width: 12),
                     Text(species['label']),
                   ],
@@ -841,6 +846,9 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
             onChanged: (value) {
               setState(() {
                 _selectedSpecies = value;
+                if (!_isTagIdEditable) {
+                  _generateTagId();
+                }
               });
             },
             validator: (value) {
@@ -851,7 +859,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
             },
           ),
           const SizedBox(height: 16),
-          
+
           // Breed
           CustomTextField(
             controller: _breedController,
@@ -860,7 +868,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
             prefixIcon: const Icon(Icons.category),
           ),
           const SizedBox(height: 16),
-          
+
           // Date of Birth
           Text(
             'Date of Birth *',
@@ -872,13 +880,14 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.divider),
-                ),
+                border: Border(bottom: BorderSide(color: AppColors.divider)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.calendar_today,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -888,19 +897,21 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                   ),
                   Text(
                     _getAgeDisplay(),
-                    style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                    style: AppTypography.bodySmall(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Abattoir Name
           CustomTextField(
             controller: _abbatoirController,
-            label: 'Abattoir/Farm Name',
-            hint: 'Enter farm or abattoir name',
+            label: 'Abattoir/Abbatoir Name',
+            hint: 'Enter abbatoir or abattoir name',
             prefixIcon: const Icon(Icons.business),
           ),
         ],
@@ -925,21 +936,18 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Physical Details',
-            style: AppTypography.titleMedium(),
-          ),
+          Text('Physical Details', style: AppTypography.titleMedium()),
           const SizedBox(height: 4),
           Divider(color: AppColors.divider),
           const SizedBox(height: 16),
 
-          // Weight Input with Bluetooth
+          // Weight Input Mode Toggle
           Text(
             'Live Weight *',
             style: AppTypography.labelLarge(color: AppColors.textPrimary),
           ),
           const SizedBox(height: 12),
-          
+
           // Bluetooth Weight Display
           BluetoothWeightDisplay(
             label: 'Animal Live Weight',
@@ -947,10 +955,10 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
             isConnected: _isScaleConnected,
             onTap: _readWeightFromScale,
             unit: 'kg',
-            themeColor: AppColors.farmerPrimary, // Farmer green theme
+            themeColor: AppColors.abbatoirPrimary, // Abbatoir green theme
           ),
           const SizedBox(height: 24),
-          
+
           // Gender
           Text(
             'Gender *',
@@ -1006,14 +1014,11 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Health Status',
-            style: AppTypography.titleMedium(),
-          ),
+          Text('Health Status', style: AppTypography.titleMedium()),
           const SizedBox(height: 4),
           Divider(color: AppColors.divider),
           const SizedBox(height: 16),
-          
+
           _buildHealthStatusOption(
             value: 'healthy',
             label: 'Healthy',
@@ -1063,13 +1068,15 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           const SizedBox(height: 4),
           Divider(color: AppColors.divider),
           const SizedBox(height: 16),
-          
+
           TextFormField(
             controller: _notesController,
             maxLines: 4,
             decoration: InputDecoration(
               hintText: 'Add any additional information about the animal...',
-              hintStyle: AppTypography.bodyMedium(color: AppColors.textSecondary),
+              hintStyle: AppTypography.bodyMedium(
+                color: AppColors.textSecondary,
+              ),
               filled: true,
               fillColor: AppColors.backgroundGray,
               border: OutlineInputBorder(
@@ -1078,7 +1085,10 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.farmerPrimary, width: 2),
+                borderSide: BorderSide(
+                  color: AppColors.abbatoirPrimary,
+                  width: 2,
+                ),
               ),
             ),
           ),
@@ -1095,7 +1105,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     required ValueChanged<String?> onChanged,
   }) {
     final isSelected = value == groupValue;
-    
+
     return InkWell(
       onTap: () => onChanged(value),
       borderRadius: BorderRadius.circular(8),
@@ -1103,11 +1113,11 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.farmerPrimary.withOpacity(0.1)
+              ? AppColors.abbatoirPrimary.withOpacity(0.1)
               : AppColors.backgroundGray,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.farmerPrimary : AppColors.divider,
+            color: isSelected ? AppColors.abbatoirPrimary : AppColors.divider,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -1116,14 +1126,18 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.farmerPrimary : AppColors.textSecondary,
+              color: isSelected
+                  ? AppColors.abbatoirPrimary
+                  : AppColors.textSecondary,
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: AppTypography.labelLarge(
-                color: isSelected ? AppColors.farmerPrimary : AppColors.textPrimary,
+                color: isSelected
+                    ? AppColors.abbatoirPrimary
+                    : AppColors.textPrimary,
               ),
             ),
           ],
@@ -1139,7 +1153,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     required Color color,
   }) {
     final isSelected = value == _selectedHealthStatus;
-    
+
     return InkWell(
       onTap: () => setState(() => _selectedHealthStatus = value),
       borderRadius: BorderRadius.circular(8),
@@ -1176,49 +1190,67 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     );
   }
 
-  Widget _buildUpdateButton() {
-    print('🔵 [UpdateButton] Building button - isLoading: $_isLoading');
+  Widget _buildRegisterButton() {
+    print('🔵 [RegisterButton] Building button - isLoading: $_isLoading');
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-      onPressed: (_isLoading || _isLoadingAnimal) ? null : () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('👆 Update button tapped')),
-        );
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        print('🔘 UPDATE BUTTON PRESSED');
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        _updateAnimal();
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.farmerPrimary,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        onPressed: _isLoading
+            ? null
+            : () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('👆 Register button tapped')),
+                );
+                print(
+                  '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+                );
+                print('🔘 REGISTER BUTTON PRESSED');
+                print(
+                  '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+                );
+                print('📋 Current form state:');
+                print('   - isLoading: $_isLoading');
+                print('   - selectedSpecies: $_selectedSpecies');
+                print('   - tagId: ${_tagIdController.text}');
+                print('   - breed: ${_breedController.text}');
+                print('   - weight: $_weightValue');
+                print('   - gender: $_selectedGender');
+                print('   - healthStatus: $_selectedHealthStatus');
+                print('   - hasPhoto: ${_selectedImage != null}');
+                print(
+                  '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+                );
+                _registerAnimal();
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.abbatoirPrimary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
         ),
-        elevation: 2,
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.check_circle, size: 20),
-                const SizedBox(width: 12),
-                Text(
-                  'Update Animal',
-                  style: AppTypography.button(color: Colors.white),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
                 ),
-              ],
-            ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle, size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Register Animal',
+                    style: AppTypography.button(color: Colors.white),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -1228,7 +1260,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     final difference = now.difference(_selectedDate);
     final years = difference.inDays ~/ 365;
     final months = (difference.inDays % 365) ~/ 30;
-    
+
     if (years > 0) {
       return '$years yr${years > 1 ? 's' : ''} $months mo';
     }

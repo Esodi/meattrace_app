@@ -5,7 +5,7 @@ import '../models/activity.dart';
 import '../services/api_service.dart';
 
 /// Activity Provider
-/// Manages farmer activity feed with backend synchronization
+/// Manages abbatoir activity feed with backend synchronization
 class ActivityProvider with ChangeNotifier {
   final ApiService _apiService;
   List<Activity> _activities = [];
@@ -14,19 +14,21 @@ class ActivityProvider with ChangeNotifier {
   DateTime? _lastFetchTime;
 
   ActivityProvider(this._apiService) {
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━XXXXXX━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint(
+      '━━━━━━━━━━━━━━━━━━━━━━XXXXXX━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    );
     debugPrint('🎯 ActivityProvider: Constructor START');
     debugPrint('   - ApiService instance: ${_apiService.hashCode}');
-    debugPrint('   - Provider instance: ${hashCode}');
+    debugPrint('   - Provider instance: $hashCode');
     debugPrint('   - Thread: ${DateTime.now().millisecondsSinceEpoch}');
-    
+
     try {
       // Initialize with empty state to prevent provider creation errors
       _activities = [];
       _isLoading = false;
       _error = null;
       _lastFetchTime = null;
-      
+
       debugPrint('✅ ActivityProvider: Constructor completed successfully');
       debugPrint('   - _activities.length: ${_activities.length}');
       debugPrint('   - _isLoading: $_isLoading');
@@ -37,7 +39,9 @@ class ActivityProvider with ChangeNotifier {
       debugPrint('$stack');
       rethrow;
     }
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint(
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    );
   }
 
   // Getters
@@ -59,11 +63,13 @@ class ActivityProvider with ChangeNotifier {
       return;
     }
 
-    _isLoading = true;
-    _error = null;
-    try {
+    Future.microtask(() {
+      _isLoading = true;
+      _error = null;
       notifyListeners();
+    });
 
+    try {
       final data = await _apiService.fetchActivities();
       final List<dynamic> activitiesList = data['activities'] ?? data ?? [];
 
@@ -73,7 +79,7 @@ class ActivityProvider with ChangeNotifier {
 
       _lastFetchTime = DateTime.now();
       await _saveActivitiesToCache();
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint('Error fetching activities: $e');
       _error = 'Network error: $e';
       await _loadActivitiesFromCache();
@@ -87,8 +93,10 @@ class ActivityProvider with ChangeNotifier {
   Future<void> addActivity(Activity activity) async {
     try {
       // Add locally first for instant feedback
-      _activities.insert(0, activity);
-      notifyListeners();
+      Future.microtask(() {
+        _activities.insert(0, activity);
+        notifyListeners();
+      });
 
       // Send to backend
       final response = await _apiService.post(
@@ -100,7 +108,9 @@ class ActivityProvider with ChangeNotifier {
       final serverActivity = Activity.fromJson(response.data);
 
       // Replace the local activity with server version
-      final index = _activities.indexWhere((a) => a.timestamp == activity.timestamp);
+      final index = _activities.indexWhere(
+        (a) => a.timestamp == activity.timestamp,
+      );
       if (index != -1) {
         _activities[index] = serverActivity;
       }
@@ -180,7 +190,10 @@ class ActivityProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final activitiesJson = _activities.map((a) => a.toJson()).toList();
       await prefs.setString('cached_activities', json.encode(activitiesJson));
-      await prefs.setString('activities_last_fetch', _lastFetchTime?.toIso8601String() ?? '');
+      await prefs.setString(
+        'activities_last_fetch',
+        _lastFetchTime?.toIso8601String() ?? '',
+      );
     } catch (e) {
       debugPrint('Error saving activities to cache: $e');
     }
@@ -243,8 +256,10 @@ class ActivityProvider with ChangeNotifier {
   }) async {
     final activity = Activity(
       type: ActivityType.transfer,
-      title: 'Transferred $count animal${count > 1 ? 's' : ''} to $processorName',
-      description: 'Successfully transferred $count animal${count > 1 ? 's' : ''} to $processorName for processing',
+      title:
+          'Transferred $count animal${count > 1 ? 's' : ''} to $processorName',
+      description:
+          'Successfully transferred $count animal${count > 1 ? 's' : ''} to $processorName for processing',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'transfer',
@@ -253,7 +268,7 @@ class ActivityProvider with ChangeNotifier {
         'processor': processorName,
         'batch_id': batchId,
       },
-      targetRoute: '/farmer/livestock-history',
+      targetRoute: '/abbatoir/livestock-history',
     );
     await addActivity(activity);
   }
@@ -269,7 +284,8 @@ class ActivityProvider with ChangeNotifier {
     final partsList = partTypes.join(', ');
     final activity = Activity(
       type: ActivityType.transfer,
-      title: 'Transferred ${partTypes.length} part${partTypes.length > 1 ? 's' : ''} from $animalTag to $processorName',
+      title:
+          'Transferred ${partTypes.length} part${partTypes.length > 1 ? 's' : ''} from $animalTag to $processorName',
       description: 'Parts: $partsList',
       timestamp: DateTime.now(),
       entityId: animalId,
@@ -295,8 +311,10 @@ class ActivityProvider with ChangeNotifier {
   }) async {
     final activity = Activity(
       type: ActivityType.transfer,
-      title: 'Transferred $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partTransferCount part transfer${partTransferCount > 1 ? 's' : ''} to $processorName',
-      description: 'Mixed transfer: $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partTransferCount carcass part${partTransferCount > 1 ? 's' : ''} sent to $processorName',
+      title:
+          'Transferred $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partTransferCount part transfer${partTransferCount > 1 ? 's' : ''} to $processorName',
+      description:
+          'Mixed transfer: $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partTransferCount carcass part${partTransferCount > 1 ? 's' : ''} sent to $processorName',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'transfer',
@@ -307,27 +325,22 @@ class ActivityProvider with ChangeNotifier {
         'transfer_type': 'mixed',
         'batch_id': batchId,
       },
-      targetRoute: '/farmer/livestock-history',
+      targetRoute: '/abbatoir/livestock-history',
     );
     await addActivity(activity);
   }
 
   /// Log a receive activity (for processors)
-  Future<void> logReceive({
-    required int count,
-    String? batchId,
-  }) async {
+  Future<void> logReceive({required int count, String? batchId}) async {
     final activity = Activity(
       type: ActivityType.transfer,
       title: 'Received $count animal${count > 1 ? 's' : ''}',
-      description: 'Received and inspected $count animal${count > 1 ? 's' : ''} at processing facility',
+      description:
+          'Received and inspected $count animal${count > 1 ? 's' : ''} at processing facility',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'receive',
-      metadata: {
-        'count': count,
-        'action': 'receive',
-      },
+      metadata: {'count': count, 'action': 'receive'},
       targetRoute: '/processor/inventory',
     );
     await addActivity(activity);
@@ -343,7 +356,8 @@ class ActivityProvider with ChangeNotifier {
     final partsList = partTypes.join(', ');
     final activity = Activity(
       type: ActivityType.transfer,
-      title: 'Received ${partTypes.length} part${partTypes.length > 1 ? 's' : ''} from $animalTag',
+      title:
+          'Received ${partTypes.length} part${partTypes.length > 1 ? 's' : ''} from $animalTag',
       description: 'Parts: $partsList',
       timestamp: DateTime.now(),
       entityId: animalId,
@@ -368,8 +382,10 @@ class ActivityProvider with ChangeNotifier {
   }) async {
     final activity = Activity(
       type: ActivityType.transfer,
-      title: 'Received $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partReceiveCount part receive${partReceiveCount > 1 ? 's' : ''}',
-      description: 'Mixed reception: $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partReceiveCount carcass part${partReceiveCount > 1 ? 's' : ''} received at facility',
+      title:
+          'Received $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partReceiveCount part receive${partReceiveCount > 1 ? 's' : ''}',
+      description:
+          'Mixed reception: $wholeAnimalCount whole animal${wholeAnimalCount > 1 ? 's' : ''} and $partReceiveCount carcass part${partReceiveCount > 1 ? 's' : ''} received at facility',
       timestamp: DateTime.now(),
       entityId: batchId,
       entityType: 'receive',

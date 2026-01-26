@@ -137,7 +137,7 @@ class YieldTrendsProvider with ChangeNotifier {
   /// Get trends for a specific role
   YieldTrendData? getTrendsForRole(String role) {
     switch (role.toLowerCase()) {
-      case 'farmer':
+      case 'abbatoir':
         return _farmerTrends;
       case 'processingunit':
       case 'processor':
@@ -152,7 +152,7 @@ class YieldTrendsProvider with ChangeNotifier {
   /// Refresh trends for a specific role
   Future<void> refreshTrendsForRole(String role, {String? filter}) async {
     switch (role.toLowerCase()) {
-      case 'farmer':
+      case 'abbatoir':
         await fetchFarmerTrends(
           period: _currentPeriod,
           species: filter,

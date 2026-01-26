@@ -14,7 +14,8 @@ class ProductCard extends StatelessWidget {
   final String productType; // 'beef', 'pork', 'chicken', 'mutton', 'processed'
   final String? productName;
   final String? cutType;
-  final String qualityGrade; // 'premium', 'standard', 'economy', 'organic', 'certified'
+  final String
+  qualityGrade; // 'premium', 'standard', 'economy', 'organic', 'certified'
   final double? weight;
   final String? weightUnit;
   final double? price;
@@ -27,7 +28,7 @@ class ProductCard extends StatelessWidget {
   final Widget? trailing;
 
   const ProductCard({
-    Key? key,
+    super.key,
     required this.productId,
     required this.batchNumber,
     required this.productType,
@@ -44,7 +45,7 @@ class ProductCard extends StatelessWidget {
     this.onTap,
     this.isSelected = false,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +71,7 @@ class ProductCard extends StatelessWidget {
               // Product Image
               _buildProductImage(isDark),
               const SizedBox(width: AppTheme.space16),
-              
+
               // Product Details
               Expanded(
                 child: Column(
@@ -97,9 +98,9 @@ class ProductCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: AppTheme.space4),
-                    
+
                     // Batch Number
                     Text(
                       'Batch: $batchNumber',
@@ -107,7 +108,7 @@ class ProductCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    
+
                     if (cutType != null) ...[
                       Text(
                         cutType!,
@@ -116,17 +117,14 @@ class ProductCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                    
+
                     const SizedBox(height: AppTheme.space12),
-                    
+
                     // Quality Badge
-                    QualityBadge(
-                      grade: qualityGrade,
-                      size: BadgeSize.small,
-                    ),
-                    
+                    QualityBadge(grade: qualityGrade, size: BadgeSize.small),
+
                     const SizedBox(height: AppTheme.space12),
-                    
+
                     // Metrics Row
                     Row(
                       children: [
@@ -146,7 +144,7 @@ class ProductCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    
+
                     if (expiryDate != null) ...[
                       const SizedBox(height: AppTheme.space8),
                       Row(
@@ -173,7 +171,7 @@ class ProductCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Trailing Widget
               if (trailing != null) ...[
                 const SizedBox(width: AppTheme.space12),
@@ -194,17 +192,16 @@ class ProductCard extends StatelessWidget {
         color: isDark ? AppColors.darkSurfaceVariant : AppColors.backgroundGray,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         image: imageUrl != null
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
+            ? DecorationImage(image: NetworkImage(imageUrl!), fit: BoxFit.cover)
             : null,
       ),
       child: imageUrl == null
           ? Icon(
               _getProductIcon(productType),
               size: 40,
-              color: AppColors.getQualityColor(qualityGrade).withValues(alpha: 0.5),
+              color: AppColors.getQualityColor(
+                qualityGrade,
+              ).withValues(alpha: 0.5),
             )
           : null,
     );
@@ -223,7 +220,9 @@ class ProductCard extends StatelessWidget {
         Text(
           value,
           style: AppTypography.bodySmall(
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            color: isDark
+                ? AppColors.darkTextSecondary
+                : AppColors.textSecondary,
           ),
         ),
       ],
@@ -270,7 +269,7 @@ class CompactProductCard extends StatelessWidget {
   final bool isSelected;
 
   const CompactProductCard({
-    Key? key,
+    super.key,
     required this.productId,
     required this.batchNumber,
     required this.productType,
@@ -278,7 +277,7 @@ class CompactProductCard extends StatelessWidget {
     required this.qualityGrade,
     this.onTap,
     this.isSelected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -330,10 +329,7 @@ class CompactProductCard extends StatelessWidget {
                   ],
                 ),
               ),
-              QualityBadge(
-                grade: qualityGrade,
-                size: BadgeSize.small,
-              ),
+              QualityBadge(grade: qualityGrade, size: BadgeSize.small),
               const SizedBox(width: AppTheme.space8),
               Icon(
                 Icons.chevron_right,
@@ -381,7 +377,7 @@ class ProductGridCard extends StatelessWidget {
   final bool isSelected;
 
   const ProductGridCard({
-    Key? key,
+    super.key,
     required this.productId,
     required this.batchNumber,
     required this.productType,
@@ -392,7 +388,7 @@ class ProductGridCard extends StatelessWidget {
     this.imageUrl,
     this.onTap,
     this.isSelected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -418,7 +414,9 @@ class ProductGridCard extends StatelessWidget {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurfaceVariant : AppColors.backgroundGray,
+                      color: isDark
+                          ? AppColors.darkSurfaceVariant
+                          : AppColors.backgroundGray,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(AppTheme.radiusMedium),
                         topRight: Radius.circular(AppTheme.radiusMedium),
@@ -435,7 +433,9 @@ class ProductGridCard extends StatelessWidget {
                             child: Icon(
                               _getProductIcon(productType),
                               size: 48,
-                              color: AppColors.getQualityColor(qualityGrade).withValues(alpha: 0.5),
+                              color: AppColors.getQualityColor(
+                                qualityGrade,
+                              ).withValues(alpha: 0.5),
                             ),
                           )
                         : null,
@@ -452,7 +452,7 @@ class ProductGridCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Info Section
             Padding(
               padding: const EdgeInsets.all(AppTheme.space12),
@@ -522,14 +522,14 @@ class ProductInventoryCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const ProductInventoryCard({
-    Key? key,
+    super.key,
     required this.productType,
     required this.totalStock,
     this.lowStockThreshold = 10,
     this.totalWeight,
     this.weightUnit = 'kg',
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -552,7 +552,9 @@ class ProductInventoryCard extends StatelessWidget {
                   Icon(
                     _getProductIcon(productType),
                     size: AppTheme.iconLarge,
-                    color: isLowStock ? AppColors.warning : theme.colorScheme.primary,
+                    color: isLowStock
+                        ? AppColors.warning
+                        : theme.colorScheme.primary,
                   ),
                   const SizedBox(width: AppTheme.space12),
                   Expanded(
@@ -583,24 +585,28 @@ class ProductInventoryCard extends StatelessWidget {
                     ),
                 ],
               ),
-              
+
               if (totalWeight != null) ...[
                 const SizedBox(height: AppTheme.space16),
                 const Divider(height: 1),
                 const SizedBox(height: AppTheme.space16),
-                
+
                 Row(
                   children: [
                     Icon(
                       Icons.scale,
                       size: AppTheme.iconSmall,
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
                     ),
                     const SizedBox(width: AppTheme.space8),
                     Text(
                       'Total Weight: ${totalWeight!.toStringAsFixed(2)} $weightUnit',
                       style: AppTypography.bodyMedium(
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],

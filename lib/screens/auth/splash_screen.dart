@@ -5,28 +5,28 @@ import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/custom_icons.dart';
 import '../../widgets/core/logo_with_border.dart';
 
 /// Splash Screen with Session-Based Authentication Check
-/// 
+///
 /// This screen is displayed on app launch and performs the following:
 /// 1. Checks for existing session token
 /// 2. Validates token and fetches user profile
 /// 3. Redirects to appropriate dashboard if session is valid
 /// 4. Redirects to login screen if session is invalid/expired
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  
+
   String _statusMessage = 'Initializing...';
   bool _hasNavigated = false;
 
@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _checkAuthenticationStatus() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+
       // Update status
       if (mounted) {
         setState(() {
@@ -95,7 +95,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           _hasNavigated = true;
           // If user has a pending join request, ensure they are directed to pending approval screen
           if (authProvider.user!.hasPendingJoinRequest) {
-            debugPrint('⏳ [SPLASH_SCREEN] User has pending join request, navigating to pending approval screen');
+            debugPrint(
+              '⏳ [SPLASH_SCREEN] User has pending join request, navigating to pending approval screen',
+            );
             context.go('/pending-approval');
           } else {
             _navigateToRoleBasedHome(authProvider.user!.role);
@@ -119,7 +121,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     } catch (e) {
       // Error during session check - fallback to login
       debugPrint('❌ Session check failed: $e');
-      
+
       if (mounted) {
         setState(() {
           _statusMessage = 'Session expired. Please login.';
@@ -137,8 +139,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   void _navigateToRoleBasedHome(String role) {
     switch (role.toLowerCase()) {
-      case 'farmer':
-        context.go('/farmer-home');
+      case 'abbatoir':
+        context.go('/abbatoir-home');
         break;
       case 'processingunit':
       case 'processing_unit':
@@ -171,12 +173,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isDark
-                ? [
-                    AppColors.darkSurface,
-                    AppColors.darkBackground,
-                  ]
+                ? [AppColors.darkSurface, AppColors.darkBackground]
                 : [
-                    AppColors.farmerPrimary.withValues(alpha: 0.1),
+                    AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                     AppColors.processorPrimary.withValues(alpha: 0.1),
                   ],
           ),
@@ -222,9 +221,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         '(Nyama Tamu App)',
                         style: AppTypography.scriptMedium(
                           color: AppColors.textSecondary,
-                        ).copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
+                        ).copyWith(fontStyle: FontStyle.italic),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -235,7 +232,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     FadeTransition(
                       opacity: _fadeAnimation,
                       child: Text(
-                        'Farm to Table Traceability',
+                        'Abbatoir to Table Traceability',
                         style: AppTypography.bodyLarge(
                           color: AppColors.textSecondary,
                         ),
@@ -249,9 +246,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     const SizedBox(
                       width: 40,
                       height: 40,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 3),
                     ),
 
                     const SizedBox(height: AppTheme.space24),
@@ -268,7 +263,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 ),
               ),
             ),
-            
+
             // Footer positioned at bottom
             Positioned(
               bottom: 0,
@@ -294,11 +289,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLogo() {
-    final theme = Theme.of(context);
-    return LogoWithBorder(
-      size: 80,
-      borderWidth: 3,
-      borderColor: theme.colorScheme.primary.withOpacity(0.95),
+    return const LogoWithBorder(
+      size: 90,
       assetPath: 'assets/icons/MEATTRACE_ICON.png',
     );
   }

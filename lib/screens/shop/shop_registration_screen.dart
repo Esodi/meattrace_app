@@ -156,10 +156,7 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Shop Registration',
-          style: AppTypography.headlineSmall(),
-        ),
+        title: Text('Shop Registration', style: AppTypography.headlineSmall()),
         backgroundColor: AppColors.shopPrimary,
         foregroundColor: Colors.white,
         bottom: TabBar(
@@ -175,10 +172,7 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildCreateShopTab(),
-          _buildJoinShopTab(),
-        ],
+        children: [_buildCreateShopTab(), _buildJoinShopTab()],
       ),
     );
   }
@@ -200,11 +194,7 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.store,
-                    size: 40,
-                    color: AppColors.shopPrimary,
-                  ),
+                  Icon(Icons.store, size: 40, color: AppColors.shopPrimary),
                   SizedBox(width: AppTheme.space16),
                   Expanded(
                     child: Column(
@@ -304,10 +294,7 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
             SizedBox(height: AppTheme.space24),
 
             // Business Information Section
-            Text(
-              'Business Information',
-              style: AppTypography.headlineSmall(),
-            ),
+            Text('Business Information', style: AppTypography.headlineSmall()),
             SizedBox(height: AppTheme.space16),
 
             // Business License
@@ -399,7 +386,9 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
               child: provider.availableShops.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: AppTheme.space16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.space16,
+                      ),
                       itemCount: provider.availableShops.length,
                       itemBuilder: (context, index) {
                         final shop = provider.availableShops[index];
@@ -515,23 +504,18 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
       padding: EdgeInsets.all(AppTheme.space16),
       decoration: BoxDecoration(
         color: AppColors.shopPrimary.withOpacity(0.05),
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade300),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Submit Join Request',
-            style: AppTypography.headlineSmall(),
-          ),
+          Text('Submit Join Request', style: AppTypography.headlineSmall()),
           SizedBox(height: AppTheme.space16),
 
           // Role Selection
           DropdownButtonFormField<String>(
-            value: _selectedRole,
+            initialValue: _selectedRole,
             decoration: InputDecoration(
               labelText: 'Preferred Role',
               border: OutlineInputBorder(
@@ -539,9 +523,15 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
               ),
             ),
             items: [
-              DropdownMenuItem(value: 'salesperson', child: Text('Salesperson')),
+              DropdownMenuItem(
+                value: 'salesperson',
+                child: Text('Salesperson'),
+              ),
               DropdownMenuItem(value: 'cashier', child: Text('Cashier')),
-              DropdownMenuItem(value: 'inventory_clerk', child: Text('Inventory Clerk')),
+              DropdownMenuItem(
+                value: 'inventory_clerk',
+                child: Text('Inventory Clerk'),
+              ),
               DropdownMenuItem(value: 'manager', child: Text('Manager')),
             ],
             onChanged: (value) => setState(() => _selectedRole = value!),
@@ -591,16 +581,9 @@ class _ShopRegistrationScreenState extends State<ShopRegistrationScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_off,
-            size: 80,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.search_off, size: 80, color: Colors.grey.shade400),
           SizedBox(height: AppTheme.space16),
-          Text(
-            'No shops found',
-            style: AppTypography.headlineSmall(),
-          ),
+          Text('No shops found', style: AppTypography.headlineSmall()),
           SizedBox(height: AppTheme.space8),
           Text(
             'Try adjusting your search',

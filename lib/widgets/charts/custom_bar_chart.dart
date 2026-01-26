@@ -107,7 +107,7 @@ class _CustomBarChartState extends State<CustomBarChart>
                   painter: _BarChartPainter(
                     data: widget.data,
                     maxValue: maxValue,
-                    primaryColor: widget.primaryColor ?? AppColors.farmerPrimary,
+                    primaryColor: widget.primaryColor ?? AppColors.abbatoirPrimary,
                     showValues: widget.showValues,
                     showLabels: widget.showLabels,
                     animationProgress: _animation.value,

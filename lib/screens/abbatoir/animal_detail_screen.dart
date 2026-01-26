@@ -122,9 +122,9 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
           onPressed: () {
             // Navigate to appropriate home based on role
             switch (userRole?.toLowerCase()) {
-              case 'farmer':
+              case 'abbatoir':
               case 'abattoir':
-                context.go('/farmer-home');
+                context.go('/abbatoir-home');
                 break;
               case 'processing_unit':
               case 'processingunit':
@@ -270,7 +270,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             const Divider(height: 24),
             _buildInfoRow(
               Icons.person,
-              'Farmer',
+              'Abbatoir',
               _animal?.farmerUsername ?? 'N/A',
             ),
           ],

@@ -62,7 +62,10 @@ class _ProductsListScreenState extends State<ProductsListScreen>
     try {
       await Future.wait([
         Provider.of<ProductProvider>(context, listen: false).fetchProducts(),
-        Provider.of<ProductCategoryProvider>(context, listen: false).fetchCategories(),
+        Provider.of<ProductCategoryProvider>(
+          context,
+          listen: false,
+        ).fetchCategories(),
       ]);
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -73,13 +76,15 @@ class _ProductsListScreenState extends State<ProductsListScreen>
     return products.where((product) {
       // Search filter
       if (_searchQuery.isNotEmpty) {
-        final matchesSearch = product.name.toLowerCase().contains(_searchQuery) ||
-            (product.batchNumber?.toLowerCase().contains(_searchQuery) ?? false);
+        final matchesSearch =
+            product.name.toLowerCase().contains(_searchQuery) ||
+            (product.batchNumber.toLowerCase().contains(_searchQuery) ?? false);
         if (!matchesSearch) return false;
       }
 
       // Category filter (product type)
-      if (_selectedCategory != 'All' && product.productType != _selectedCategory) {
+      if (_selectedCategory != 'All' &&
+          product.productType != _selectedCategory) {
         return false;
       }
 
@@ -117,9 +122,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             _buildCategoryTabs(),
 
             // Products List
-            Expanded(
-              child: _buildProductsList(),
-            ),
+            Expanded(child: _buildProductsList()),
           ],
         ),
       ),
@@ -152,7 +155,10 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -161,8 +167,11 @@ class _ProductsListScreenState extends State<ProductsListScreen>
   Widget _buildCategoryTabs() {
     return Consumer<ProductCategoryProvider>(
       builder: (context, categoryProvider, child) {
-        final categories = ['All', ...categoryProvider.categories.map((c) => c.name)];
-        
+        final categories = [
+          'All',
+          ...categoryProvider.categories.map((c) => c.name),
+        ];
+
         return SizedBox(
           height: 50,
           child: ListView.builder(
@@ -172,7 +181,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             itemBuilder: (context, index) {
               final category = categories[index];
               final isSelected = _selectedCategory == category;
-              
+
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilterChip(
@@ -291,7 +300,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
                         color: AppColors.textSecondary,
                       ),
                       Text(
-                        '\$${product.price?.toStringAsFixed(2) ?? '0.00'}',
+                        '\$${product.price.toStringAsFixed(2) ?? '0.00'}',
                         style: AppTypography.bodyMedium(
                           color: AppColors.textSecondary,
                         ),
@@ -330,10 +339,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
       children: [
         const Icon(Icons.star, size: 16, color: Colors.amber),
         const SizedBox(width: 4),
-        Text(
-          rating.toStringAsFixed(1),
-          style: AppTypography.bodyMedium(),
-        ),
+        Text(rating.toStringAsFixed(1), style: AppTypography.bodyMedium()),
       ],
     );
   }
@@ -353,7 +359,9 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             const SizedBox(height: 24),
             Text(
               'No products found',
-              style: AppTypography.headlineMedium(color: AppColors.textSecondary),
+              style: AppTypography.headlineMedium(
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -384,7 +392,9 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             const SizedBox(height: 24),
             Text(
               'Something went wrong',
-              style: AppTypography.headlineMedium(color: AppColors.textSecondary),
+              style: AppTypography.headlineMedium(
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -419,9 +429,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
                 border: Border.all(color: Colors.grey),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(
-                child: Icon(Icons.qr_code, size: 150),
-              ),
+              child: const Center(child: Icon(Icons.qr_code, size: 150)),
             ),
             const SizedBox(height: 16),
             Text(
@@ -452,26 +460,26 @@ class _ProductsListScreenState extends State<ProductsListScreen>
     if (product.transferredTo != null) {
       return '📦 Transferred';
     }
-    
+
     // If not transferred, it's in stock at processing unit
     if (product.quantity > 0) {
       return '✓ In Stock';
     }
-    
+
     return '❌ Out of Stock';
   }
 
   Color _getStockColor(Product product) {
     // Check if product has been transferred to a shop
     if (product.transferredTo != null) {
-      return Colors.blue;  // Transferred to shop
+      return Colors.blue; // Transferred to shop
     }
-    
+
     // If not transferred, check quantity
     if (product.quantity > 0) {
-      return Colors.green;  // In stock
+      return Colors.green; // In stock
     }
-    
-    return Colors.red;  // Out of stock
+
+    return Colors.red; // Out of stock
   }
 }

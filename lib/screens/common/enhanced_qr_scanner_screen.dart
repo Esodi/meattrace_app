@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:permission_handler/permission_handler.dart' as perm;
-import '../../deferred/qr_scanner_deferred.dart' deferred as qrDeferred show QRView, QrScannerOverlayShape, openAppSettings;
+import '../../deferred/qr_scanner_deferred.dart'
+    deferred as qrDeferred
+    show QRView, QrScannerOverlayShape, openAppSettings;
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
@@ -22,13 +24,15 @@ import '../../services/scan_history_service.dart';
 class EnhancedQrScannerScreen extends StatefulWidget {
   final String? source;
 
-  const EnhancedQrScannerScreen({Key? key, this.source}) : super(key: key);
+  const EnhancedQrScannerScreen({super.key, this.source});
 
   @override
-  State<EnhancedQrScannerScreen> createState() => _EnhancedQrScannerScreenState();
+  State<EnhancedQrScannerScreen> createState() =>
+      _EnhancedQrScannerScreenState();
 }
 
-class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with TickerProviderStateMixin {
+class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen>
+    with TickerProviderStateMixin {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   late Future<void> _libraryLoader;
   bool _isLibraryLoaded = false;
@@ -37,7 +41,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
   bool _isFlashOn = false;
   bool _isScanning = true;
   bool _showSuccessAnimation = false;
-  
+
   // Animation controllers
   late AnimationController _scanLineController;
   late AnimationController _pulseController;
@@ -57,7 +61,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _scanLineAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scanLineController, curve: Curves.easeInOut),
     );
@@ -67,7 +71,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
@@ -147,9 +151,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
           children: [
             const Icon(Icons.info, color: Colors.white),
             const SizedBox(width: AppTheme.space12),
-            const Expanded(
-              child: Text('Gallery scan feature coming soon!'),
-            ),
+            const Expanded(child: Text('Gallery scan feature coming soon!')),
           ],
         ),
         backgroundColor: AppColors.info,
@@ -163,7 +165,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
 
   void _showManualEntryDialog() {
     final controller = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -172,10 +174,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
         ),
         title: Row(
           children: [
-            Icon(
-              Icons.edit,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+            Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: AppTheme.space12),
             const Text('Manual Entry'),
           ],
@@ -400,7 +399,8 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
                 top: AppTheme.space20,
                 left: AppTheme.space20,
                 right: AppTheme.space20,
-                bottom: MediaQuery.of(context).padding.bottom + AppTheme.space20,
+                bottom:
+                    MediaQuery.of(context).padding.bottom + AppTheme.space20,
               ),
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkSurface : Colors.white,
@@ -438,7 +438,9 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: _isScanning ? AppColors.success : AppColors.warning,
+                            color: _isScanning
+                                ? AppColors.success
+                                : AppColors.warning,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -446,21 +448,25 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
                         Text(
                           _isScanning ? 'Scanning Active' : 'Scanning Paused',
                           style: AppTypography.labelMedium(
-                            color: _isScanning ? AppColors.success : AppColors.warning,
+                            color: _isScanning
+                                ? AppColors.success
+                                : AppColors.warning,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: AppTheme.space20),
-                  
+
                   // Control Buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildActionButton(
-                        icon: _isScanning ? Icons.pause_circle : Icons.play_circle,
+                        icon: _isScanning
+                            ? Icons.pause_circle
+                            : Icons.play_circle,
                         label: _isScanning ? 'Pause' : 'Resume',
                         onPressed: _pauseResumeCamera,
                         color: AppColors.warning,
@@ -591,11 +597,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline,
-                size: 80,
-                color: AppColors.error,
-              ),
+              Icon(Icons.error_outline, size: 80, color: AppColors.error),
               const SizedBox(height: AppTheme.space16),
               Text(
                 'Failed to load QR scanner',
@@ -633,7 +635,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
           _isScanning = false;
           _showSuccessAnimation = true;
         });
-        
+
         // Hide success animation after delay
         Future.delayed(const Duration(milliseconds: 1000), () {
           if (mounted) {
@@ -671,10 +673,8 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ProductDisplayScreen(
-            productId: productId,
-            source: widget.source,
-          ),
+          builder: (context) =>
+              ProductDisplayScreen(productId: productId, source: widget.source),
         ),
       ).then((_) {
         // Resume scanning when returning
@@ -701,19 +701,21 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
     }
 
     // Check if it's a URL containing product ID
-    if (data.contains('/api/v2/products/') || data.contains('/api/product-info/')) {
+    if (data.contains('/api/v2/products/') ||
+        data.contains('/api/product-info/')) {
       final uri = Uri.tryParse(data);
       if (uri != null) {
         final pathSegments = uri.pathSegments;
         final productsIndex = pathSegments.indexOf('products');
         final productInfoIndex = pathSegments.indexOf('product-info');
-        
+
         if (productsIndex != -1 && productsIndex + 1 < pathSegments.length) {
           final productId = pathSegments[productsIndex + 1];
           if (int.tryParse(productId) != null) {
             return productId;
           }
-        } else if (productInfoIndex != -1 && productInfoIndex + 1 < pathSegments.length) {
+        } else if (productInfoIndex != -1 &&
+            productInfoIndex + 1 < pathSegments.length) {
           final productId = pathSegments[productInfoIndex + 1];
           if (int.tryParse(productId) != null) {
             return productId;
@@ -766,10 +768,7 @@ class _EnhancedQrScannerScreenState extends State<EnhancedQrScannerScreen> with 
             const Text('Scan Error'),
           ],
         ),
-        content: Text(
-          message,
-          style: AppTypography.bodyMedium(),
-        ),
+        content: Text(message, style: AppTypography.bodyMedium()),
         actions: [
           PrimaryButton(
             label: 'Try Again',
@@ -871,7 +870,12 @@ class ScanFramePainter extends CustomPainter {
       Path()
         ..moveTo(size.width - cornerLength, size.height)
         ..lineTo(size.width - cornerRadius, size.height)
-        ..quadraticBezierTo(size.width, size.height, size.width, size.height - cornerRadius)
+        ..quadraticBezierTo(
+          size.width,
+          size.height,
+          size.width,
+          size.height - cornerRadius,
+        )
         ..lineTo(size.width, size.height - cornerLength),
       paint,
     );
@@ -879,7 +883,8 @@ class ScanFramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ScanFramePainter oldDelegate) =>
-      pulseValue != oldDelegate.pulseValue || isScanning != oldDelegate.isScanning;
+      pulseValue != oldDelegate.pulseValue ||
+      isScanning != oldDelegate.isScanning;
 }
 
 /// Custom painter for animated scan line
@@ -906,10 +911,7 @@ class ScanLinePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final y = size.height * progress;
-    canvas.drawRect(
-      Rect.fromLTWH(0, y - 1.5, size.width, 3),
-      paint,
-    );
+    canvas.drawRect(Rect.fromLTWH(0, y - 1.5, size.width, 3), paint);
   }
 
   @override

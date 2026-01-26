@@ -170,7 +170,7 @@ class PrintPreview extends StatelessWidget {
           
           // Transfer details
           _buildPreviewField('Transfer ID', data['transferId'] ?? 'TRF-2024-001'),
-          _buildPreviewField('From', data['from'] ?? 'Green Valley Farm'),
+          _buildPreviewField('From', data['from'] ?? 'Green Valley Abbatoir'),
           _buildPreviewField('To', data['to'] ?? 'Premium Processors Ltd'),
           _buildPreviewField('Date', data['date'] ?? '18/10/2025 14:30'),
           const SizedBox(height: AppTheme.space12),

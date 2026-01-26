@@ -497,7 +497,7 @@ class _ProcessorAnalyticsScreenState extends State<ProcessorAnalyticsScreen> {
           const Divider(height: AppTheme.space24),
           _buildActivityItem(
             'Animals received',
-            '5 animals transferred from Farm A',
+            '5 animals transferred from Abbatoir A',
             '5 hours ago',
             Icons.download_done,
             AppColors.info,

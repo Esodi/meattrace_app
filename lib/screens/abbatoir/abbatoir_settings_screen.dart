@@ -7,16 +7,16 @@ import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
 
-/// Settings Screen for Farmer
+/// Settings Screen for Abbatoir
 /// Features: Account settings, notifications, app preferences, about
-class FarmerSettingsScreen extends StatefulWidget {
-  const FarmerSettingsScreen({super.key});
+class AbbatoirSettingsScreen extends StatefulWidget {
+  const AbbatoirSettingsScreen({super.key});
 
   @override
-  State<FarmerSettingsScreen> createState() => _FarmerSettingsScreenState();
+  State<AbbatoirSettingsScreen> createState() => _AbbatoirSettingsScreenState();
 }
 
-class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
+class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
   bool _notificationsEnabled = true;
   bool _emailNotifications = true;
   bool _transferAlerts = true;
@@ -30,7 +30,9 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
     final isDark = themeProvider.isDarkMode;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF1A1A1A) : AppColors.backgroundLight,
+      backgroundColor: isDark
+          ? const Color(0xFF1A1A1A)
+          : AppColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         elevation: 0,
@@ -59,14 +61,18 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
                 borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                border: isDark ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
-                boxShadow: isDark ? null : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                border: isDark
+                    ? Border.all(color: Colors.white.withOpacity(0.1))
+                    : null,
+                boxShadow: isDark
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
               ),
               child: Row(
                 children: [
@@ -76,11 +82,13 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          AppColors.farmerPrimary,
-                          AppColors.farmerPrimary.withValues(alpha: 0.8),
+                          AppColors.abbatoirPrimary,
+                          AppColors.abbatoirPrimary.withValues(alpha: 0.8),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
                     child: Center(
                       child: Text(
@@ -98,17 +106,21 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user?.username ?? 'Farmer',
+                          user?.username ?? 'Abbatoir',
                           style: AppTypography.titleMedium().copyWith(
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.textPrimary,
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: AppTheme.space4),
                         Text(
-                          user?.email ?? 'farmer@meattrace.com',
+                          user?.email ?? 'abbatoir@meattrace.com',
                           style: AppTypography.bodySmall().copyWith(
-                            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -116,10 +128,12 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined),
-                    color: AppColors.farmerPrimary,
+                    color: AppColors.abbatoirPrimary,
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Edit profile coming soon!')),
+                        const SnackBar(
+                          content: Text('Edit profile coming soon!'),
+                        ),
                       );
                     },
                   ),
@@ -154,7 +168,9 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
               subtitle: 'Manage your privacy settings',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Privacy settings coming soon!')),
+                  const SnackBar(
+                    content: Text('Privacy settings coming soon!'),
+                  ),
                 );
               },
               isDark: isDark,
@@ -244,7 +260,9 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
               subtitle: 'English (US)',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Language settings coming soon!')),
+                  const SnackBar(
+                    content: Text('Language settings coming soon!'),
+                  ),
                 );
               },
               isDark: isDark,
@@ -265,7 +283,9 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
               subtitle: 'Read our terms and conditions',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Terms & Conditions coming soon!')),
+                  const SnackBar(
+                    content: Text('Terms & Conditions coming soon!'),
+                  ),
                 );
               },
               isDark: isDark,
@@ -311,9 +331,13 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.error,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: AppTheme.space16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppTheme.space16,
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
                   ),
                   child: Row(
@@ -373,27 +397,27 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: isDark ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        border: isDark
+            ? Border.all(color: Colors.white.withOpacity(0.1))
+            : null,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(AppTheme.space8),
           decoration: BoxDecoration(
-            color: AppColors.farmerPrimary.withValues(alpha: 0.1),
+            color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           ),
-          child: Icon(
-            icon,
-            color: AppColors.farmerPrimary,
-            size: 20,
-          ),
+          child: Icon(icon, color: AppColors.abbatoirPrimary, size: 20),
         ),
         title: Text(
           title,
@@ -405,12 +429,16 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
         subtitle: Text(
           subtitle,
           style: AppTypography.bodySmall().copyWith(
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+            color: isDark
+                ? Colors.white.withOpacity(0.7)
+                : AppColors.textSecondary,
           ),
         ),
         trailing: Icon(
           Icons.chevron_right,
-          color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+          color: isDark
+              ? Colors.white.withOpacity(0.7)
+              : AppColors.textSecondary,
         ),
         onTap: onTap,
       ),
@@ -433,27 +461,27 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: isDark ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        border: isDark
+            ? Border.all(color: Colors.white.withOpacity(0.1))
+            : null,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       child: SwitchListTile(
         secondary: Container(
           padding: const EdgeInsets.all(AppTheme.space8),
           decoration: BoxDecoration(
-            color: AppColors.farmerPrimary.withValues(alpha: 0.1),
+            color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           ),
-          child: Icon(
-            icon,
-            color: AppColors.farmerPrimary,
-            size: 20,
-          ),
+          child: Icon(icon, color: AppColors.abbatoirPrimary, size: 20),
         ),
         title: Text(
           title,
@@ -465,12 +493,14 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
         subtitle: Text(
           subtitle,
           style: AppTypography.bodySmall().copyWith(
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+            color: isDark
+                ? Colors.white.withOpacity(0.7)
+                : AppColors.textSecondary,
           ),
         ),
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.farmerPrimary,
+        activeThumbColor: AppColors.abbatoirPrimary,
       ),
     );
   }
@@ -496,7 +526,9 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
                   Text(
                     'Adjust the text size for better readability',
                     style: AppTypography.bodyMedium().copyWith(
-                      color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.7)
+                          : AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: AppTheme.space24),
@@ -517,7 +549,7 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
                           max: 1.4,
                           divisions: 6,
                           label: '${(themeProvider.textScale * 100).toInt()}%',
-                          activeColor: AppColors.farmerPrimary,
+                          activeColor: AppColors.abbatoirPrimary,
                           onChanged: (value) {
                             themeProvider.setTextScale(value);
                             setState(() {});
@@ -549,7 +581,7 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     'Done',
-                    style: TextStyle(color: AppColors.farmerPrimary),
+                    style: TextStyle(color: AppColors.abbatoirPrimary),
                   ),
                 ),
               ],
@@ -659,7 +691,9 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
         content: Text(
           'Are you sure you want to logout?',
           style: TextStyle(
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary,
+            color: isDark
+                ? Colors.white.withOpacity(0.7)
+                : AppColors.textSecondary,
           ),
         ),
         actions: [
@@ -667,7 +701,11 @@ class _FarmerSettingsScreenState extends State<FarmerSettingsScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancel',
-              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textSecondary),
+              style: TextStyle(
+                color: isDark
+                    ? Colors.white.withOpacity(0.7)
+                    : AppColors.textSecondary,
+              ),
             ),
           ),
           ElevatedButton(

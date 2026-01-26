@@ -13,7 +13,8 @@ class AnimalCard extends StatelessWidget {
   final String? tagNumber;
   final String species; // 'cattle', 'pig', 'chicken', 'sheep', 'goat'
   final String? breed;
-  final String healthStatus; // 'healthy', 'sick', 'quarantine', 'treatment', 'deceased'
+  final String
+  healthStatus; // 'healthy', 'sick', 'quarantine', 'treatment', 'deceased'
   final double? weight;
   final String? weightUnit;
   final int? age;
@@ -26,7 +27,7 @@ class AnimalCard extends StatelessWidget {
   final Widget? trailing;
 
   const AnimalCard({
-    Key? key,
+    super.key,
     required this.animalId,
     this.tagNumber,
     required this.species,
@@ -42,7 +43,7 @@ class AnimalCard extends StatelessWidget {
     this.onTap,
     this.isSelected = false,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +69,7 @@ class AnimalCard extends StatelessWidget {
               // Animal Image or Icon
               _buildAnimalImage(isDark),
               const SizedBox(width: AppTheme.space16),
-              
+
               // Animal Details
               Expanded(
                 child: Column(
@@ -95,7 +96,7 @@ class AnimalCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    
+
                     if (breed != null) ...[
                       const SizedBox(height: AppTheme.space4),
                       Text(
@@ -107,17 +108,17 @@ class AnimalCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    
+
                     const SizedBox(height: AppTheme.space12),
-                    
+
                     // Health Status Badge
                     HealthStatusBadge(
                       status: healthStatus,
                       size: BadgeSize.small,
                     ),
-                    
+
                     const SizedBox(height: AppTheme.space12),
-                    
+
                     // Metrics Row
                     Row(
                       children: [
@@ -130,11 +131,7 @@ class AnimalCard extends StatelessWidget {
                           const SizedBox(width: AppTheme.space16),
                         ],
                         if (age != null) ...[
-                          _buildMetric(
-                            Icons.cake,
-                            '$age $ageUnit',
-                            isDark,
-                          ),
+                          _buildMetric(Icons.cake, '$age $ageUnit', isDark),
                           const SizedBox(width: AppTheme.space16),
                         ],
                         if (gender != null)
@@ -147,7 +144,7 @@ class AnimalCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    
+
                     if (registrationDate != null) ...[
                       const SizedBox(height: AppTheme.space8),
                       Text(
@@ -160,7 +157,7 @@ class AnimalCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Trailing Widget
               if (trailing != null) ...[
                 const SizedBox(width: AppTheme.space12),
@@ -181,10 +178,7 @@ class AnimalCard extends StatelessWidget {
         color: isDark ? AppColors.darkSurfaceVariant : AppColors.backgroundGray,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         image: imageUrl != null
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
+            ? DecorationImage(image: NetworkImage(imageUrl!), fit: BoxFit.cover)
             : null,
       ),
       child: imageUrl == null
@@ -210,7 +204,9 @@ class AnimalCard extends StatelessWidget {
         Text(
           value,
           style: AppTypography.bodySmall(
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            color: isDark
+                ? AppColors.darkTextSecondary
+                : AppColors.textSecondary,
           ),
         ),
       ],
@@ -232,41 +228,61 @@ class CompactAnimalCard extends StatelessWidget {
   final bool isSelected;
 
   const CompactAnimalCard({
-    Key? key,
+    super.key,
     required this.animalId,
     this.tagNumber,
     required this.species,
     required this.healthStatus,
     this.onTap,
     this.isSelected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: AppTheme.space16,
-        vertical: AppTheme.space4,
+        vertical: AppTheme.space6,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        side: isSelected
-            ? BorderSide(color: theme.colorScheme.primary, width: 2)
-            : BorderSide.none,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary
+              : AppColors.divider.withValues(alpha: 0.5),
+          width: isSelected ? 2 : 1,
+        ),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.space12),
           child: Row(
             children: [
-              Icon(
-                custom_icons.getSpeciesIcon(species),
-                size: AppTheme.iconMedium,
-                color: AppColors.getSpeciesColor(species),
+              Container(
+                padding: const EdgeInsets.all(AppTheme.space8),
+                decoration: BoxDecoration(
+                  color: AppColors.getSpeciesColor(
+                    species,
+                  ).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  custom_icons.getSpeciesIcon(species),
+                  size: 24,
+                  color: AppColors.getSpeciesColor(species),
+                ),
               ),
               const SizedBox(width: AppTheme.space12),
               Expanded(
@@ -275,24 +291,37 @@ class CompactAnimalCard extends StatelessWidget {
                   children: [
                     Text(
                       tagNumber ?? 'ID: $animalId',
-                      style: AppTypography.bodyMedium(
-                        color: theme.colorScheme.onSurface,
+                      style: AppTypography.titleSmall().copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppTheme.space4),
-                    HealthStatusBadge(
-                      status: healthStatus,
-                      size: BadgeSize.small,
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          species.toUpperCase(),
+                          style: AppTypography.labelSmall().copyWith(
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        HealthStatusBadge(
+                          status: healthStatus,
+                          size: BadgeSize.small,
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                size: AppTheme.iconSmall,
-                color: AppColors.textSecondary,
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.textTertiary,
               ),
             ],
           ),
@@ -313,7 +342,7 @@ class AnimalGridCard extends StatelessWidget {
   final bool isSelected;
 
   const AnimalGridCard({
-    Key? key,
+    super.key,
     required this.animalId,
     this.tagNumber,
     required this.species,
@@ -321,7 +350,7 @@ class AnimalGridCard extends StatelessWidget {
     this.imageUrl,
     this.onTap,
     this.isSelected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -345,7 +374,9 @@ class AnimalGridCard extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurfaceVariant : AppColors.backgroundGray,
+                  color: isDark
+                      ? AppColors.darkSurfaceVariant
+                      : AppColors.backgroundGray,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(AppTheme.radiusMedium),
                     topRight: Radius.circular(AppTheme.radiusMedium),
@@ -362,13 +393,15 @@ class AnimalGridCard extends StatelessWidget {
                         child: Icon(
                           custom_icons.getSpeciesIcon(species),
                           size: 48,
-                          color: AppColors.getSpeciesColor(species).withValues(alpha: 0.5),
+                          color: AppColors.getSpeciesColor(
+                            species,
+                          ).withValues(alpha: 0.5),
                         ),
                       )
                     : null,
               ),
             ),
-            
+
             // Info Section
             Padding(
               padding: const EdgeInsets.all(AppTheme.space12),
@@ -408,14 +441,14 @@ class AnimalStatsCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const AnimalStatsCard({
-    Key? key,
+    super.key,
     required this.species,
     required this.totalCount,
     required this.healthyCount,
     this.sickCount = 0,
     this.quarantineCount = 0,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -461,11 +494,11 @@ class AnimalStatsCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: AppTheme.space16),
               const Divider(height: 1),
               const SizedBox(height: AppTheme.space16),
-              
+
               // Status Breakdown
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -504,15 +537,17 @@ class AnimalStatsCard extends StatelessWidget {
       children: [
         Text(
           count.toString(),
-          style: AppTypography.titleLarge(color: color).copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTypography.titleLarge(
+            color: color,
+          ).copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: AppTheme.space4),
         Text(
           label,
           style: AppTypography.bodySmall(
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            color: isDark
+                ? AppColors.darkTextSecondary
+                : AppColors.textSecondary,
           ),
         ),
       ],

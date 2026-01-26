@@ -6,7 +6,7 @@ import '../../providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -50,10 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Settings'), elevation: 0),
       body: ListView(
         children: [
           _buildSection(
@@ -100,7 +97,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               ListTile(
                 title: const Text('Theme'),
-                subtitle: Text(_getThemeLabel(themeProvider.themePreference.name)),
+                subtitle: Text(
+                  _getThemeLabel(themeProvider.themePreference.name),
+                ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => _showThemeDialog(themeProvider),
               ),
@@ -194,7 +193,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () {
                   // Navigate to terms of service
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Terms of Service coming soon')),
+                    const SnackBar(
+                      content: Text('Terms of Service coming soon'),
+                    ),
                   );
                 },
               ),
@@ -236,14 +237,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 );
-                
+
                 if (shouldLogout == true && mounted) {
                   await AuthService().logout();
                   if (mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/login',
-                      (route) => false,
-                    );
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/login', (route) => false);
                   }
                 }
               },
@@ -389,7 +389,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (value) => themeProvider.setTextScale(value),
                   ),
                 ),
-                const Text('A', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const Text(
+                  'A',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -455,7 +458,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear Cache'),
-        content: const Text('Are you sure you want to clear the cache? This will free up storage space but may slow down the app temporarily.'),
+        content: const Text(
+          'Are you sure you want to clear the cache? This will free up storage space but may slow down the app temporarily.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

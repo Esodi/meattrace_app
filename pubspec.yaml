@@ -62,6 +62,7 @@ dependencies:
   firebase_core: ^3.0.0
   firebase_messaging: ^15.0.0
   flutter_local_notifications: ^17.0.0
+  material_design_icons_flutter: ^7.0.7296
 
   # Custom fonts for meat-themed design
   # Playfair Display - elegant serif font for app name

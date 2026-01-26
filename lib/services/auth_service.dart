@@ -19,12 +19,20 @@ class AuthService {
 
   DioClient get dioClient => _dioClient;
 
-  Future<User> login(String username, String password, {String? sessionId}) async {
+  Future<User> login(
+    String username,
+    String password, {
+    String? sessionId,
+  }) async {
     try {
       // Log the attempt for debugging
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('🔐 LOGIN ATTEMPT START');
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('👤 Username: $username');
       if (sessionId != null) {
         debugPrint('🔑 Session ID: $sessionId');
@@ -32,7 +40,7 @@ class AuthService {
       debugPrint('🌐 Base URL: ${Constants.baseUrl}');
       debugPrint('📍 Login Endpoint: ${Constants.loginEndpoint}');
       debugPrint('🔗 Full URL: ${Constants.baseUrl}${Constants.loginEndpoint}');
-      
+
       // Use JSON data for login endpoint (Django TokenObtainPairView expects JSON)
       final loginData = {
         'username': username,
@@ -42,73 +50,105 @@ class AuthService {
 
       debugPrint('📤 Sending POST request with JSON data...');
       debugPrint('📦 Request body: $loginData');
-      
+
       final response = await _dioClient.dio.post(
         Constants.loginEndpoint,
         data: loginData,
       );
 
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('✅ LOGIN RESPONSE RECEIVED');
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('📊 Status Code: ${response.statusCode}');
       debugPrint('📦 Response Data Type: ${response.data.runtimeType}');
-      debugPrint('📦 Response Keys: ${response.data is Map ? (response.data as Map).keys : 'N/A'}');
-      
+      debugPrint(
+        '📦 Response Keys: ${response.data is Map ? (response.data as Map).keys : 'N/A'}',
+      );
+
       final tokens = response.data;
       final accessToken = tokens['access'];
       final refreshToken = tokens['refresh'];
 
       if (accessToken == null || refreshToken == null) {
         debugPrint('❌ Missing tokens in response!');
-        debugPrint('   Access Token: ${accessToken != null ? 'Present' : 'MISSING'}');
-        debugPrint('   Refresh Token: ${refreshToken != null ? 'Present' : 'MISSING'}');
+        debugPrint(
+          '   Access Token: ${accessToken != null ? 'Present' : 'MISSING'}',
+        );
+        debugPrint(
+          '   Refresh Token: ${refreshToken != null ? 'Present' : 'MISSING'}',
+        );
         throw Exception('Invalid response: Missing tokens');
       }
 
       debugPrint('✅ Tokens extracted successfully');
-      debugPrint('   Access Token (first 20 chars): ${accessToken.toString().substring(0, 20)}...');
-      
+      debugPrint(
+        '   Access Token (first 20 chars): ${accessToken.toString().substring(0, 20)}...',
+      );
+
       // Store tokens
       await _dioClient.setAuthTokens(accessToken, refreshToken);
       debugPrint('💾 Tokens stored in SharedPreferences');
 
       // Get user profile information from login response (includes has_pending_join_request)
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('👤 Parsing user data from login response...');
-      
+
       final userData = tokens['user'];
       if (userData == null) {
-        debugPrint('⚠️ WARNING: No user data in login response, falling back to profile fetch');
+        debugPrint(
+          '⚠️ WARNING: No user data in login response, falling back to profile fetch',
+        );
         final user = await _getUserProfile(accessToken);
         debugPrint('✅ User profile fetched: ${user.username} (${user.role})');
-        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        debugPrint(
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+        );
         debugPrint('🎉 LOGIN SUCCESS');
-        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        debugPrint(
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+        );
         return user;
       }
-      
-      debugPrint('📦 User data from login: ${userData is Map ? (userData as Map).keys : 'N/A'}');
-      debugPrint('🔍 has_pending_join_request: ${userData['has_pending_join_request']}');
-      
+
+      debugPrint(
+        '📦 User data from login: ${userData is Map ? (userData).keys : 'N/A'}',
+      );
+      debugPrint(
+        '🔍 has_pending_join_request: ${userData['has_pending_join_request']}',
+      );
+
       final user = User.fromJson(userData);
       debugPrint('✅ User parsed: ${user.username} (${user.role})');
       debugPrint('⏳ hasPendingJoinRequest: ${user.hasPendingJoinRequest}');
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('🎉 LOGIN SUCCESS');
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
 
       return user;
     } on DioException catch (e) {
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('❌ LOGIN FAILED - DioException');
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('❌ Exception Type: ${e.type}');
       debugPrint('❌ Error Message: ${e.message}');
       debugPrint('❌ Request URI: ${e.requestOptions.uri}');
       debugPrint('❌ Request Method: ${e.requestOptions.method}');
       debugPrint('❌ Request Headers: ${e.requestOptions.headers}');
-      
+
       if (e.response != null) {
         debugPrint('📄 Response Status: ${e.response?.statusCode}');
         debugPrint('📄 Response Data: ${e.response?.data}');
@@ -116,25 +156,32 @@ class AuthService {
       } else {
         debugPrint('⚠️ No response received (connection issue)');
       }
-      
+
       if (e.error != null) {
         debugPrint('🔴 Underlying Error: ${e.error}');
         debugPrint('🔴 Error Type: ${e.error.runtimeType}');
       }
-      
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+
       // Provide more specific error messages
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
-        throw Exception('Connection timeout. Server at ${Constants.baseUrl} is not responding.');
-      } else if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.unknown) {
-        throw Exception('Cannot connect to server at ${Constants.baseUrl}.\n'
-            'Please verify:\n'
-            '1. Backend is running\n'
-            '2. Your phone can access ${Constants.baseUrl}/health/ in browser\n'
-            '3. Firewall is not blocking the connection');
+        throw Exception(
+          'Connection timeout. Server at ${Constants.baseUrl} is not responding.',
+        );
+      } else if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.unknown) {
+        throw Exception(
+          'Cannot connect to server at ${Constants.baseUrl}.\n'
+          'Please verify:\n'
+          '1. Backend is running\n'
+          '2. Your phone can access ${Constants.baseUrl}/health/ in browser\n'
+          '3. Firewall is not blocking the connection',
+        );
       } else if (e.response?.statusCode == 401) {
         throw Exception('Invalid username or password.');
       } else if (e.response?.statusCode == 400) {
@@ -147,12 +194,18 @@ class AuthService {
         throw Exception('Login failed: ${e.message ?? 'Unknown error'}');
       }
     } catch (e) {
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('❌ LOGIN FAILED - Unexpected Error');
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       debugPrint('❌ Error: $e');
       debugPrint('❌ Error Type: ${e.runtimeType}');
-      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
       throw Exception('Login failed: $e');
     }
   }
@@ -166,14 +219,18 @@ class AuthService {
     String? sessionId,
   }) async {
     try {
-      debugPrint('🔐 [FLUTTER_AUTH] Attempting registration for user: $username with role: $role');
+      debugPrint(
+        '🔐 [FLUTTER_AUTH] Attempting registration for user: $username with role: $role',
+      );
       if (sessionId != null) {
         debugPrint('🔑 [FLUTTER_AUTH] Session ID: $sessionId');
       }
       debugPrint('🌐 [FLUTTER_AUTH] Using base URL: ${Constants.baseUrl}');
 
       // Clear any existing local data before registration
-      debugPrint('🗑️ [FLUTTER_AUTH] Clearing existing local data before registration...');
+      debugPrint(
+        '🗑️ [FLUTTER_AUTH] Clearing existing local data before registration...',
+      );
       final storageService = StorageService();
       await storageService.clearAllLocalData();
       debugPrint('   ✓ Local data cleared');
@@ -189,17 +246,23 @@ class AuthService {
       // Add any additional data (for processing units, shops, etc.)
       if (additionalData != null) {
         requestData.addAll(additionalData);
-        debugPrint('📦 [FLUTTER_AUTH] Including additional data: ${additionalData.keys.join(", ")}');
+        debugPrint(
+          '📦 [FLUTTER_AUTH] Including additional data: ${additionalData.keys.join(", ")}',
+        );
         debugPrint('📦 [FLUTTER_AUTH] Additional data values: $additionalData');
       }
 
-      debugPrint('📤 [FLUTTER_AUTH] Sending registration request to: ${Constants.registerEndpoint}');
+      debugPrint(
+        '📤 [FLUTTER_AUTH] Sending registration request to: ${Constants.registerEndpoint}',
+      );
       final response = await _dioClient.dio.post(
         Constants.registerEndpoint,
         data: requestData,
       );
 
-      debugPrint('✅ [FLUTTER_AUTH] Registration request successful, status: ${response.statusCode}');
+      debugPrint(
+        '✅ [FLUTTER_AUTH] Registration request successful, status: ${response.statusCode}',
+      );
       debugPrint('📄 [FLUTTER_AUTH] Response data: ${response.data}');
 
       final data = response.data;
@@ -214,13 +277,19 @@ class AuthService {
       // Return user from response
       final userData = data['user'];
       final user = User.fromJson(userData);
-      debugPrint('✅ [FLUTTER_AUTH] User registered successfully: ${user.username} (role: ${user.role})');
+      debugPrint(
+        '✅ [FLUTTER_AUTH] User registered successfully: ${user.username} (role: ${user.role})',
+      );
 
       return user;
     } on DioException catch (e) {
-      debugPrint('❌ [FLUTTER_AUTH] Registration failed with DioException: ${e.type} - ${e.message}');
+      debugPrint(
+        '❌ [FLUTTER_AUTH] Registration failed with DioException: ${e.type} - ${e.message}',
+      );
       if (e.response != null) {
-        debugPrint('📄 [FLUTTER_AUTH] Response status: ${e.response?.statusCode}');
+        debugPrint(
+          '📄 [FLUTTER_AUTH] Response status: ${e.response?.statusCode}',
+        );
         debugPrint('📄 [FLUTTER_AUTH] Response data: ${e.response?.data}');
       }
 
@@ -228,9 +297,13 @@ class AuthService {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
-        throw Exception('Connection timeout. Please check your internet connection and try again.');
+        throw Exception(
+          'Connection timeout. Please check your internet connection and try again.',
+        );
       } else if (e.type == DioExceptionType.connectionError) {
-        throw Exception('Cannot connect to server. Please check if the backend is running and accessible.');
+        throw Exception(
+          'Cannot connect to server. Please check if the backend is running and accessible.',
+        );
       } else if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
         if (errorData is Map && errorData.containsKey('error')) {
@@ -243,7 +316,9 @@ class AuthService {
         throw Exception('Registration failed: ${e.message ?? 'Unknown error'}');
       }
     } catch (e) {
-      debugPrint('❌ [FLUTTER_AUTH] Registration failed with unexpected error: $e');
+      debugPrint(
+        '❌ [FLUTTER_AUTH] Registration failed with unexpected error: $e',
+      );
       throw Exception('Registration failed: $e');
     }
   }
@@ -251,16 +326,16 @@ class AuthService {
   Future<void> logout() async {
     try {
       debugPrint('🚪 [AUTH_SERVICE] Starting logout process...');
-      
+
       // 1. Clear authentication tokens
       await _dioClient.clearAuthTokens();
       debugPrint('   ✓ Auth tokens cleared');
-      
+
       // 2. Clear all local storage (cached data)
       final storageService = StorageService();
       await storageService.clearAllLocalData();
       debugPrint('   ✓ Local data cleared');
-      
+
       debugPrint('✅ [AUTH_SERVICE] Logout completed successfully');
     } catch (e) {
       debugPrint('❌ [AUTH_SERVICE] Logout error: $e');
@@ -270,18 +345,18 @@ class AuthService {
 
   Future<void> withdrawAccount() async {
     try {
-      debugPrint('🗑️ [AUTH_SERVICE] Withdrawing join request and deleting account...');
-      
-      // Call backend to withdraw join request
-      await _dioClient.dio.post(
-        '${Constants.joinRequestsEndpoint}withdraw/',
+      debugPrint(
+        '🗑️ [AUTH_SERVICE] Withdrawing join request and deleting account...',
       );
-      
+
+      // Call backend to withdraw join request
+      await _dioClient.dio.post('${Constants.joinRequestsEndpoint}withdraw/');
+
       debugPrint('✅ [AUTH_SERVICE] Join request withdrawn successfully');
-      
+
       // Clear local data and tokens
       await logout();
-      
+
       debugPrint('✅ [AUTH_SERVICE] Account withdrawal completed');
     } catch (e) {
       debugPrint('❌ [AUTH_SERVICE] Withdraw account error: $e');
@@ -300,7 +375,7 @@ class AuthService {
       // Check if token is expired
       if (_isTokenExpired(token)) {
         debugPrint('⚠️ Access token expired, attempting refresh...');
-        
+
         // Try to refresh the token
         final refreshed = await _tryRefreshToken();
         if (refreshed) {
@@ -351,11 +426,13 @@ class AuthService {
       // Update only the access token (keep the same refresh token)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(DioClient.accessTokenKey, newAccessToken);
-      
+
       debugPrint('✅ Access token refreshed successfully');
       return true;
     } on DioException catch (e) {
-      debugPrint('❌ Token refresh failed: ${e.response?.statusCode} - ${e.message}');
+      debugPrint(
+        '❌ Token refresh failed: ${e.response?.statusCode} - ${e.message}',
+      );
       return false;
     } catch (e) {
       debugPrint('❌ Unexpected error during token refresh: $e');
@@ -396,8 +473,10 @@ class AuthService {
 
   Future<User> _getUserProfile(String accessToken) async {
     try {
-      debugPrint('👤 Fetching user profile from: ${Constants.baseUrl}${Constants.userProfileEndpoint}');
-      
+      debugPrint(
+        '👤 Fetching user profile from: ${Constants.baseUrl}${Constants.userProfileEndpoint}',
+      );
+
       // Create a temporary Dio instance with the token for this request
       final tempDio = Dio(
         BaseOptions(
@@ -415,7 +494,7 @@ class AuthService {
       final response = await tempDio.get(Constants.userProfileEndpoint);
       debugPrint('✅ Profile response status: ${response.statusCode}');
       debugPrint('📄 Profile data: ${response.data}');
-      
+
       final profileData = response.data;
 
       if (profileData == null) {
@@ -424,18 +503,26 @@ class AuthService {
 
       return User.fromJson(profileData);
     } on DioException catch (e) {
-      debugPrint('❌ Profile fetch failed with DioException: ${e.type} - ${e.message}');
+      debugPrint(
+        '❌ Profile fetch failed with DioException: ${e.type} - ${e.message}',
+      );
       if (e.response != null) {
-        debugPrint('📄 Profile error response: ${e.response?.statusCode} - ${e.response?.data}');
+        debugPrint(
+          '📄 Profile error response: ${e.response?.statusCode} - ${e.response?.data}',
+        );
       }
-      
+
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        throw Exception('Timeout while fetching user profile. Please try again.');
+        throw Exception(
+          'Timeout while fetching user profile. Please try again.',
+        );
       } else if (e.response?.statusCode == 401) {
         throw Exception('Authentication failed. Please login again.');
       } else {
-        throw Exception('Failed to get user profile: ${e.message ?? 'Unknown error'}');
+        throw Exception(
+          'Failed to get user profile: ${e.message ?? 'Unknown error'}',
+        );
       }
     } catch (e) {
       debugPrint('❌ Profile fetch failed with unexpected error: $e');
@@ -475,20 +562,19 @@ class AuthService {
 
     // Check processing unit specific permissions
     if (processingUnitId != null && user.processingUnitMemberships != null) {
-      final membership = user.processingUnitMemberships!
-          .firstWhere(
-            (m) => m.processingUnitId == processingUnitId && m.isActive,
-            orElse: () => ProcessingUnitMembership(
-              id: -1,
-              processingUnitId: -1,
-              processingUnitName: '',
-              role: '',
-              permissions: '',
-              isActive: false,
-              isSuspended: false,
-              invitedAt: DateTime.now(),
-            ),
-          );
+      final membership = user.processingUnitMemberships!.firstWhere(
+        (m) => m.processingUnitId == processingUnitId && m.isActive,
+        orElse: () => ProcessingUnitMembership(
+          id: -1,
+          processingUnitId: -1,
+          processingUnitName: '',
+          role: '',
+          permissions: '',
+          isActive: false,
+          isSuspended: false,
+          invitedAt: DateTime.now(),
+        ),
+      );
 
       if (membership.id != -1) {
         return membership.canRead || membership.canWrite || membership.isAdmin;
@@ -502,7 +588,7 @@ class AuthService {
       case 'processing_unit':
       case 'processor':
         return permission == 'read' || permission == 'write';
-      case 'farmer':
+      case 'abbatoir':
         return permission == 'read';
       case 'shop':
       case 'shopowner':
@@ -516,31 +602,30 @@ class AuthService {
 
   bool canManageUsers(User user, {int? processingUnitId}) {
     final role = user.role.toLowerCase();
-    
+
     if (role == 'admin') {
       return true;
     }
-    
+
     // Shop owners can always manage users
     if (role == 'shop' || role == 'shopowner' || role == 'shop_owner') {
       return true;
     }
 
     if (processingUnitId != null && user.processingUnitMemberships != null) {
-      final membership = user.processingUnitMemberships!
-          .firstWhere(
-            (m) => m.processingUnitId == processingUnitId && m.isActive,
-            orElse: () => ProcessingUnitMembership(
-              id: -1,
-              processingUnitId: -1,
-              processingUnitName: '',
-              role: '',
-              permissions: '',
-              isActive: false,
-              isSuspended: false,
-              invitedAt: DateTime.now(),
-            ),
-          );
+      final membership = user.processingUnitMemberships!.firstWhere(
+        (m) => m.processingUnitId == processingUnitId && m.isActive,
+        orElse: () => ProcessingUnitMembership(
+          id: -1,
+          processingUnitId: -1,
+          processingUnitName: '',
+          role: '',
+          permissions: '',
+          isActive: false,
+          isSuspended: false,
+          invitedAt: DateTime.now(),
+        ),
+      );
 
       return membership.id != -1 && membership.isAdmin;
     }
@@ -550,42 +635,37 @@ class AuthService {
 
   bool isOwnerOrManager(User user, {int? processingUnitId}) {
     final role = user.role.toLowerCase();
-    
+
     if (role == 'admin') {
       return true;
     }
-    
+
     // Shop owners are owners
     if (role == 'shop' || role == 'shopowner' || role == 'shop_owner') {
       return true;
     }
 
     if (processingUnitId != null && user.processingUnitMemberships != null) {
-      final membership = user.processingUnitMemberships!
-          .firstWhere(
-            (m) => m.processingUnitId == processingUnitId && m.isActive,
-            orElse: () => ProcessingUnitMembership(
-              id: -1,
-              processingUnitId: -1,
-              processingUnitName: '',
-              role: '',
-              permissions: '',
-              isActive: false,
-              isSuspended: false,
-              invitedAt: DateTime.now(),
-            ),
-          );
+      final membership = user.processingUnitMemberships!.firstWhere(
+        (m) => m.processingUnitId == processingUnitId && m.isActive,
+        orElse: () => ProcessingUnitMembership(
+          id: -1,
+          processingUnitId: -1,
+          processingUnitName: '',
+          role: '',
+          permissions: '',
+          isActive: false,
+          isSuspended: false,
+          invitedAt: DateTime.now(),
+        ),
+      );
 
-      return membership.id != -1 && (membership.role.toLowerCase() == 'owner' || membership.role.toLowerCase() == 'manager' || membership.isAdmin);
+      return membership.id != -1 &&
+          (membership.role.toLowerCase() == 'owner' ||
+              membership.role.toLowerCase() == 'manager' ||
+              membership.isAdmin);
     }
 
     return false;
   }
 }
-
-
-
-
-
-
-

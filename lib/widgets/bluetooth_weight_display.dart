@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 
 /// A beautiful, Bluetooth-only weight display widget
@@ -13,14 +12,14 @@ class BluetoothWeightDisplay extends StatelessWidget {
   final Color themeColor; // Theme color for the user role
 
   const BluetoothWeightDisplay({
-    Key? key,
+    super.key,
     required this.label,
     this.weight,
     required this.isConnected,
     required this.onTap,
     this.unit = 'kg',
     this.themeColor = Colors.blue, // Default to blue
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +48,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: isConnected 
+              color: isConnected
                   ? themeColor.withOpacity(0.2)
                   : Colors.grey.withOpacity(0.1),
               blurRadius: 8,
@@ -78,7 +77,10 @@ class BluetoothWeightDisplay extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isConnected ? themeColor : Colors.grey.shade400,
                     borderRadius: BorderRadius.circular(20),
@@ -106,7 +108,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Weight Display
             Center(
               child: weight != null
@@ -154,12 +156,15 @@ class BluetoothWeightDisplay extends StatelessWidget {
                       ],
                     ),
             ),
-            
+
             if (weight != null) ...[
               const SizedBox(height: 12),
               Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(20),

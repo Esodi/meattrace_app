@@ -7,15 +7,15 @@ import '../../utils/app_theme.dart';
 /// Visual indicators for health, quality, transfer status, and more
 
 enum BadgeVariant {
-  filled,      // Solid background with white text
-  outlined,    // Border with colored text
-  soft,        // Light background with colored text
+  filled, // Solid background with white text
+  outlined, // Border with colored text
+  soft, // Light background with colored text
 }
 
 enum BadgeSize {
-  small,   // 20px height, 11px font
-  medium,  // 24px height, 12px font
-  large,   // 28px height, 14px font
+  small, // 20px height, 11px font
+  medium, // 24px height, 12px font
+  large, // 28px height, 14px font
 }
 
 /// Base Status Badge
@@ -27,13 +27,13 @@ class StatusBadge extends StatelessWidget {
   final IconData? icon;
 
   const StatusBadge({
-    Key? key,
+    super.key,
     required this.label,
     required this.color,
     this.variant = BadgeVariant.filled,
     this.size = BadgeSize.medium,
     this.icon,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -95,25 +95,22 @@ class StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(height / 2),
-        border: borderColor != null ? Border.all(color: borderColor, width: 1) : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: 1)
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(
-              icon,
-              size: iconSize,
-              color: textColor,
-            ),
+            Icon(icon, size: iconSize, color: textColor),
             SizedBox(width: AppTheme.space4),
           ],
           Text(
             label,
-            style: AppTypography.labelMedium(color: textColor).copyWith(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTypography.labelMedium(
+              color: textColor,
+            ).copyWith(fontSize: fontSize, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -123,21 +120,22 @@ class StatusBadge extends StatelessWidget {
 
 /// Health Status Badge - For animal health indicators
 class HealthStatusBadge extends StatelessWidget {
-  final String status; // 'healthy', 'sick', 'quarantine', 'deceased', 'treatment'
+  final String
+  status; // 'healthy', 'sick', 'quarantine', 'deceased', 'treatment'
   final BadgeVariant variant;
   final BadgeSize size;
 
   const HealthStatusBadge({
-    Key? key,
+    super.key,
     required this.status,
     this.variant = BadgeVariant.soft,
     this.size = BadgeSize.medium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final statusLower = status.toLowerCase();
-    
+
     String label;
     Color color;
     IconData? icon;
@@ -186,21 +184,22 @@ class HealthStatusBadge extends StatelessWidget {
 
 /// Quality Grade Badge - For product quality indicators
 class QualityBadge extends StatelessWidget {
-  final String grade; // 'premium', 'standard', 'economy', 'organic', 'certified'
+  final String
+  grade; // 'premium', 'standard', 'economy', 'organic', 'certified'
   final BadgeVariant variant;
   final BadgeSize size;
 
   const QualityBadge({
-    Key? key,
+    super.key,
     required this.grade,
     this.variant = BadgeVariant.soft,
     this.size = BadgeSize.medium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final gradeLower = grade.toLowerCase();
-    
+
     String label;
     Color color;
     IconData? icon;
@@ -249,21 +248,22 @@ class QualityBadge extends StatelessWidget {
 
 /// Transfer Status Badge - For transfer/shipment tracking
 class TransferStatusBadge extends StatelessWidget {
-  final String status; // 'pending', 'in_transit', 'delivered', 'rejected', 'cancelled'
+  final String
+  status; // 'pending', 'in_transit', 'delivered', 'rejected', 'cancelled'
   final BadgeVariant variant;
   final BadgeSize size;
 
   const TransferStatusBadge({
-    Key? key,
+    super.key,
     required this.status,
     this.variant = BadgeVariant.soft,
     this.size = BadgeSize.medium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final statusLower = status.toLowerCase().replaceAll('_', '');
-    
+
     String label;
     Color color;
     IconData? icon;
@@ -312,29 +312,29 @@ class TransferStatusBadge extends StatelessWidget {
 
 /// Role Badge - For user role indicators
 class RoleBadge extends StatelessWidget {
-  final String role; // 'farmer', 'processing_unit', 'shop', 'admin'
+  final String role; // 'abbatoir', 'processing_unit', 'shop', 'admin'
   final BadgeVariant variant;
   final BadgeSize size;
 
   const RoleBadge({
-    Key? key,
+    super.key,
     required this.role,
     this.variant = BadgeVariant.soft,
     this.size = BadgeSize.medium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final roleLower = role.toLowerCase().replaceAll('_', '');
-    
+
     String label;
     Color color;
     IconData? icon;
 
     switch (roleLower) {
-      case 'farmer':
-        label = 'Farmer';
-        color = AppColors.getPrimaryColorForRole('farmer');
+      case 'abbatoir':
+        label = 'Abbatoir';
+        color = AppColors.getPrimaryColorForRole('abbatoir');
         icon = Icons.agriculture;
         break;
       case 'processingunit':
@@ -376,12 +376,12 @@ class VerificationBadge extends StatelessWidget {
   final BadgeSize size;
 
   const VerificationBadge({
-    Key? key,
+    super.key,
     required this.isVerified,
     this.label,
     this.variant = BadgeVariant.filled,
     this.size = BadgeSize.small,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -403,12 +403,12 @@ class CountBadge extends StatelessWidget {
   final int? maxCount; // Show "99+" if count exceeds this
 
   const CountBadge({
-    Key? key,
+    super.key,
     required this.count,
     this.color,
     this.size = BadgeSize.small,
     this.maxCount = 99,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -429,10 +429,7 @@ class CountBadge extends StatelessWidget {
 class NewBadge extends StatelessWidget {
   final BadgeSize size;
 
-  const NewBadge({
-    Key? key,
-    this.size = BadgeSize.small,
-  }) : super(key: key);
+  const NewBadge({super.key, this.size = BadgeSize.small});
 
   @override
   Widget build(BuildContext context) {
@@ -454,18 +451,18 @@ class CustomBadge extends StatelessWidget {
   final BadgeSize size;
 
   const CustomBadge({
-    Key? key,
+    super.key,
     required this.label,
     this.backgroundColor,
     this.textColor,
     this.icon,
     this.size = BadgeSize.medium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final bgColor = backgroundColor ?? Theme.of(context).colorScheme.primary;
-    
+
     return StatusBadge(
       label: label,
       color: bgColor,

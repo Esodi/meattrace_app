@@ -55,19 +55,19 @@ class NotificationListItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: notification.isRead
                 ? Theme.of(context).colorScheme.surface
-                : AppColors.farmerPrimary.withValues(alpha: 0.05),
+                : AppColors.abbatoirPrimary.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             border: Border.all(
               color: notification.isRead
                   ? AppColors.textSecondary.withValues(alpha: 0.1)
-                  : AppColors.farmerPrimary.withValues(alpha: 0.2),
+                  : AppColors.abbatoirPrimary.withValues(alpha: 0.2),
               width: 1,
             ),
             boxShadow: notification.isRead
                 ? null
                 : [
                     BoxShadow(
-                      color: AppColors.farmerPrimary.withValues(alpha: 0.1),
+                      color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -147,16 +147,16 @@ class NotificationListItem extends StatelessWidget {
                           vertical: AppTheme.space6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.farmerPrimary.withValues(alpha: 0.1),
+                          color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                           border: Border.all(
-                            color: AppColors.farmerPrimary.withValues(alpha: 0.2),
+                            color: AppColors.abbatoirPrimary.withValues(alpha: 0.2),
                           ),
                         ),
                         child: Text(
                           notification.actionText!,
                           style: AppTypography.button().copyWith(
-                            color: AppColors.farmerPrimary,
+                            color: AppColors.abbatoirPrimary,
                             fontSize: 12,
                           ),
                         ),
@@ -173,7 +173,7 @@ class NotificationListItem extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: const BoxDecoration(
-                    color: AppColors.farmerPrimary,
+                    color: AppColors.abbatoirPrimary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -200,7 +200,7 @@ class NotificationListItem extends StatelessWidget {
       case 'info':
       case 'update':
       default:
-        return AppColors.farmerPrimary;
+        return AppColors.abbatoirPrimary;
     }
   }
 

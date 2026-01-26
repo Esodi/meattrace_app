@@ -9,11 +9,8 @@ import '../core/custom_button.dart';
 /// Dialog for rejecting a product with reason and partial quantity support
 class ProductRejectionDialog extends StatefulWidget {
   final Product product;
-  
-  const ProductRejectionDialog({
-    super.key,
-    required this.product,
-  });
+
+  const ProductRejectionDialog({super.key, required this.product});
 
   @override
   State<ProductRejectionDialog> createState() => _ProductRejectionDialogState();
@@ -23,7 +20,7 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
   final _formKey = GlobalKey<FormState>();
   final _reasonController = TextEditingController();
   final _quantityController = TextEditingController();
-  
+
   bool _rejectAll = true;
   double _rejectionQuantity = 0.0;
 
@@ -76,7 +73,9 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                         height: 48,
                         decoration: BoxDecoration(
                           color: AppColors.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
                         ),
                         child: Icon(
                           Icons.cancel_outlined,
@@ -127,12 +126,12 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                         _buildInfoRow('Batch', widget.product.batchNumber),
                         const SizedBox(height: AppTheme.space8),
                         _buildInfoRow(
-                          'Total Quantity', 
+                          'Total Quantity',
                           '${widget.product.quantity} units',
                         ),
                         const SizedBox(height: AppTheme.space8),
                         _buildInfoRow(
-                          'Weight', 
+                          'Weight',
                           '${widget.product.weight ?? 0} ${widget.product.weightUnit}',
                         ),
                       ],
@@ -148,7 +147,7 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                     ),
                   ),
                   const SizedBox(height: AppTheme.space12),
-                  
+
                   RadioListTile<bool>(
                     value: true,
                     groupValue: _rejectAll,
@@ -156,8 +155,10 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                       setState(() {
                         _rejectAll = value!;
                         if (_rejectAll) {
-                          _rejectionQuantity = widget.product.quantity.toDouble();
-                          _quantityController.text = _rejectionQuantity.toStringAsFixed(1);
+                          _rejectionQuantity = widget.product.quantity
+                              .toDouble();
+                          _quantityController.text = _rejectionQuantity
+                              .toStringAsFixed(1);
                         }
                       });
                     },
@@ -168,7 +169,7 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                     activeColor: AppColors.error,
                     contentPadding: EdgeInsets.zero,
                   ),
-                  
+
                   RadioListTile<bool>(
                     value: false,
                     groupValue: _rejectAll,
@@ -195,12 +196,18 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                         hintText: 'Enter quantity',
                         suffixText: 'units',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
                         ),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d+\.?\d{0,2}'),
+                        ),
                       ],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -229,7 +236,9 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                       padding: const EdgeInsets.all(AppTheme.space12),
                       decoration: BoxDecoration(
                         color: AppColors.info.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -262,13 +271,16 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                     ),
                   ),
                   const SizedBox(height: AppTheme.space12),
-                  
+
                   TextFormField(
                     controller: _reasonController,
                     decoration: InputDecoration(
-                      hintText: 'e.g., Damaged packaging, Quality issues, Expired...',
+                      hintText:
+                          'e.g., Damaged packaging, Quality issues, Expired...',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                     ),
                     maxLines: 3,
@@ -324,10 +336,12 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: AppTheme.space16),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppTheme.space16,
+                            ),
                           ),
+                          child: const Text('Cancel'),
                         ),
                       ),
                       const SizedBox(width: AppTheme.space12),

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -64,16 +66,18 @@ import 'screens/shop/sell_screen.dart';
 import 'screens/common/enhanced_qr_scanner_screen.dart';
 import 'screens/common/camera_screen.dart';
 import 'screens/common/printer_settings_screen.dart';
-import 'screens/farmer/modern_farmer_home_screen.dart';
-import 'screens/farmer/livestock_history_screen.dart';
-import 'screens/farmer/animal_detail_screen.dart';
-import 'screens/farmer/register_animal_screen.dart';
-import 'screens/farmer/edit_animal_screen.dart';
-import 'screens/farmer/transfer_animals_screen.dart';
-import 'screens/farmer/slaughter_animal_screen.dart';
-import 'screens/farmer/settings_screen.dart';
-import 'screens/farmer/farmer_profile_screen.dart';
-import 'screens/farmer/notification_list_screen.dart';
+import 'screens/abbatoir/modern_abbatoir_home_screen.dart';
+import 'screens/abbatoir/livestock_history_screen.dart';
+import 'screens/abbatoir/animal_detail_screen.dart';
+import 'screens/abbatoir/register_animal_screen.dart';
+import 'screens/abbatoir/edit_animal_screen.dart';
+import 'screens/abbatoir/transfer_animals_screen.dart';
+import 'screens/abbatoir/slaughter_animal_screen.dart';
+import 'screens/abbatoir/abbatoir_settings_screen.dart';
+import 'screens/abbatoir/modern_abbatoir_profile_screen.dart';
+import 'screens/abbatoir/notification_list_screen.dart';
+import 'screens/abbatoir/sick_animals_screen.dart';
+
 import 'screens/common/coming_soon_screen.dart';
 import 'screens/common/user_profile_screen.dart';
 import 'screens/common/settings_screen.dart';
@@ -84,33 +88,54 @@ import 'screens/common/settings_screen.dart';
 import 'utils/initialization_helper.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  // Set up global error handlers to catch ALL exceptions
-  FlutterError.onError = (FlutterErrorDetails details) {
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    debugPrint('💥 FLUTTER ERROR CAUGHT IN GLOBAL HANDLER');
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    debugPrint('Exception: ${details.exception}');
-    debugPrint('Exception type: ${details.exception.runtimeType}');
-    debugPrint('Library: ${details.library}');
-    debugPrint('Context: ${details.context}');
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    debugPrint('Stack trace:');
-    debugPrint(details.stack.toString());
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
-    // Call the default error handler too
-    FlutterError.presentError(details);
-  };
+      // Set up global error handlers to catch ALL framework exceptions
+      FlutterError.onError = (FlutterErrorDetails details) {
+        debugPrint('💥 FLUTTER FRAMEWORK ERROR');
+        debugPrint('Exception: ${details.exception}');
+        debugPrint('Stack trace: ${details.stack}');
+        FlutterError.presentError(details);
+      };
 
-  // Print network diagnostics for debugging (run in background)
-  InitializationHelper.runInBackground(
-    () => NetworkHelper.printNetworkDiagnostics(),
-    debugLabel: 'Network diagnostics',
+      // Catch errors from the platform dispatcher
+      PlatformDispatcher.instance.onError = (error, stack) {
+        debugPrint('💥 PLATFORM ERROR: $error');
+        debugPrint('Stack trace: $stack');
+        return true;
+      };
+
+      // Print network diagnostics for debugging (run in background)
+      // We don't await this as it's just for logging
+      InitializationHelper.runInBackground(() async {
+        try {
+          await NetworkHelper.printNetworkDiagnostics();
+        } catch (e) {
+          debugPrint('⚠️ Error printing network diagnostics: $e');
+        }
+      }, debugLabel: 'Network diagnostics');
+
+      runApp(const MyApp());
+    },
+    (error, stack) {
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      debugPrint('🔥 UNHANDLED ERROR CAUGHT IN runZonedGuarded');
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+      debugPrint('Error: $error');
+      debugPrint('Error Type: ${error.runtimeType}');
+      debugPrint('Stack trace:');
+      debugPrint(stack.toString());
+      debugPrint(
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      );
+    },
   );
-
-  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -121,53 +146,386 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  late GoRouter _router;
-  
+  late final GoRouter _router;
+  late final AuthProvider _authProvider;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Initialize AuthProvider early so we can use it in the router
+    // Note: This matches the providers in MultiProvider
+    final userContext = UserContextProvider();
+    _authProvider = AuthProvider(userContext);
+
+    _initRouter();
+  }
+
+  void _initRouter() {
+    _router = GoRouter(
+      initialLocation: '/',
+      refreshListenable: _authProvider,
+      redirect: (context, state) {
+        final isLoggedIn = _authProvider.isLoggedIn;
+        final isInitialized = _authProvider.isInitialized;
+        final isGoingToLogin = state.matchedLocation == '/login';
+        final isGoingToSignup =
+            state.matchedLocation.startsWith('/signup') ||
+            state.matchedLocation == '/role-selection' ||
+            state.matchedLocation == '/onboarding';
+        final isGoingToSplash = state.matchedLocation == '/';
+        final isGoingToPendingApproval =
+            state.matchedLocation == '/pending-approval';
+
+        debugPrint('🛣️ [ROUTER_REDIRECT] Location: ${state.matchedLocation}');
+        debugPrint('   isLoggedIn: $isLoggedIn, isInitialized: $isInitialized');
+
+        if (!isInitialized && !isGoingToSplash) {
+          debugPrint('   ➡️ Redirecting to splash (not initialized)');
+          return '/';
+        }
+
+        if (isLoggedIn) {
+          final user = _authProvider.user;
+          if (user != null) {
+            if (user.hasPendingJoinRequest) {
+              if (!isGoingToPendingApproval) {
+                return '/pending-approval';
+              }
+              return null;
+            }
+            if (user.hasRejectedJoinRequest) {
+              if (!isGoingToPendingApproval) {
+                return '/pending-approval';
+              }
+              return null;
+            }
+          }
+        }
+
+        if (isLoggedIn &&
+            (isGoingToLogin || isGoingToSignup || isGoingToSplash)) {
+          final user = _authProvider.user;
+          if (user != null) {
+            return _getDashboardForRole(user.role);
+          }
+        }
+
+        if (!isLoggedIn &&
+            !isGoingToLogin &&
+            !isGoingToSignup &&
+            !isGoingToSplash) {
+          return '/login';
+        }
+
+        return null;
+      },
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => const ModernLoginScreen(),
+        ),
+        GoRoute(
+          path: '/pending-approval',
+          builder: (context, state) {
+            final user = _authProvider.user;
+            if (user == null ||
+                (!user.hasPendingJoinRequest && !user.hasRejectedJoinRequest)) {
+              return const ModernLoginScreen();
+            }
+            final isShop = user.pendingJoinRequestShopName != null;
+            final entityName = isShop
+                ? (user.pendingJoinRequestShopName ?? 'Unknown Shop')
+                : (user.pendingJoinRequestUnitName ?? 'Unknown Unit');
+            return PendingApprovalScreen(
+              entityName: entityName,
+              requestedRole: user.pendingJoinRequestRole ?? 'worker',
+              requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+              isShop: isShop,
+              rejectionReason: user.rejectionReason,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/signup',
+          builder: (context, state) {
+            final role = state.uri.queryParameters['role'];
+            return ModernSignupScreen(initialRole: role);
+          },
+        ),
+        GoRoute(
+          path: '/signup-processing-unit',
+          builder: (context, state) => const ProcessingUnitSignupScreen(),
+        ),
+        GoRoute(
+          path: '/signup-shop',
+          builder: (context, state) => const ShopSignupScreen(),
+        ),
+        GoRoute(
+          path: '/role-selection',
+          builder: (context, state) => const RoleSelectionScreen(),
+        ),
+        GoRoute(
+          path: '/onboarding',
+          builder: (context, state) => const OnboardingScreen(),
+        ),
+        GoRoute(
+          path: '/abbatoir-home',
+          builder: (context, state) => const ModernAbbatoirHomeScreen(),
+        ),
+        GoRoute(
+          path: '/processor-home',
+          builder: (context, state) {
+            final user = _authProvider.user;
+            if (user != null &&
+                (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
+              return PendingApprovalScreen(
+                entityName: user.pendingJoinRequestUnitName ?? 'Unknown Unit',
+                requestedRole: user.pendingJoinRequestRole ?? 'worker',
+                requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+                isShop: false,
+                rejectionReason: user.rejectionReason,
+              );
+            }
+            return const ModernProcessorHomeScreen();
+          },
+        ),
+        GoRoute(
+          path: '/shop-home',
+          builder: (context, state) {
+            final user = _authProvider.user;
+            if (user != null &&
+                (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
+              return PendingApprovalScreen(
+                entityName: user.pendingJoinRequestShopName ?? 'Unknown Shop',
+                requestedRole: user.pendingJoinRequestRole ?? 'worker',
+                requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+                isShop: true,
+                rejectionReason: user.rejectionReason,
+              );
+            }
+            final index =
+                int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
+            return ModernShopHomeScreen(initialIndex: index);
+          },
+        ),
+        GoRoute(
+          path: '/qr-scanner',
+          builder: (context, state) => EnhancedQrScannerScreen(
+            source: state.uri.queryParameters['source'],
+          ),
+        ),
+        GoRoute(
+          path: '/camera',
+          builder: (context, state) => CameraScreen(
+            onImagesSelected: (images) => Navigator.of(context).pop(images),
+          ),
+        ),
+        GoRoute(
+          path: '/printer-settings',
+          builder: (context, state) => const PrinterSettingsScreen(),
+        ),
+        GoRoute(
+          path: '/abbatoir/livestock-history',
+          builder: (context, state) => const LivestockHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/abbatoir/sick-animals',
+          builder: (context, state) => const SickAnimalsScreen(),
+        ),
+
+        GoRoute(
+          path: '/animals/:id',
+          builder: (context, state) =>
+              AnimalDetailScreen(animalId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/animals/:id/edit',
+          builder: (context, state) =>
+              EditAnimalScreen(animalId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/register-animal',
+          builder: (context, state) => const RegisterAnimalScreen(),
+        ),
+        GoRoute(
+          path: '/select-animals-transfer',
+          builder: (context, state) => const TransferAnimalsScreen(),
+        ),
+        GoRoute(
+          path: '/slaughter-animal',
+          builder: (context, state) => SlaughterAnimalScreen(
+            animalId: state.uri.queryParameters['animalId'],
+          ),
+        ),
+        GoRoute(
+          path: '/abbatoir/settings',
+          builder: (context, state) => const AbbatoirSettingsScreen(),
+        ),
+        GoRoute(
+          path: '/abbatoir/profile',
+          builder: (context, state) => const ModernAbbatoirProfileScreen(),
+        ),
+        GoRoute(
+          path: '/abbatoir/notifications',
+          builder: (context, state) => const NotificationListScreen(),
+        ),
+        GoRoute(
+          path: '/processor/products',
+          builder: (context, state) => const ProductsListScreen(),
+        ),
+        GoRoute(
+          path: '/products/:id',
+          builder: (context, state) =>
+              ProductDetailScreen(productId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/receive-animals',
+          builder: (context, state) => const ReceiveAnimalsScreen(),
+        ),
+        GoRoute(
+          path: '/pending-processing',
+          builder: (context, state) => const PendingProcessingScreen(),
+        ),
+        GoRoute(
+          path: '/create-product',
+          builder: (context, state) => const CreateProductScreen(),
+        ),
+        GoRoute(
+          path: '/processor/settings',
+          builder: (context, state) => const ProcessorSettingsScreen(),
+        ),
+        GoRoute(
+          path: '/processor-qr-codes',
+          builder: (context, state) => const ProcessorQRCodesScreen(),
+        ),
+        GoRoute(
+          path: '/processor/analytics',
+          builder: (context, state) => const ProcessorAnalyticsScreen(),
+        ),
+        GoRoute(
+          path: '/producer-inventory',
+          builder: (context, state) => const ProcessorInventoryScreen(),
+        ),
+        GoRoute(
+          path: '/product-history',
+          builder: (context, state) => const ComingSoonScreen(
+            featureName: 'Product History',
+            description: 'View complete history...',
+            icon: Icons.history,
+          ),
+        ),
+        GoRoute(
+          path: '/transfer-products',
+          builder: (context, state) => const TransferProductsScreen(),
+        ),
+        GoRoute(
+          path: '/processor/product-categories',
+          builder: (context, state) => ProductCategoriesScreen(),
+        ),
+        GoRoute(
+          path: '/processor/notifications',
+          builder: (context, state) => const ProcessorNotificationScreen(),
+        ),
+        GoRoute(
+          path: '/processing-unit/register',
+          builder: (context, state) => const ProcessingUnitRegistrationScreen(),
+        ),
+        GoRoute(
+          path: '/processing-unit/users',
+          builder: (context, state) => ProcessingUnitUserManagementScreen(
+            unitId: int.parse(state.uri.queryParameters['unitId'] ?? '0'),
+          ),
+        ),
+        GoRoute(
+          path: '/shop/register',
+          builder: (context, state) => const ShopRegistrationScreen(),
+        ),
+        GoRoute(
+          path: '/shop/users',
+          builder: (context, state) => ShopUserManagementScreen(
+            shopId: int.parse(state.uri.queryParameters['shopId'] ?? '0'),
+          ),
+        ),
+        GoRoute(
+          path: '/shop/inventory',
+          builder: (context, state) => const ShopInventoryScreen(),
+        ),
+        GoRoute(
+          path: '/shop/orders',
+          builder: (context, state) => const OrderHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/shop/place-order',
+          builder: (context, state) => const PlaceOrderScreen(),
+        ),
+        GoRoute(
+          path: '/shop/sell',
+          builder: (context, state) => const SellScreen(),
+        ),
+        GoRoute(
+          path: '/shop/orders/:orderId',
+          builder: (context, state) => OrderDetailScreen(
+            orderId: int.parse(state.pathParameters['orderId']!),
+          ),
+        ),
+        GoRoute(
+          path: '/shop/profile',
+          builder: (context, state) => const ShopProfileScreen(),
+        ),
+        GoRoute(
+          path: '/receive-products',
+          builder: (context, state) => const ReceiveProductsScreen(),
+        ),
+        GoRoute(
+          path: '/shop/settings',
+          builder: (context, state) => const ShopSettingsScreen(),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (context, state) => const UserProfileScreen(),
+        ),
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
+      ],
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _router.dispose();
+    _authProvider.dispose();
     super.dispose();
   }
 
   @override
   void didChangePlatformBrightness() {
     super.didChangePlatformBrightness();
-    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     themeProvider.updateSystemBrightness(brightness == Brightness.dark);
   }
 
-  // Helper function to get dashboard route based on user role
   String _getDashboardForRole(String role) {
     final normalizedRole = role.toLowerCase();
-    
-    debugPrint('🛣️ [DASHBOARD_ROUTING] Getting dashboard for role: "$role" (normalized: "$normalizedRole")');
-    
-    // Handle all possible role variations
-    if (normalizedRole == 'farmer') {
-      debugPrint('   ➡️ Routing to: /farmer-home');
-      return '/farmer-home';
-    } else if (normalizedRole == 'processingunit' || 
-               normalizedRole == 'processing_unit' || 
-               normalizedRole == 'processor') {
-      debugPrint('   ➡️ Routing to: /processor-home');
+    if (normalizedRole == 'abbatoir') return '/abbatoir-home';
+    if (normalizedRole == 'processingunit' ||
+        normalizedRole == 'processing_unit' ||
+        normalizedRole == 'processor') {
       return '/processor-home';
-    } else if (normalizedRole == 'shop' || 
-               normalizedRole == 'shopowner' || 
-               normalizedRole == 'shop_owner') {
-      debugPrint('   ➡️ Routing to: /shop-home');
-      return '/shop-home';
-    } else {
-      debugPrint('   ⚠️ Unknown role "$role", defaulting to: /farmer-home');
-      return '/farmer-home'; // Default fallback
     }
+    if (normalizedRole == 'shop' ||
+        normalizedRole == 'shopowner' ||
+        normalizedRole == 'shop_owner') {
+      return '/shop-home';
+    }
+    return '/abbatoir-home';
   }
 
   @override
@@ -176,14 +534,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     return MultiProvider(
       providers: [
-        // Critical providers - loaded immediately
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => UserContextProvider()),
-        ChangeNotifierProvider(create: (context) => AuthProvider(context.read<UserContextProvider>())),
+        ChangeNotifierProvider.value(value: _authProvider.userContext),
+        ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider(create: (_) => AuthProgressProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
-
-        // Non-critical providers - lazy loaded in background
         ChangeNotifierProvider(create: (_) => MeatTraceProvider()),
         ChangeNotifierProvider(create: (_) => AnimalProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
@@ -195,405 +550,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => YieldTrendsProvider()),
         ChangeNotifierProvider(create: (_) => WeatherProvider()),
         ChangeNotifierProvider(create: (_) => UserManagementProvider()),
+        ChangeNotifierProvider(create: (_) => ActivityProvider(ApiService())),
         ChangeNotifierProvider(
-          create: (context) {
-            debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            debugPrint('🏗️ MAIN.DART - Creating ActivityProvider');
-            debugPrint('   Time: ${DateTime.now()}');
-            debugPrint('   Context: ${context.hashCode}');
-            try {
-              final apiService = ApiService();
-              debugPrint('   ApiService created: ${apiService.hashCode}');
-              
-              final provider = ActivityProvider(apiService);
-              debugPrint('✅ ActivityProvider created successfully: ${provider.hashCode}');
-              debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              return provider;
-            } catch (e, stack) {
-              debugPrint('❌ FAILED to create ActivityProvider!');
-              debugPrint('   Error: $e');
-              debugPrint('   Type: ${e.runtimeType}');
-              debugPrint('   Stack trace:');
-              debugPrint(stack.toString().split('\n').take(10).join('\n'));
-              debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              rethrow;
-            }
-          },
+          create: (_) => ProcessingUnitManagementProvider(),
         ),
-        
-        // User Management providers
-        ChangeNotifierProvider(create: (_) => ProcessingUnitManagementProvider()),
         ChangeNotifierProvider(create: (_) => ShopManagementProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
-      child: Consumer2<ThemeProvider, AuthProvider>(
-        builder: (context, themeProvider, authProvider, _) {
-          // Create the router here so route builders run with a BuildContext
-          // that includes the providers placed above (MultiProvider).
-          final router = GoRouter(
-            // Listen to auth provider changes to trigger redirect re-evaluation
-            refreshListenable: authProvider,
-            // Global redirect to handle authentication state
-            redirect: (context, state) {
-              final isLoggedIn = authProvider.isLoggedIn;
-              final isInitialized = authProvider.isInitialized;
-              final isGoingToLogin = state.matchedLocation == '/login';
-              final isGoingToSignup = state.matchedLocation.startsWith('/signup') ||
-                                      state.matchedLocation == '/role-selection' ||
-                                      state.matchedLocation == '/onboarding';
-              final isGoingToSplash = state.matchedLocation == '/';
-              final isGoingToPendingApproval = state.matchedLocation == '/pending-approval';
-
-              debugPrint('🛣️ [ROUTER_REDIRECT] Location: ${state.matchedLocation}');
-              debugPrint('   isLoggedIn: $isLoggedIn, isInitialized: $isInitialized');
-
-              // If not initialized yet, allow splash screen
-              if (!isInitialized && !isGoingToSplash) {
-                debugPrint('   ➡️ Redirecting to splash (not initialized)');
-                return '/';
-              }
-
-              // If logged in, check for pending or rejected join request
-              if (isLoggedIn) {
-                final user = authProvider.user;
-                if (user != null) {
-                  // Check for pending request
-                  if (user.hasPendingJoinRequest) {
-                    // User has pending join request - show pending approval screen
-                    if (!isGoingToPendingApproval) {
-                      debugPrint('   ➡️ Redirecting to pending-approval (has pending join request)');
-                      return '/pending-approval';
-                    }
-                    // Already on pending approval screen, no redirect needed
-                    debugPrint('   ✅ On pending-approval screen');
-                    return null;
-                  }
-                  
-                  // Check for rejected request
-                  if (user.hasRejectedJoinRequest) {
-                    // User has rejected join request - show pending approval screen (which handles rejection display)
-                    if (!isGoingToPendingApproval) {
-                      debugPrint('   ➡️ Redirecting to pending-approval (has rejected join request)');
-                      return '/pending-approval';
-                    }
-                    // Already on pending approval screen, no redirect needed
-                    debugPrint('   ✅ On pending-approval screen');
-                    return null;
-                  }
-                }
-              }
-
-              // If logged in and trying to access auth screens, redirect to dashboard
-              if (isLoggedIn && (isGoingToLogin || isGoingToSignup || isGoingToSplash)) {
-                final user = authProvider.user;
-                if (user != null) {
-                  final dashboard = _getDashboardForRole(user.role);
-                  debugPrint('   ➡️ Redirecting to dashboard: $dashboard (already logged in)');
-                  return dashboard;
-                }
-              }
-
-              // If not logged in and trying to access protected routes, redirect to login
-              if (!isLoggedIn && !isGoingToLogin && !isGoingToSignup && !isGoingToSplash) {
-                debugPrint('   ➡️ Redirecting to login (not authenticated)');
-                return '/login';
-              }
-
-              debugPrint('   ✅ No redirect needed');
-              return null; // No redirect needed
-            },
-            routes: [
-              // Initial splash screen with session check
-              GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
-              
-              // Modern UI routes (actively used)
-              GoRoute(path: '/login', builder: (context, state) => const ModernLoginScreen()),
-              GoRoute(
-                path: '/pending-approval',
-                builder: (context, state) {
-                  final user = authProvider.user;
-                  if (user == null || (!user.hasPendingJoinRequest && !user.hasRejectedJoinRequest)) {
-                    // Redirect to login if no pending or rejected request
-                    return const ModernLoginScreen();
-                  }
-                  
-                  final isShop = user.pendingJoinRequestShopName != null;
-                  final entityName = isShop 
-                      ? (user.pendingJoinRequestShopName ?? 'Unknown Shop')
-                      : (user.pendingJoinRequestUnitName ?? 'Unknown Unit');
-                      
-                  return PendingApprovalScreen(
-                    entityName: entityName,
-                    requestedRole: user.pendingJoinRequestRole ?? 'worker',
-                    requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
-                    isShop: isShop,
-                    rejectionReason: user.rejectionReason,
-                  );
-                },
-              ),
-              GoRoute(
-                path: '/signup',
-                builder: (context, state) {
-                  final role = state.uri.queryParameters['role'];
-                  return ModernSignupScreen(initialRole: role);
-                },
-              ),
-              GoRoute(path: '/signup-processing-unit', builder: (context, state) => const ProcessingUnitSignupScreen()),
-              GoRoute(path: '/signup-shop', builder: (context, state) => const ShopSignupScreen()),
-              GoRoute(path: '/role-selection', builder: (context, state) => const RoleSelectionScreen()),
-              GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
-              GoRoute(path: '/farmer-home', builder: (context, state) => const ModernFarmerHomeScreen()),
-              GoRoute(
-                path: '/processor-home',
-                builder: (context, state) {
-                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                  final user = authProvider.user;
-                  if (user != null && (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
-                    debugPrint('   ➡️ User has pending/rejected join request - intercepting /processor-home');
-                    return PendingApprovalScreen(
-                      entityName: user.pendingJoinRequestUnitName ?? 'Unknown Unit',
-                      requestedRole: user.pendingJoinRequestRole ?? 'worker',
-                      requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
-                      isShop: false,
-                      rejectionReason: user.rejectionReason,
-                    );
-                  }
-                  return const ModernProcessorHomeScreen();
-                },
-              ),
-              GoRoute(
-                path: '/shop-home',
-                builder: (context, state) {
-                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                  final user = authProvider.user;
-                  if (user != null && (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
-                    debugPrint('   ➡️ User has pending/rejected join request - intercepting /shop-home');
-                    return PendingApprovalScreen(
-                      entityName: user.pendingJoinRequestShopName ?? 'Unknown Shop',
-                      requestedRole: user.pendingJoinRequestRole ?? 'worker',
-                      requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
-                      isShop: true,
-                      rejectionReason: user.rejectionReason,
-                    );
-                  }
-                  final index = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
-                  return ModernShopHomeScreen(initialIndex: index);
-                },
-              ),
-              GoRoute(
-                path: '/qr-scanner',
-                builder: (context, state) {
-                  final source = state.uri.queryParameters['source'];
-                  return EnhancedQrScannerScreen(source: source);
-                },
-              ),
-              GoRoute(
-                path: '/camera',
-                builder: (context, state) => CameraScreen(
-                  onImagesSelected: (images) {
-                    Navigator.of(context).pop(images);
-                  },
-                ),
-              ),
-              GoRoute(
-                path: '/printer-settings',
-                builder: (context, state) => const PrinterSettingsScreen(),
-              ),
-              
-              // Farmer routes
-              GoRoute(
-                path: '/farmer/livestock-history',
-                builder: (context, state) => const LivestockHistoryScreen(),
-              ),
-              GoRoute(
-                path: '/animals/:id',
-                builder: (context, state) {
-                  final animalId = state.pathParameters['id']!;
-                  return AnimalDetailScreen(animalId: animalId);
-                },
-              ),
-              GoRoute(
-                path: '/animals/:id/edit',
-                builder: (context, state) {
-                  final animalId = state.pathParameters['id']!;
-                  return EditAnimalScreen(animalId: animalId);
-                },
-              ),
-              GoRoute(
-                path: '/register-animal',
-                builder: (context, state) => const RegisterAnimalScreen(),
-              ),
-              GoRoute(
-                path: '/select-animals-transfer',
-                builder: (context, state) => const TransferAnimalsScreen(),
-              ),
-              GoRoute(
-                path: '/slaughter-animal',
-                builder: (context, state) {
-                  final animalId = state.uri.queryParameters['animalId'];
-                  return SlaughterAnimalScreen(animalId: animalId);
-                },
-              ),
-              GoRoute(
-                path: '/farmer/settings',
-                builder: (context, state) => const FarmerSettingsScreen(),
-              ),
-              GoRoute(
-                path: '/farmer/profile',
-                builder: (context, state) => const FarmerProfileScreen(),
-              ),
-              GoRoute(
-                path: '/farmer/notifications',
-                builder: (context, state) => const NotificationListScreen(),
-              ),
-              
-              // Processor routes
-              GoRoute(
-                path: '/processor/products',
-                builder: (context, state) => const ProductsListScreen(),
-              ),
-              GoRoute(
-                path: '/products/:id',
-                builder: (context, state) {
-                  final productId = state.pathParameters['id']!;
-                  return ProductDetailScreen(productId: productId);
-                },
-              ),
-              GoRoute(
-                path: '/receive-animals',
-                builder: (context, state) => const ReceiveAnimalsScreen(),
-              ),
-              GoRoute(
-                path: '/pending-processing',
-                builder: (context, state) => const PendingProcessingScreen(),
-              ),
-              GoRoute(
-                path: '/create-product',
-                builder: (context, state) => const CreateProductScreen(),
-              ),
-              GoRoute(
-                path: '/processor/settings',
-                builder: (context, state) => const ProcessorSettingsScreen(),
-              ),
-              GoRoute(
-                path: '/processor-qr-codes',
-                builder: (context, state) => const ProcessorQRCodesScreen(),
-              ),
-              GoRoute(
-                path: '/processor/analytics',
-                builder: (context, state) => const ProcessorAnalyticsScreen(),
-              ),
-              GoRoute(
-                path: '/producer-inventory',
-                builder: (context, state) => const ProcessorInventoryScreen(),
-              ),
-              GoRoute(
-                path: '/product-history',
-                builder: (context, state) => const ComingSoonScreen(
-                  featureName: 'Product History',
-                  description: 'View complete history of all products created and transferred.',
-                  icon: Icons.history,
-                ),
-              ),
-              GoRoute(
-                path: '/transfer-products',
-                builder: (context, state) => const TransferProductsScreen(),
-              ),
-              GoRoute(
-                path: '/processor/product-categories',
-                builder: (context, state) => ProductCategoriesScreen(),
-              ),
-              GoRoute(
-                path: '/processor/notifications',
-                builder: (context, state) => const ProcessorNotificationScreen(),
-              ),
-              
-              // User Management routes
-              GoRoute(
-                path: '/processing-unit/register',
-                builder: (context, state) => const ProcessingUnitRegistrationScreen(),
-              ),
-              GoRoute(
-                name: 'processing-unit-users',
-                path: '/processing-unit/users',
-                builder: (context, state) {
-                  final unitId = int.parse(state.uri.queryParameters['unitId'] ?? '0');
-                  return ProcessingUnitUserManagementScreen(unitId: unitId);
-                },
-              ),
-              GoRoute(
-                path: '/shop/register',
-                builder: (context, state) => const ShopRegistrationScreen(),
-              ),
-              GoRoute(
-                path: '/shop/users',
-                builder: (context, state) {
-                  final shopId = int.parse(state.uri.queryParameters['shopId'] ?? '0');
-                  return ShopUserManagementScreen(shopId: shopId);
-                },
-              ),
-              
-              // Shop routes
-              GoRoute(
-                path: '/shop/inventory',
-                builder: (context, state) => const ShopInventoryScreen(),
-              ),
-              GoRoute(
-                path: '/shop/orders',
-                builder: (context, state) => const OrderHistoryScreen(),
-              ),
-              GoRoute(
-                path: '/shop/place-order',
-                builder: (context, state) => const PlaceOrderScreen(),
-              ),
-              GoRoute(
-                path: '/shop/sell',
-                builder: (context, state) => const SellScreen(),
-              ),
-              GoRoute(
-                path: '/shop/orders/:orderId',
-                builder: (context, state) {
-                  final orderId = int.parse(state.pathParameters['orderId']!);
-                  return OrderDetailScreen(orderId: orderId);
-                },
-              ),
-              GoRoute(
-                path: '/shop/profile',
-                builder: (context, state) => const ShopProfileScreen(),
-              ),
-              GoRoute(
-                path: '/receive-products',
-                builder: (context, state) => const ReceiveProductsScreen(),
-              ),
-              GoRoute(
-                path: '/product-inventory',
-                builder: (context, state) => const ComingSoonScreen(
-                  featureName: 'Product Inventory',
-                  description: 'Manage shop product inventory, stock levels, and pricing.',
-                  icon: Icons.inventory_2,
-                ),
-              ),
-              GoRoute(
-                path: '/shop/settings',
-                builder: (context, state) => const ShopSettingsScreen(),
-              ),
-              GoRoute(
-                path: '/profile',
-                builder: (context, state) => const UserProfileScreen(),
-              ),
-              GoRoute(
-                path: '/settings',
-                builder: (context, state) => const SettingsScreen(),
-              ),
-            ],
-          );
-
-          final userRole = authProvider.user?.role;
-
-          // Get effective theme based on user role
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          final userRole = _authProvider.user?.role;
           final effectiveTheme = AppTheme.getThemeForRole(userRole);
-
-          // Animation duration respects reduce motion accessibility preference
           final animationDuration = themeProvider.reduceMotion
               ? Duration.zero
               : const Duration(milliseconds: 300);
@@ -604,9 +571,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             child: MaterialApp.router(
               title: 'Nyama Tamu',
               theme: effectiveTheme,
-              darkTheme: null, // AnimatedTheme handles theme transitions
               themeMode: ThemeMode.light,
-              routerConfig: router,
+              routerConfig: _router,
+              debugShowCheckedModeBanner: false,
             ),
           );
         },
@@ -614,11 +581,3 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 }
-
-
-
-
-
-
-
-

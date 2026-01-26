@@ -38,7 +38,7 @@ class NavigationService {
   
   // Default fallback routes for different user types
   static const Map<String, String> _defaultFallbacks = {
-    'farmer': '/farmer-home',
+    'abbatoir': '/abbatoir-home',
     'processor': '/processor-home',
     'shop': '/shop-home',
     'default': '/home',
@@ -269,8 +269,8 @@ class NavigationService {
     } else {
       // Try to infer user type from current route
       final currentRoute = GoRouterState.of(context).uri.toString();
-      if (currentRoute.contains('farmer')) {
-        fallbackRoute = _defaultFallbacks['farmer'];
+      if (currentRoute.contains('abbatoir')) {
+        fallbackRoute = _defaultFallbacks['abbatoir'];
       } else if (currentRoute.contains('processor')) {
         fallbackRoute = _defaultFallbacks['processor'];
       } else if (currentRoute.contains('shop')) {
@@ -375,8 +375,8 @@ class NavigationService {
   /// Get appropriate list route for user type
   String? _getListRouteForUserType(String? userType) {
     switch (userType) {
-      case 'farmer':
-        return '/farmer/livestock-history';
+      case 'abbatoir':
+        return '/abbatoir/livestock-history';
       case 'processor':
         return '/processor/inventory';
       case 'shop':
@@ -389,8 +389,8 @@ class NavigationService {
   /// Get appropriate home route for user type
   String? _getHomeRouteForUserType(String? userType) {
     switch (userType) {
-      case 'farmer':
-        return '/farmer-home';
+      case 'abbatoir':
+        return '/abbatoir-home';
       case 'processor':
         return '/processor-home';
       case 'shop':
@@ -403,8 +403,8 @@ class NavigationService {
   /// Get appropriate inventory route for user type
   String? _getInventoryRouteForUserType(String? userType) {
     switch (userType) {
-      case 'farmer':
-        return '/farmer/livestock-history';
+      case 'abbatoir':
+        return '/abbatoir/livestock-history';
       case 'processor':
         return '/processor/inventory';
       case 'shop':

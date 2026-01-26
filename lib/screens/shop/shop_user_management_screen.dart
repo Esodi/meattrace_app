@@ -14,19 +14,15 @@ import '../../widgets/core/custom_text_field.dart';
 
 class ShopUserManagementScreen extends StatefulWidget {
   final int shopId;
-  
-  const ShopUserManagementScreen({
-    super.key,
-    required this.shopId,
-  });
+
+  const ShopUserManagementScreen({super.key, required this.shopId});
 
   @override
   State<ShopUserManagementScreen> createState() =>
       _ShopUserManagementScreenState();
 }
 
-class _ShopUserManagementScreenState
-    extends State<ShopUserManagementScreen>
+class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _searchController = TextEditingController();
@@ -36,7 +32,7 @@ class _ShopUserManagementScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     // Load data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProvider();
@@ -51,18 +47,24 @@ class _ShopUserManagementScreenState
 
     if (authProvider.user != null) {
       provider.setCurrentUserId(authProvider.user!.id);
-      debugPrint('✅ [SHOP_USER_MGMT] Set current user ID: ${authProvider.user!.id}');
+      debugPrint(
+        '✅ [SHOP_USER_MGMT] Set current user ID: ${authProvider.user!.id}',
+      );
 
       // Check if user has shop role - redirect if not
       final userContext = context.read<UserContextProvider>();
       // Use permission-based gating so admins and staff with manage permission can access
       if (!userContext.canManageUsers()) {
-        debugPrint('❌ [SHOP_USER_MGMT] User cannot manage shop users (role: ${authProvider.user!.role}). Redirecting...');
+        debugPrint(
+          '❌ [SHOP_USER_MGMT] User cannot manage shop users (role: ${authProvider.user!.role}). Redirecting...',
+        );
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Access denied. Only shop owners or staff with permissions can manage shop users.'),
+                content: Text(
+                  'Access denied. Only shop owners or staff with permissions can manage shop users.',
+                ),
                 backgroundColor: Colors.red,
               ),
             );
@@ -81,18 +83,18 @@ class _ShopUserManagementScreenState
   String _getDashboardForRole(String role) {
     final normalizedRole = role.toLowerCase();
 
-    if (normalizedRole == 'farmer') {
-      return '/farmer-home';
+    if (normalizedRole == 'abbatoir') {
+      return '/abbatoir-home';
     } else if (normalizedRole == 'processingunit' ||
-               normalizedRole == 'processing_unit' ||
-               normalizedRole == 'processor') {
+        normalizedRole == 'processing_unit' ||
+        normalizedRole == 'processor') {
       return '/processor-home';
     } else if (normalizedRole == 'shop' ||
-               normalizedRole == 'shopowner' ||
-               normalizedRole == 'shop_owner') {
+        normalizedRole == 'shopowner' ||
+        normalizedRole == 'shop_owner') {
       return '/shop-home';
     } else {
-      return '/farmer-home'; // Default fallback
+      return '/abbatoir-home'; // Default fallback
     }
   }
 
@@ -109,10 +111,14 @@ class _ShopUserManagementScreenState
       // CRITICAL: Load members FIRST before join requests
       // This ensures permission checks work correctly when rendering request cards
       await provider.loadShopMembers(widget.shopId);
-      debugPrint('✅ [SHOP_USER_MGMT] Members loaded: ${provider.members.length}');
-      
+      debugPrint(
+        '✅ [SHOP_USER_MGMT] Members loaded: ${provider.members.length}',
+      );
+
       await provider.loadJoinRequests(widget.shopId);
-      debugPrint('✅ [SHOP_USER_MGMT] Join requests loaded: ${provider.joinRequests.length}');
+      debugPrint(
+        '✅ [SHOP_USER_MGMT] Join requests loaded: ${provider.joinRequests.length}',
+      );
     } catch (e) {
       debugPrint('❌ [SHOP_USER_MGMT] Error loading data: $e');
     }
@@ -184,10 +190,7 @@ class _ShopUserManagementScreenState
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [
-                _buildMembersTab(),
-                _buildRequestsTab(),
-              ],
+              children: [_buildMembersTab(), _buildRequestsTab()],
             ),
           ),
         ],
@@ -259,7 +262,9 @@ class _ShopUserManagementScreenState
         if (members.isEmpty) {
           return _buildEmptyState(
             icon: Icons.people_outline,
-            title: _searchQuery.isEmpty ? 'No Staff Members Yet' : 'No Staff Found',
+            title: _searchQuery.isEmpty
+                ? 'No Staff Members Yet'
+                : 'No Staff Found',
             message: _searchQuery.isEmpty
                 ? 'Invite staff members to join your shop'
                 : 'Try adjusting your search',
@@ -321,17 +326,17 @@ class _ShopUserManagementScreenState
 
   List<ShopUser> _filterMembers(List<ShopUser> members) {
     if (_searchQuery.isEmpty) return members;
-    
+
     return members.where((member) {
       return member.username.toLowerCase().contains(_searchQuery) ||
-             member.email.toLowerCase().contains(_searchQuery) ||
-             member.displayRole.toLowerCase().contains(_searchQuery);
+          member.email.toLowerCase().contains(_searchQuery) ||
+          member.displayRole.toLowerCase().contains(_searchQuery);
     }).toList();
   }
 
   Widget _buildMemberCard(ShopUser member, ShopManagementProvider provider) {
     final canManage = provider.canManageUsers();
-    
+
     return Card(
       margin: EdgeInsets.only(bottom: AppTheme.space12),
       elevation: 2,
@@ -357,7 +362,7 @@ class _ShopUserManagementScreenState
                 ),
               ),
               SizedBox(width: AppTheme.space16),
-              
+
               // Member info
               Expanded(
                 child: Column(
@@ -368,7 +373,9 @@ class _ShopUserManagementScreenState
                         Expanded(
                           child: Text(
                             member.username,
-                            style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.bold),
+                            style: AppTypography.bodyLarge().copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -414,12 +421,13 @@ class _ShopUserManagementScreenState
                   ],
                 ),
               ),
-              
+
               // Actions menu
               if (canManage && !member.isOwner)
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_vert, color: AppColors.textSecondary),
-                  onSelected: (value) => _handleMemberAction(value, member, provider),
+                  onSelected: (value) =>
+                      _handleMemberAction(value, member, provider),
                   itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'change_role',
@@ -472,20 +480,27 @@ class _ShopUserManagementScreenState
     );
   }
 
-  Widget _buildRequestCard(JoinRequest request, ShopManagementProvider provider) {
+  Widget _buildRequestCard(
+    JoinRequest request,
+    ShopManagementProvider provider,
+  ) {
     final authProvider = context.read<AuthProvider>();
     final currentUserId = authProvider.user?.id;
     final canManage = provider.canManageUsers(currentUserId);
-    
+
     // DEBUG: Log permission check result
     debugPrint('🔍 [SHOP_REQUEST_CARD] Building card for ${request.username}');
     debugPrint('🔍 [SHOP_REQUEST_CARD] Current user ID = $currentUserId');
     debugPrint('🔍 [SHOP_REQUEST_CARD] canManage = $canManage');
-    debugPrint('🔍 [SHOP_REQUEST_CARD] Members count = ${provider.members.length}');
+    debugPrint(
+      '🔍 [SHOP_REQUEST_CARD] Members count = ${provider.members.length}',
+    );
     if (provider.members.isNotEmpty) {
-      debugPrint('🔍 [SHOP_REQUEST_CARD] Sample member: userId=${provider.members.first.userId}, role=${provider.members.first.role}');
+      debugPrint(
+        '🔍 [SHOP_REQUEST_CARD] Sample member: userId=${provider.members.first.userId}, role=${provider.members.first.role}',
+      );
     }
-    
+
     return Card(
       margin: EdgeInsets.only(bottom: AppTheme.space12),
       elevation: 2,
@@ -515,10 +530,14 @@ class _ShopUserManagementScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(request.username ?? 'No username',
-                        style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.bold),
+                      Text(
+                        request.username ?? 'No username',
+                        style: AppTypography.bodyLarge().copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      Text(request.email ?? 'No email',
+                      Text(
+                        request.email ?? 'No email',
                         style: AppTypography.bodyMedium(
                           color: AppColors.textSecondary,
                         ),
@@ -529,10 +548,14 @@ class _ShopUserManagementScreenState
               ],
             ),
             SizedBox(height: AppTheme.space12),
-            
+
             Row(
               children: [
-                Icon(Icons.work_outline, size: 16, color: AppColors.textSecondary),
+                Icon(
+                  Icons.work_outline,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
                 SizedBox(width: AppTheme.space4),
                 Text(
                   'Requested Role: ',
@@ -543,7 +566,7 @@ class _ShopUserManagementScreenState
                 _buildRoleBadge(request.requestedRole),
               ],
             ),
-            
+
             if (request.message != null && request.message!.isNotEmpty) ...[
               SizedBox(height: AppTheme.space12),
               Container(
@@ -562,32 +585,31 @@ class _ShopUserManagementScreenState
                       ).copyWith(fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: AppTheme.space4),
-                    Text(
-                      request.message!,
-                      style: AppTypography.bodyMedium(),
-                    ),
+                    Text(request.message!, style: AppTypography.bodyMedium()),
                   ],
                 ),
               ),
             ],
-            
+
             SizedBox(height: AppTheme.space8),
             Text(
               'Requested: ${request.requestedAt != null ? _formatDate(request.requestedAt!) : 'Unknown'}',
-              style: AppTypography.caption(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.caption(color: AppColors.textSecondary),
             ),
-            
+
             SizedBox(height: AppTheme.space16),
             Row(
               children: [
                 Expanded(
                   child: CustomButton(
                     label: 'Reject',
-                    onPressed: canManage ? () => _handleRejectRequest(request, provider) : null,
+                    onPressed: canManage
+                        ? () => _handleRejectRequest(request, provider)
+                        : null,
                     variant: ButtonVariant.secondary,
-                    customColor: canManage ? AppColors.error : AppColors.textSecondary,
+                    customColor: canManage
+                        ? AppColors.error
+                        : AppColors.textSecondary,
                     size: ButtonSize.small,
                   ),
                 ),
@@ -595,9 +617,13 @@ class _ShopUserManagementScreenState
                 Expanded(
                   child: CustomButton(
                     label: 'Approve',
-                    onPressed: canManage ? () => _handleApproveRequest(request, provider) : null,
+                    onPressed: canManage
+                        ? () => _handleApproveRequest(request, provider)
+                        : null,
                     variant: ButtonVariant.primary,
-                    customColor: canManage ? AppColors.success : AppColors.textSecondary,
+                    customColor: canManage
+                        ? AppColors.success
+                        : AppColors.textSecondary,
                     size: ButtonSize.small,
                   ),
                 ),
@@ -612,7 +638,7 @@ class _ShopUserManagementScreenState
   Widget _buildStatusBadge(ShopUser member) {
     Color color;
     String status = member.status;
-    
+
     if (member.isSuspended) {
       color = AppColors.error;
     } else if (!member.isActive) {
@@ -622,7 +648,7 @@ class _ShopUserManagementScreenState
     } else {
       color = AppColors.success;
     }
-    
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: AppTheme.space8,
@@ -644,10 +670,11 @@ class _ShopUserManagementScreenState
 
   Widget _buildRoleBadge(String role) {
     final color = _getRoleColor(role);
-    final displayRole = role.split('_').map((word) => 
-      word[0].toUpperCase() + word.substring(1)
-    ).join(' ');
-    
+    final displayRole = role
+        .split('_')
+        .map((word) => word[0].toUpperCase() + word.substring(1))
+        .join(' ');
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: AppTheme.space8,
@@ -693,9 +720,7 @@ class _ShopUserManagementScreenState
             SizedBox(height: AppTheme.space8),
             Text(
               message,
-              style: AppTypography.bodyMedium(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.bodyMedium(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -711,24 +736,16 @@ class _ShopUserManagementScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 80,
-              color: AppColors.error,
-            ),
+            Icon(Icons.error_outline, size: 80, color: AppColors.error),
             SizedBox(height: AppTheme.space24),
             Text(
               'Error Loading Data',
-              style: AppTypography.headlineMedium(
-                color: AppColors.error,
-              ),
+              style: AppTypography.headlineMedium(color: AppColors.error),
             ),
             SizedBox(height: AppTheme.space8),
             Text(
               error,
-              style: AppTypography.bodyMedium(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.bodyMedium(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: AppTheme.space24),
@@ -776,7 +793,7 @@ class _ShopUserManagementScreenState
   String _formatLastActive(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inMinutes < 1) {
       return 'Just now';
     } else if (difference.inHours < 1) {
@@ -793,7 +810,7 @@ class _ShopUserManagementScreenState
   String _formatDate(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inDays < 1) {
       return 'Today at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays < 2) {
@@ -808,17 +825,17 @@ class _ShopUserManagementScreenState
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLarge)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLarge),
+        ),
       ),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         maxChildSize: 0.9,
         minChildSize: 0.5,
         expand: false,
-        builder: (context, scrollController) => _buildMemberDetailsSheet(
-          member,
-          scrollController,
-        ),
+        builder: (context, scrollController) =>
+            _buildMemberDetailsSheet(member, scrollController),
       ),
     );
   }
@@ -843,7 +860,7 @@ class _ShopUserManagementScreenState
             ),
           ),
           SizedBox(height: AppTheme.space24),
-          
+
           // Avatar and name
           Center(
             child: Column(
@@ -861,7 +878,9 @@ class _ShopUserManagementScreenState
                 SizedBox(height: AppTheme.space16),
                 Text(
                   member.username,
-                  style: AppTypography.headlineMedium().copyWith(fontWeight: FontWeight.bold),
+                  style: AppTypography.headlineMedium().copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(height: AppTheme.space4),
                 Text(
@@ -873,11 +892,11 @@ class _ShopUserManagementScreenState
               ],
             ),
           ),
-          
+
           SizedBox(height: AppTheme.space24),
           Divider(),
           SizedBox(height: AppTheme.space16),
-          
+
           // Details
           _buildDetailRow('Role', member.displayRole),
           _buildDetailRow('Permissions', member.permissions.toUpperCase()),
@@ -888,12 +907,17 @@ class _ShopUserManagementScreenState
           if (member.joinedAt != null)
             _buildDetailRow('Joined At', _formatDate(member.joinedAt!)),
           if (member.lastActive != null)
-            _buildDetailRow('Last Active', _formatLastActive(member.lastActive!)),
+            _buildDetailRow(
+              'Last Active',
+              _formatLastActive(member.lastActive!),
+            ),
           if (member.isSuspended && member.suspensionReason != null) ...[
             SizedBox(height: AppTheme.space16),
             Text(
               'Suspension Reason:',
-              style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.bold),
+              style: AppTypography.bodyLarge().copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             SizedBox(height: AppTheme.space8),
             Text(
@@ -914,13 +938,13 @@ class _ShopUserManagementScreenState
         children: [
           Text(
             label,
-            style: AppTypography.bodyMedium(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTypography.bodyMedium(color: AppColors.textSecondary),
           ),
           Text(
             value,
-            style: AppTypography.bodyMedium().copyWith(fontWeight: FontWeight.w600),
+            style: AppTypography.bodyMedium().copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -952,7 +976,7 @@ class _ShopUserManagementScreenState
     final emailController = TextEditingController();
     String selectedRole = 'salesperson';
     final formKey = GlobalKey<FormState>();
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -979,7 +1003,9 @@ class _ShopUserManagementScreenState
                     if (value == null || value.isEmpty) {
                       return 'Please enter an email';
                     }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                    if (!RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                    ).hasMatch(value)) {
                       return 'Please enter a valid email';
                     }
                     return null;
@@ -987,17 +1013,25 @@ class _ShopUserManagementScreenState
                 ),
                 SizedBox(height: AppTheme.space16),
                 DropdownButtonFormField<String>(
-                  value: selectedRole,
+                  initialValue: selectedRole,
                   decoration: InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
                   ),
                   items: [
-                    DropdownMenuItem(value: 'salesperson', child: Text('Salesperson')),
+                    DropdownMenuItem(
+                      value: 'salesperson',
+                      child: Text('Salesperson'),
+                    ),
                     DropdownMenuItem(value: 'cashier', child: Text('Cashier')),
-                    DropdownMenuItem(value: 'inventory_clerk', child: Text('Inventory Clerk')),
+                    DropdownMenuItem(
+                      value: 'inventory_clerk',
+                      child: Text('Inventory Clerk'),
+                    ),
                     DropdownMenuItem(value: 'manager', child: Text('Manager')),
                   ],
                   onChanged: (value) => setState(() => selectedRole = value!),
@@ -1037,7 +1071,7 @@ class _ShopUserManagementScreenState
       email: email,
       role: role,
     );
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1049,20 +1083,17 @@ class _ShopUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
     }
   }
 
-  void _showChangeRoleDialog(
-    ShopUser member,
-    ShopManagementProvider provider,
-  ) {
+  void _showChangeRoleDialog(ShopUser member, ShopManagementProvider provider) {
     String selectedRole = member.role;
     String selectedPermission = member.permissions;
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1072,7 +1103,7 @@ class _ShopUserManagementScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 decoration: InputDecoration(
                   labelText: 'Role',
                   border: OutlineInputBorder(
@@ -1080,16 +1111,22 @@ class _ShopUserManagementScreenState
                   ),
                 ),
                 items: [
-                  DropdownMenuItem(value: 'salesperson', child: Text('Salesperson')),
+                  DropdownMenuItem(
+                    value: 'salesperson',
+                    child: Text('Salesperson'),
+                  ),
                   DropdownMenuItem(value: 'cashier', child: Text('Cashier')),
-                  DropdownMenuItem(value: 'inventory_clerk', child: Text('Inventory Clerk')),
+                  DropdownMenuItem(
+                    value: 'inventory_clerk',
+                    child: Text('Inventory Clerk'),
+                  ),
                   DropdownMenuItem(value: 'manager', child: Text('Manager')),
                 ],
                 onChanged: (value) => setState(() => selectedRole = value!),
               ),
               SizedBox(height: AppTheme.space16),
               DropdownButtonFormField<String>(
-                value: selectedPermission,
+                initialValue: selectedPermission,
                 decoration: InputDecoration(
                   labelText: 'Permission Level',
                   border: OutlineInputBorder(
@@ -1101,7 +1138,8 @@ class _ShopUserManagementScreenState
                   DropdownMenuItem(value: 'write', child: Text('Read & Write')),
                   DropdownMenuItem(value: 'admin', child: Text('Admin')),
                 ],
-                onChanged: (value) => setState(() => selectedPermission = value!),
+                onChanged: (value) =>
+                    setState(() => selectedPermission = value!),
               ),
             ],
           ),
@@ -1142,7 +1180,7 @@ class _ShopUserManagementScreenState
       role: newRole,
       permission: newPermission,
     );
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1154,20 +1192,17 @@ class _ShopUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
     }
   }
 
-  void _showSuspendDialog(
-    ShopUser member,
-    ShopManagementProvider provider,
-  ) {
+  void _showSuspendDialog(ShopUser member, ShopManagementProvider provider) {
     final reasonController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1202,13 +1237,16 @@ class _ShopUserManagementScreenState
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel'),
           ),
-          CustomButton(label: 'Suspend',
+          CustomButton(
+            label: 'Suspend',
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Suspend functionality will be implemented soon'),
+                    content: Text(
+                      'Suspend functionality will be implemented soon',
+                    ),
                     backgroundColor: AppColors.warning,
                   ),
                 );
@@ -1234,10 +1272,7 @@ class _ShopUserManagementScreenState
     );
   }
 
-  void _showRemoveDialog(
-    ShopUser member,
-    ShopManagementProvider provider,
-  ) {
+  void _showRemoveDialog(ShopUser member, ShopManagementProvider provider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1275,8 +1310,11 @@ class _ShopUserManagementScreenState
     ShopUser member,
     ShopManagementProvider provider,
   ) async {
-    final success = await provider.removeMember(shopId: widget.shopId, memberId: member.id);
-    
+    final success = await provider.removeMember(
+      shopId: widget.shopId,
+      memberId: member.id,
+    );
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1288,7 +1326,7 @@ class _ShopUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
@@ -1303,7 +1341,7 @@ class _ShopUserManagementScreenState
       request.id!,
       responseMessage: 'Welcome to the team!',
     );
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1315,7 +1353,7 @@ class _ShopUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }
@@ -1328,7 +1366,7 @@ class _ShopUserManagementScreenState
   ) {
     final reasonController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1382,9 +1420,11 @@ class _ShopUserManagementScreenState
   ) async {
     final success = await provider.rejectJoinRequest(
       request.id!,
-      responseMessage: reason.isNotEmpty ? reason : 'Your request has been rejected.',
+      responseMessage: reason.isNotEmpty
+          ? reason
+          : 'Your request has been rejected.',
     );
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1396,7 +1436,7 @@ class _ShopUserManagementScreenState
           backgroundColor: success ? AppColors.warning : AppColors.error,
         ),
       );
-      
+
       if (success) {
         _refreshData();
       }

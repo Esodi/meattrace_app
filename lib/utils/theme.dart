@@ -4,35 +4,63 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   // MeatTrace Design System Color Palette
   // Primary Colors
-  static const Color primaryGreen = Color(0xFF2E7D32); // Trust, nature, freshness, processing unit branding
-  static const Color primaryRed = Color(0xFFD32F2F); // Meat, vitality, alerts, farmer branding
+  static const Color primaryGreen = Color(
+    0xFF2E7D32,
+  ); // Trust, nature, freshness, processing unit branding
+  static const Color primaryRed = Color(
+    0xFFD32F2F,
+  ); // Meat, vitality, alerts, abbatoir branding
 
   // Secondary Colors
-  static const Color secondaryBurgundy = Color(0xFF5D4037); // Sophistication, quality meat, shop branding
-  static const Color secondaryBlue = Color(0xFF1976D2); // Technology, trust, reliability
+  static const Color secondaryBurgundy = Color(
+    0xFF5D4037,
+  ); // Sophistication, quality meat, shop branding
+  static const Color secondaryBlue = Color(
+    0xFF1976D2,
+  ); // Technology, trust, reliability
 
   // Accent Colors
-  static const Color accentOrange = Color(0xFFFF9800); // Energy, processing, warmth
+  static const Color accentOrange = Color(
+    0xFFFF9800,
+  ); // Energy, processing, warmth
   static const Color accentMaroon = Color(0xFF8D4A4A); // Premium quality, depth
 
   // Neutral Colors
-  static const Color backgroundGray = Color(0xFFF5F5F5); // Clean, modern background
-  static const Color surfaceWhite = Color(0xFFFFFFFF); // Card backgrounds, content areas
+  static const Color backgroundGray = Color(
+    0xFFF5F5F5,
+  ); // Clean, modern background
+  static const Color surfaceWhite = Color(
+    0xFFFFFFFF,
+  ); // Card backgrounds, content areas
   static const Color textPrimary = Color(0xFF212121); // High contrast text
   static const Color textSecondary = Color(0xFF757575); // Secondary information
   static const Color dividerGray = Color(0xFFE0E0E0); // Subtle separations
 
   // Nature-inspired Colors for Processor Dashboard
-  static const Color forestGreen = Color(0xFF2D5A3D); // Deep forest green for primary elements
-  static const Color oceanBlue = Color(0xFF1E3A5F); // Ocean blue for secondary elements
-  static const Color earthBrown = Color(0xFF8B4513); // Earth brown for tertiary elements
+  static const Color forestGreen = Color(
+    0xFF2D5A3D,
+  ); // Deep forest green for primary elements
+  static const Color oceanBlue = Color(
+    0xFF1E3A5F,
+  ); // Ocean blue for secondary elements
+  static const Color earthBrown = Color(
+    0xFF8B4513,
+  ); // Earth brown for tertiary elements
   static const Color skyBlue = Color(0xFF87CEEB); // Sky blue for accents
-  static const Color leafGreen = Color(0xFF32CD32); // Leaf green for success states
+  static const Color leafGreen = Color(
+    0xFF32CD32,
+  ); // Leaf green for success states
 
   // Semantic Colors
-  static const Color successGreen = Color(0xFF4CAF50); // Confirmations, completed actions
-  static const Color warningOrange = Color(0xFFFF9800); // Cautions, pending states
-  static const Color warningAmber = Color(0xFFFF9800); // Alias for backward compatibility
+  static const Color successGreen = Color(
+    0xFF4CAF50,
+  ); // Confirmations, completed actions
+  static const Color warningOrange = Color(
+    0xFFFF9800,
+  ); // Cautions, pending states
+  static const Color warningAmber = Color(
+    0xFFFF9800,
+  ); // Alias for backward compatibility
   static const Color errorRed = Color(0xFFF44336); // Errors, critical issues
   static const Color infoBlue = Color(0xFF2196F3); // Information, help text
 
@@ -47,12 +75,10 @@ class AppTheme {
       secondary: secondaryBlue,
       tertiary: accentOrange,
       surface: surfaceWhite,
-      background: backgroundGray,
       error: errorRed,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: textPrimary,
-      onBackground: textPrimary,
       onError: Colors.white,
     ),
 
@@ -183,9 +209,7 @@ class AppTheme {
       color: surfaceWhite,
       elevation: 2,
       shadowColor: Colors.black.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.all(8), // 1 unit spacing
     ),
 
@@ -196,15 +220,16 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14, // Label Large
           fontWeight: FontWeight.w500,
           height: 1.4,
         ),
-        minimumSize: const Size(double.infinity, 48), // Full width, 44px minimum touch target
+        minimumSize: const Size(
+          double.infinity,
+          48,
+        ), // Full width, 44px minimum touch target
       ),
     ),
 
@@ -213,9 +238,7 @@ class AppTheme {
         foregroundColor: primaryGreen,
         side: const BorderSide(color: primaryGreen, width: 1.5),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -254,10 +277,7 @@ class AppTheme {
         borderSide: BorderSide(color: errorRed, width: 1),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-      labelStyle: GoogleFonts.roboto(
-        fontSize: 16,
-        color: textSecondary,
-      ),
+      labelStyle: GoogleFonts.roboto(fontSize: 16, color: textSecondary),
       floatingLabelStyle: GoogleFonts.roboto(
         fontSize: 12,
         color: primaryGreen,
@@ -298,31 +318,27 @@ class AppTheme {
     dialogTheme: DialogThemeData(
       backgroundColor: surfaceWhite,
       elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
 
     // SnackBar Theme
     snackBarTheme: SnackBarThemeData(
       backgroundColor: textPrimary,
-      contentTextStyle: GoogleFonts.roboto(
-        color: Colors.white,
-        fontSize: 14,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      contentTextStyle: GoogleFonts.roboto(color: Colors.white, fontSize: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       behavior: SnackBarBehavior.floating,
     ),
   );
 
   // Role-based themes
-  static ThemeData getThemeForRole(String? role, {Brightness brightness = Brightness.light}) {
+  static ThemeData getThemeForRole(
+    String? role, {
+    Brightness brightness = Brightness.light,
+  }) {
     final isDark = brightness == Brightness.dark;
     switch (role?.toLowerCase()) {
-      case 'farmer':
-        return isDark ? _farmerDarkTheme : _farmerTheme;
+      case 'abbatoir':
+        return isDark ? _abbatoirDarkTheme : _farmerTheme;
       case 'processing_unit':
       case 'processor':
         return isDark ? _processorDarkTheme : _processorTheme;
@@ -336,33 +352,27 @@ class AppTheme {
     }
   }
 
-  // Farmer Theme - Primary Red focus
-  static ThemeData _farmerTheme = lightTheme.copyWith(
+  // Abbatoir Theme - Primary Red focus
+  static final ThemeData _farmerTheme = lightTheme.copyWith(
     colorScheme: const ColorScheme.light(
       primary: primaryRed,
       secondary: secondaryBlue,
       tertiary: accentOrange,
       surface: surfaceWhite,
-      background: backgroundGray,
       error: errorRed,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: textPrimary,
-      onBackground: textPrimary,
       onError: Colors.white,
     ),
-    appBarTheme: lightTheme.appBarTheme.copyWith(
-      backgroundColor: primaryRed,
-    ),
+    appBarTheme: lightTheme.appBarTheme.copyWith(backgroundColor: primaryRed),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryRed,
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -390,21 +400,19 @@ class AppTheme {
   );
 
   // Processor Theme - Primary Green focus
-  static ThemeData _processorTheme = lightTheme;
+  static final ThemeData _processorTheme = lightTheme;
 
   // Shop Theme - Secondary Burgundy focus
-  static ThemeData _shopTheme = lightTheme.copyWith(
+  static final ThemeData _shopTheme = lightTheme.copyWith(
     colorScheme: const ColorScheme.light(
       primary: secondaryBurgundy,
       secondary: secondaryBlue,
       tertiary: accentMaroon,
       surface: surfaceWhite,
-      background: backgroundGray,
       error: errorRed,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: textPrimary,
-      onBackground: textPrimary,
       onError: Colors.white,
     ),
     appBarTheme: lightTheme.appBarTheme.copyWith(
@@ -416,9 +424,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -445,34 +451,28 @@ class AppTheme {
     ),
   );
 
-  // Farmer Dark Theme - Primary Red focus with dark adaptations
-  static ThemeData _farmerDarkTheme = darkTheme.copyWith(
+  // Abbatoir Dark Theme - Primary Red focus with dark adaptations
+  static final ThemeData _abbatoirDarkTheme = darkTheme.copyWith(
     colorScheme: const ColorScheme.dark(
       primary: primaryRed,
       secondary: secondaryBlue,
       tertiary: accentOrange,
       surface: Color(0xFF2D2D2D),
-      background: Color(0xFF1A1A1A),
       error: errorRed,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: Colors.white,
-      onBackground: Colors.white,
       onError: Colors.white,
       surfaceTint: Color(0xFF3D3D3D),
     ),
-    appBarTheme: darkTheme.appBarTheme.copyWith(
-      backgroundColor: primaryRed,
-    ),
+    appBarTheme: darkTheme.appBarTheme.copyWith(backgroundColor: primaryRed),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryRed,
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -500,21 +500,19 @@ class AppTheme {
   );
 
   // Processor Dark Theme - Primary Green focus with dark adaptations
-  static ThemeData _processorDarkTheme = darkTheme;
+  static final ThemeData _processorDarkTheme = darkTheme;
 
   // Shop Dark Theme - Secondary Burgundy focus with dark adaptations
-  static ThemeData _shopDarkTheme = darkTheme.copyWith(
+  static final ThemeData _shopDarkTheme = darkTheme.copyWith(
     colorScheme: const ColorScheme.dark(
       primary: secondaryBurgundy,
       secondary: secondaryBlue,
       tertiary: accentMaroon,
       surface: Color(0xFF2D2D2D),
-      background: Color(0xFF1A1A1A),
       error: errorRed,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: Colors.white,
-      onBackground: Colors.white,
       onError: Colors.white,
       surfaceTint: Color(0xFF3D3D3D),
     ),
@@ -527,9 +525,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -564,13 +560,11 @@ class AppTheme {
       primary: primaryGreen,
       secondary: secondaryBlue,
       tertiary: accentOrange,
-      surface: Color(0xFF2D2D2D), // Slightly lighter dark surface for better contrast
-      background: Color(0xFF1A1A1A), // Adjusted dark background
+      surface: Color(0xFF2D2D2D), // Adjusted dark background
       error: errorRed,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
-      onSurface: Colors.white, // Better contrast for text on dark surface
-      onBackground: Colors.white, // Better contrast for text on dark background
+      onSurface: Colors.white, // Better contrast for text on dark background
       onError: Colors.white,
       surfaceTint: Color(0xFF3D3D3D), // Added for card hover effects
     ),
@@ -704,7 +698,10 @@ class AppTheme {
       shadowColor: Colors.black.withValues(alpha: 0.4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF3D3D3D), width: 1), // Subtle border for definition
+        side: const BorderSide(
+          color: Color(0xFF3D3D3D),
+          width: 1,
+        ), // Subtle border for definition
       ),
       margin: const EdgeInsets.all(8),
     ),
@@ -716,9 +713,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -733,9 +728,7 @@ class AppTheme {
         foregroundColor: primaryGreen,
         side: const BorderSide(color: primaryGreen, width: 1.5),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -818,29 +811,15 @@ class AppTheme {
     dialogTheme: DialogThemeData(
       backgroundColor: const Color(0xFF1E1E1E),
       elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
 
     // SnackBar Theme
     snackBarTheme: SnackBarThemeData(
       backgroundColor: const Color(0xFF333333),
-      contentTextStyle: GoogleFonts.roboto(
-        color: Colors.white,
-        fontSize: 14,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      contentTextStyle: GoogleFonts.roboto(color: Colors.white, fontSize: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       behavior: SnackBarBehavior.floating,
     ),
   );
 }
-
-
-
-
-
-
-

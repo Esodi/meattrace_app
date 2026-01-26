@@ -6,17 +6,17 @@ import '../../utils/app_theme.dart';
 /// Reusable button widgets with consistent styling
 
 enum ButtonVariant {
-  primary,    // Filled button with primary color
-  secondary,  // Outlined button
-  text,       // Text button
-  icon,       // Icon button
-  fab,        // Floating action button
+  primary, // Filled button with primary color
+  secondary, // Outlined button
+  text, // Text button
+  icon, // Icon button
+  fab, // Floating action button
 }
 
 enum ButtonSize {
-  small,      // 36px height
-  medium,     // 48px height (default)
-  large,      // 56px height
+  small, // 36px height
+  medium, // 48px height (default)
+  large, // 56px height
 }
 
 class CustomButton extends StatelessWidget {
@@ -32,7 +32,7 @@ class CustomButton extends StatelessWidget {
   final Widget? trailingIcon;
 
   const CustomButton({
-    Key? key,
+    super.key,
     this.label,
     this.icon,
     required this.onPressed,
@@ -43,18 +43,18 @@ class CustomButton extends StatelessWidget {
     this.customColor,
     this.leadingIcon,
     this.trailingIcon,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDisabled = onPressed == null || loading;
-    
+
     // Determine button height based on size
     double height;
     double fontSize;
     double iconSize;
-    
+
     switch (size) {
       case ButtonSize.small:
         height = 36;
@@ -72,11 +72,11 @@ class CustomButton extends StatelessWidget {
         iconSize = 24;
         break;
     }
-    
+
     final buttonColor = customColor ?? theme.colorScheme.primary;
-    
+
     Widget buttonChild;
-    
+
     if (loading) {
       buttonChild = SizedBox(
         width: iconSize,
@@ -145,9 +145,9 @@ class CustomButton extends StatelessWidget {
     } else {
       buttonChild = const SizedBox.shrink();
     }
-    
+
     Widget button;
-    
+
     switch (variant) {
       case ButtonVariant.primary:
         button = ElevatedButton(
@@ -155,66 +155,75 @@ class CustomButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: buttonColor,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.12),
+            disabledBackgroundColor: theme.colorScheme.onSurface.withValues(
+              alpha: 0.12,
+            ),
             elevation: AppTheme.elevationLevel2,
             padding: EdgeInsets.symmetric(
-              horizontal: size == ButtonSize.small ? AppTheme.space16 : AppTheme.space24,
-              vertical: size == ButtonSize.small ? AppTheme.space8 : AppTheme.space12,
+              horizontal: size == ButtonSize.small
+                  ? AppTheme.space16
+                  : AppTheme.space24,
+              vertical: size == ButtonSize.small
+                  ? AppTheme.space8
+                  : AppTheme.space12,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             ),
-            minimumSize: Size(
-              fullWidth ? double.infinity : 0,
-              height,
-            ),
+            minimumSize: Size(fullWidth ? double.infinity : 0, height),
           ),
           child: buttonChild,
         );
         break;
-        
+
       case ButtonVariant.secondary:
         button = OutlinedButton(
           onPressed: isDisabled ? null : onPressed,
           style: OutlinedButton.styleFrom(
             foregroundColor: buttonColor,
             side: BorderSide(color: buttonColor, width: 1.5),
-            disabledForegroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            disabledForegroundColor: theme.colorScheme.onSurface.withValues(
+              alpha: 0.38,
+            ),
             padding: EdgeInsets.symmetric(
-              horizontal: size == ButtonSize.small ? AppTheme.space16 : AppTheme.space24,
-              vertical: size == ButtonSize.small ? AppTheme.space8 : AppTheme.space12,
+              horizontal: size == ButtonSize.small
+                  ? AppTheme.space16
+                  : AppTheme.space24,
+              vertical: size == ButtonSize.small
+                  ? AppTheme.space8
+                  : AppTheme.space12,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             ),
-            minimumSize: Size(
-              fullWidth ? double.infinity : 0,
-              height,
-            ),
+            minimumSize: Size(fullWidth ? double.infinity : 0, height),
           ),
           child: buttonChild,
         );
         break;
-        
+
       case ButtonVariant.text:
         button = TextButton(
           onPressed: isDisabled ? null : onPressed,
           style: TextButton.styleFrom(
             foregroundColor: buttonColor,
-            disabledForegroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            disabledForegroundColor: theme.colorScheme.onSurface.withValues(
+              alpha: 0.38,
+            ),
             padding: EdgeInsets.symmetric(
-              horizontal: size == ButtonSize.small ? AppTheme.space12 : AppTheme.space16,
-              vertical: size == ButtonSize.small ? AppTheme.space4 : AppTheme.space8,
+              horizontal: size == ButtonSize.small
+                  ? AppTheme.space12
+                  : AppTheme.space16,
+              vertical: size == ButtonSize.small
+                  ? AppTheme.space4
+                  : AppTheme.space8,
             ),
-            minimumSize: Size(
-              fullWidth ? double.infinity : 0,
-              height,
-            ),
+            minimumSize: Size(fullWidth ? double.infinity : 0, height),
           ),
           child: buttonChild,
         );
         break;
-        
+
       case ButtonVariant.icon:
         button = IconButton(
           onPressed: isDisabled ? null : onPressed,
@@ -224,7 +233,7 @@ class CustomButton extends StatelessWidget {
           iconSize: iconSize,
         );
         break;
-        
+
       case ButtonVariant.fab:
         button = FloatingActionButton(
           onPressed: isDisabled ? null : onPressed,
@@ -234,7 +243,7 @@ class CustomButton extends StatelessWidget {
         );
         break;
     }
-    
+
     return button;
   }
 }
@@ -249,14 +258,14 @@ class PrimaryButton extends StatelessWidget {
   final ButtonSize size;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.label,
     required this.onPressed,
     this.icon,
     this.fullWidth = true,
     this.loading = false,
     this.size = ButtonSize.medium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -282,14 +291,14 @@ class SecondaryButton extends StatelessWidget {
   final ButtonSize size;
 
   const SecondaryButton({
-    Key? key,
+    super.key,
     required this.label,
     required this.onPressed,
     this.icon,
     this.fullWidth = true,
     this.loading = false,
     this.size = ButtonSize.medium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -314,13 +323,13 @@ class CustomIconButton extends StatelessWidget {
   final String? tooltip;
 
   const CustomIconButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.onPressed,
     this.color,
     this.size,
     this.tooltip,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -330,14 +339,11 @@ class CustomIconButton extends StatelessWidget {
       variant: ButtonVariant.icon,
       customColor: color,
     );
-    
+
     if (tooltip != null) {
-      return Tooltip(
-        message: tooltip!,
-        child: button,
-      );
+      return Tooltip(message: tooltip!, child: button);
     }
-    
+
     return button;
   }
 }
@@ -353,7 +359,7 @@ class CustomFAB extends StatelessWidget {
   final Color? foregroundColor;
 
   const CustomFAB({
-    Key? key,
+    super.key,
     required this.icon,
     required this.onPressed,
     this.label,
@@ -361,7 +367,7 @@ class CustomFAB extends StatelessWidget {
     this.tooltip,
     this.backgroundColor,
     this.foregroundColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

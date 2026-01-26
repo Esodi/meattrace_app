@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
-import '../../utils/app_theme.dart';
 
 /// Notification badge widget that displays unread count
 class NotificationBadge extends StatelessWidget {

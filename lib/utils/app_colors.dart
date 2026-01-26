@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 class AppColors {
   // ========== ROLE-BASED PRIMARY COLORS ==========
   
-  /// Farmer/Abattoir Primary - Energetic Red
-  static const Color farmerPrimary = Color(0xFFD32F2F); // Red 700
-  static const Color farmerLight = Color(0xFFE57373); // Red 300
-  static const Color farmerDark = Color(0xFFB71C1C); // Red 900
+  /// Abbatoir/Abattoir Primary - Energetic Red
+  static const Color abbatoirPrimary = Color(0xFFD32F2F); // Red 700
+  static const Color abbatoirLight = Color(0xFFE57373); // Red 300
+  static const Color abbatoirDark = Color(0xFFB71C1C); // Red 900
   
   /// Processing Unit Primary - Natural Green
   static const Color processorPrimary = Color(0xFF2E7D32); // Green 800
@@ -82,11 +82,11 @@ class AppColors {
   
   // ========== GRADIENT DEFINITIONS ==========
   
-  /// Farmer Gradient - Warm Red
-  static const LinearGradient farmerGradient = LinearGradient(
+  /// Abbatoir Gradient - Warm Red
+  static const LinearGradient abbatoirGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [farmerLight, farmerPrimary, farmerDark],
+    colors: [abbatoirLight, abbatoirPrimary, abbatoirDark],
     stops: [0.0, 0.5, 1.0],
   );
   
@@ -179,9 +179,9 @@ class AppColors {
     if (role == null) return processorPrimary;
     
     switch (role.toLowerCase()) {
-      case 'farmer':
+      case 'abbatoir':
       case 'abattoir':
-        return farmerPrimary;
+        return abbatoirPrimary;
       case 'processing_unit':
       case 'processor':
         return processorPrimary;
@@ -200,9 +200,9 @@ class AppColors {
     if (role == null) return processorLight;
     
     switch (role.toLowerCase()) {
-      case 'farmer':
+      case 'abbatoir':
       case 'abattoir':
-        return farmerLight;
+        return abbatoirLight;
       case 'processing_unit':
       case 'processor':
         return processorLight;
@@ -221,9 +221,9 @@ class AppColors {
     if (role == null) return processorDark;
     
     switch (role.toLowerCase()) {
-      case 'farmer':
+      case 'abbatoir':
       case 'abattoir':
-        return farmerDark;
+        return abbatoirDark;
       case 'processing_unit':
       case 'processor':
         return processorDark;
@@ -242,9 +242,9 @@ class AppColors {
     if (role == null) return processorGradient;
     
     switch (role.toLowerCase()) {
-      case 'farmer':
+      case 'abbatoir':
       case 'abattoir':
-        return farmerGradient;
+        return abbatoirGradient;
       case 'processing_unit':
       case 'processor':
         return processorGradient;

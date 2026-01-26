@@ -160,7 +160,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: AppColors.farmerPrimary,
+        backgroundColor: AppColors.abbatoirPrimary,
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(
@@ -202,7 +202,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
             _loadAnimals();
           }
         },
-        backgroundColor: AppColors.farmerPrimary,
+        backgroundColor: AppColors.abbatoirPrimary,
         child: const Icon(Icons.add),
       ),
     );
@@ -272,11 +272,11 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     Color? color,
   }) {
     return ActionChip(
-      avatar: Icon(icon, size: 18, color: color ?? AppColors.farmerPrimary),
+      avatar: Icon(icon, size: 18, color: color ?? AppColors.abbatoirPrimary),
       label: Text(label),
       onPressed: onTap,
       backgroundColor: Colors.white,
-      side: BorderSide(color: color ?? AppColors.farmerPrimary),
+      side: BorderSide(color: color ?? AppColors.abbatoirPrimary),
     );
   }
 
@@ -341,13 +341,13 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: AppColors.farmerPrimary.withValues(alpha: 0.1),
+                  color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _getAnimalIcon(animal.species),
                   size: 32,
-                  color: AppColors.farmerPrimary,
+                  color: AppColors.abbatoirPrimary,
                 ),
               ),
               const SizedBox(width: 16),

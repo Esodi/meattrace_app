@@ -9,92 +9,45 @@ class InitializationHelper {
 
   /// Runs a heavy initialization task in a background isolate
   static Future<T> runInBackground<T>(
-    Future<T> Function() task, {
+    FutureOr<T> Function() task, {
     String? debugLabel,
   }) async {
     if (!kReleaseMode) {
       debugPrint('🔄 Running ${debugLabel ?? 'task'} in background isolate');
     }
 
-    final receivePort = ReceivePort();
-    final isolate = await Isolate.spawn(
-      _isolateEntry,
-      _IsolateMessage(
-        task: task,
-        sendPort: receivePort.sendPort,
-        debugLabel: debugLabel,
-      ),
-      debugName: debugLabel ?? _isolateName,
-    );
-
-    final completer = Completer<T>();
-    receivePort.listen((message) {
-      if (message is _IsolateResult<T>) {
-        if (message.error != null) {
-          completer.completeError(message.error!);
-        } else {
-          completer.complete(message.result);
-        }
-        receivePort.close();
-        isolate.kill();
-      }
-    });
-
-    return completer.future;
-  }
-
-  /// Entry point for background isolate
-  static void _isolateEntry(_IsolateMessage message) async {
     try {
-      final result = await message.task();
-      message.sendPort.send(_IsolateResult(result: result));
-    } catch (error) {
-      message.sendPort.send(_IsolateResult(error: error));
+      // Use Isolate.run for modern Flutter/Dart (simpler and supports closures)
+      return await Isolate.run(task, debugName: debugLabel ?? _isolateName);
+    } catch (e, stack) {
+      debugPrint('❌ Error in background task ${debugLabel ?? ''}: $e');
+      debugPrint(stack.toString());
+
+      // Fallback: Try running in current isolate if Isolate.run fails
+      // (e.g. if the closure captures non-sendable state)
+      debugPrint('⚠️ Falling back to main isolate for ${debugLabel ?? ''}');
+      return await task();
     }
   }
 
   /// Initializes SharedPreferences in background
   static Future<SharedPreferences> initSharedPreferences() {
-    return runInBackground(
-      () => SharedPreferences.getInstance(),
-      debugLabel: 'SharedPreferences initialization',
-    );
+    // Note: SharedPreferences.getInstance() internally uses the main isolate for
+    // some operations on platform channels, but the heavy lifting is async/IO.
+    return SharedPreferences.getInstance();
   }
 
   /// Initializes multiple SharedPreferences instances efficiently
   static Future<Map<String, SharedPreferences>> initMultipleSharedPreferences(
     List<String> keys,
-  ) {
-    return runInBackground(() async {
-      final prefs = <String, SharedPreferences>{};
-      final instance = await SharedPreferences.getInstance();
-      for (final key in keys) {
-        prefs[key] = instance;
-      }
-      return prefs;
-    }, debugLabel: 'Multiple SharedPreferences initialization');
+  ) async {
+    final prefs = <String, SharedPreferences>{};
+    final instance = await SharedPreferences.getInstance();
+    for (final key in keys) {
+      prefs[key] = instance;
+    }
+    return prefs;
   }
-}
-
-/// Message sent to isolate
-class _IsolateMessage {
-  final Future Function() task;
-  final SendPort sendPort;
-  final String? debugLabel;
-
-  _IsolateMessage({
-    required this.task,
-    required this.sendPort,
-    this.debugLabel,
-  });
-}
-
-/// Result from isolate
-class _IsolateResult<T> {
-  final T? result;
-  final Object? error;
-
-  _IsolateResult({this.result, this.error});
 }
 
 /// Lazy initialization wrapper for providers

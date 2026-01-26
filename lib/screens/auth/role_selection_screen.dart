@@ -9,13 +9,14 @@ import '../../utils/custom_icons.dart' as custom_icons;
 /// Allows users to choose their role before signup
 
 class RoleSelectionScreen extends StatefulWidget {
-  const RoleSelectionScreen({Key? key}) : super(key: key);
+  const RoleSelectionScreen({super.key});
 
   @override
   State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
 }
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerProviderStateMixin {
+class _RoleSelectionScreenState extends State<RoleSelectionScreen>
+    with TickerProviderStateMixin {
   String? _selectedRole;
   late AnimationController _animationController;
   late List<AnimationController> _cardControllers;
@@ -23,11 +24,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
 
   final List<RoleData> _roles = [
     RoleData(
-      id: 'farmer',
-      title: 'Farmer',
-      description: 'Register and manage livestock, track animal health, and transfer to processors',
+      id: 'abbatoir',
+      title: 'Abbatoir',
+      description:
+          'Register and manage livestock, track animal health, and transfer to processors',
       icon: custom_icons.CustomIcons.cattle,
-      color: AppColors.farmerPrimary,
+      color: AppColors.abbatoirPrimary,
       features: [
         'Register animals with QR codes',
         'Track animal health status',
@@ -38,7 +40,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
     RoleData(
       id: 'processing_unit',
       title: 'Processing Unit',
-      description: 'Receive animals, process meat products, and manage quality certifications',
+      description:
+          'Receive animals, process meat products, and manage quality certifications',
       icon: custom_icons.CustomIcons.processingPlant,
       color: AppColors.processorPrimary,
       features: [
@@ -51,7 +54,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
     RoleData(
       id: 'shop',
       title: 'Retail Shop',
-      description: 'Receive products, manage inventory, and provide product traceability to customers',
+      description:
+          'Receive products, manage inventory, and provide product traceability to customers',
       icon: custom_icons.CustomIcons.shop,
       color: AppColors.shopPrimary,
       features: [
@@ -84,13 +88,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
     );
 
     _cardAnimations = _cardControllers.map((controller) {
-      return Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: controller, curve: Curves.easeOut),
-      );
+      return Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
     }).toList();
 
     _animationController.forward();
-    
+
     // Stagger card animations
     for (int i = 0; i < _cardControllers.length; i++) {
       Future.delayed(Duration(milliseconds: i * 100), () {
@@ -120,8 +125,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
     if (_selectedRole != null) {
       // Navigate to appropriate signup screen based on role
       switch (_selectedRole) {
-        case 'farmer':
-          context.go('/signup?role=farmer');
+        case 'abbatoir':
+          context.go('/signup?role=abbatoir');
           break;
         case 'processing_unit':
           context.go('/signup-processing-unit');
@@ -147,14 +152,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: isDark
-                ? [
-                    AppColors.darkBackground,
-                    AppColors.darkSurface,
-                  ]
-                : [
-                    Colors.white,
-                    AppColors.backgroundGray,
-                  ],
+                ? [AppColors.darkBackground, AppColors.darkSurface]
+                : [Colors.white, AppColors.backgroundGray],
           ),
         ),
         child: SafeArea(
@@ -185,7 +184,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
 
               // Subtitle
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.space24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space24,
+                ),
                 child: Text(
                   'Select the role that best describes your business',
                   style: AppTypography.bodyMedium(
@@ -200,7 +201,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
               // Role Cards
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.space20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space20,
+                  ),
                   itemCount: _roles.length,
                   itemBuilder: (context, index) {
                     return FadeTransition(
@@ -211,7 +214,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
                           end: Offset.zero,
                         ).animate(_cardAnimations[index]),
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: AppTheme.space16),
+                          padding: const EdgeInsets.only(
+                            bottom: AppTheme.space16,
+                          ),
                           child: _buildRoleCard(_roles[index]),
                         ),
                       ),
@@ -225,7 +230,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
                 padding: EdgeInsets.only(
                   left: AppTheme.space24,
                   right: AppTheme.space24,
-                  bottom: MediaQuery.of(context).padding.bottom + AppTheme.space16,
+                  bottom:
+                      MediaQuery.of(context).padding.bottom + AppTheme.space16,
                   top: AppTheme.space16,
                 ),
                 decoration: BoxDecoration(
@@ -245,9 +251,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: AppTheme.space16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppTheme.space16,
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusMedium,
+                        ),
                       ),
                       elevation: _selectedRole != null ? 2 : 0,
                     ),
@@ -313,17 +323,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
                     height: 60,
                     decoration: BoxDecoration(
                       color: role.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
-                    child: Icon(
-                      role.icon,
-                      size: 32,
-                      color: role.color,
-                    ),
+                    child: Icon(role.icon, size: 32, color: role.color),
                   ),
-                  
+
                   const SizedBox(width: AppTheme.space16),
-                  
+
                   // Title and Description
                   Expanded(
                     child: Column(
@@ -347,7 +355,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
                       ],
                     ),
                   ),
-                  
+
                   // Selection Indicator
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -359,47 +367,47 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> with TickerPr
                       border: Border.all(
                         color: isSelected
                             ? role.color
-                            : (isDark ? AppColors.darkDivider : AppColors.divider),
+                            : (isDark
+                                  ? AppColors.darkDivider
+                                  : AppColors.divider),
                         width: 2,
                       ),
                     ),
                     child: isSelected
-                        ? const Icon(
-                            Icons.check,
-                            size: 16,
-                            color: Colors.white,
-                          )
+                        ? const Icon(Icons.check, size: 16, color: Colors.white)
                         : null,
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: AppTheme.space16),
-              
+
               // Features List
-              ...role.features.map((feature) => Padding(
-                padding: const EdgeInsets.only(bottom: AppTheme.space8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 16,
-                      color: role.color.withValues(alpha: 0.6),
-                    ),
-                    const SizedBox(width: AppTheme.space8),
-                    Expanded(
-                      child: Text(
-                        feature,
-                        style: AppTypography.bodySmall(
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : AppColors.textSecondary,
+              ...role.features.map(
+                (feature) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.space8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: role.color.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(width: AppTheme.space8),
+                      Expanded(
+                        child: Text(
+                          feature,
+                          style: AppTypography.bodySmall(
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              )),
+              ),
             ],
           ),
         ),

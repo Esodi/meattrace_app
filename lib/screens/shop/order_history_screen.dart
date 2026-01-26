@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../models/sale.dart';
 import '../../services/dio_client.dart';
@@ -46,7 +45,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
     try {
       final dio = DioClient().dio;
       final response = await dio.get('/sales/');
-      
+
       // Handle both paginated and non-paginated responses
       List<dynamic> salesList;
       if (response.data is Map && response.data.containsKey('results')) {
@@ -59,14 +58,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
         // Empty or unexpected format
         salesList = [];
       }
-      
-      final sales = salesList
-          .map((json) => Sale.fromJson(json))
-          .toList();
-      
+
+      final sales = salesList.map((json) => Sale.fromJson(json)).toList();
+
       // Sort by most recent first
       sales.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      
+
       if (mounted) {
         setState(() => _sales = sales);
       }
@@ -78,7 +75,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
         if (!e.toString().contains('404')) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error loading sales: ${e.toString().contains('404') ? 'No sales found' : e.toString()}'),
+              content: Text(
+                'Error loading sales: ${e.toString().contains('404') ? 'No sales found' : e.toString()}',
+              ),
               backgroundColor: AppColors.error,
               duration: const Duration(seconds: 2),
             ),
@@ -94,12 +93,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
 
   List<Sale> _getFilteredSales(String filter) {
     var filtered = _sales;
-    
+
     // Apply payment method filter
     if (filter != 'all') {
-      filtered = filtered.where((sale) => sale.paymentMethod.toLowerCase() == filter).toList();
+      filtered = filtered
+          .where((sale) => sale.paymentMethod.toLowerCase() == filter)
+          .toList();
     }
-    
+
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -110,7 +111,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
             sale.paymentMethod.toLowerCase().contains(query);
       }).toList();
     }
-    
+
     return filtered;
   }
 
@@ -186,7 +187,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.shopPrimary,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       child: Text(
                         '$count',
@@ -223,7 +226,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
               children: _statusFilters.map((filter) {
                 if (_isLoading) {
                   return Center(
-                    child: CircularProgressIndicator(color: AppColors.shopPrimary),
+                    child: CircularProgressIndicator(
+                      color: AppColors.shopPrimary,
+                    ),
                   );
                 }
 
@@ -242,7 +247,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                     itemBuilder: (context, index) {
                       final sale = filteredSales[index];
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: AppTheme.space12),
+                        padding: const EdgeInsets.only(
+                          bottom: AppTheme.space12,
+                        ),
                         child: _buildSaleCard(sale),
                       );
                     },
@@ -295,7 +302,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                         ),
                         const SizedBox(height: AppTheme.space4),
                         Text(
-                          DateFormat('MMM dd, yyyy HH:mm').format(sale.createdAt),
+                          DateFormat(
+                            'MMM dd, yyyy HH:mm',
+                          ).format(sale.createdAt),
                           style: AppTypography.bodySmall().copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -361,27 +370,31 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
               if (sale.items.isNotEmpty) ...[
                 const SizedBox(height: AppTheme.space8),
                 const Divider(height: AppTheme.space16),
-                ...sale.items.take(3).map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppTheme.space4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${item.productName ?? 'Product'} (${item.quantity.toStringAsFixed(2)} kg)',
-                          style: AppTypography.bodySmall(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                ...sale.items
+                    .take(3)
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: AppTheme.space4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${item.productName ?? 'Product'} (${item.quantity.toStringAsFixed(2)} kg)',
+                                style: AppTypography.bodySmall(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              'TZS ${item.subtotal.toStringAsFixed(2)}',
+                              style: AppTypography.bodySmall().copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'TZS ${item.subtotal.toStringAsFixed(2)}',
-                        style: AppTypography.bodySmall().copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
+                    ),
                 if (sale.items.length > 3)
                   Padding(
                     padding: const EdgeInsets.only(top: AppTheme.space4),

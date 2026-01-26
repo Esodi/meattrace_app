@@ -40,49 +40,45 @@ class AuthProvider with ChangeNotifier {
   Future<void> _checkLoginStatus() async {
     if (_isInitialized) return; // Already initialized
 
-    _isLoading = true;
-    notifyListeners();
+    debugPrint('🔍 [AUTH_PROVIDER] Checking authentication status...');
 
     try {
-      debugPrint('🔍 Checking authentication status...');
       final isLoggedIn = await _authService.isLoggedIn();
-      
+
       if (isLoggedIn) {
-        debugPrint('✅ Session token found, fetching user profile...');
+        debugPrint(
+          '✅ [AUTH_PROVIDER] Session token found, fetching user profile...',
+        );
         try {
           _user = await _authService.getCurrentUser();
           if (_user != null) {
             _userContextProvider.setCurrentUser(_user!);
-            debugPrint('✅ User profile loaded: ${_user!.username} (${_user!.role})');
-            debugPrint('🏭 Processing Unit ID: ${_user!.processingUnitId}');
-            debugPrint('🏭 Processing Unit Name: ${_user!.processingUnitName}');
-            debugPrint('🏪 Shop ID: ${_user!.shopId}');
-            debugPrint('🏪 Shop Name: ${_user!.shopName}');
-            debugPrint('⏳ hasPendingJoinRequest: ${_user!.hasPendingJoinRequest}');
-            debugPrint('📌 pendingJoinRequestUnitName: ${_user!.pendingJoinRequestUnitName}');
-            debugPrint('📌 pendingJoinRequestRole: ${_user!.pendingJoinRequestRole}');
-          } else {
-            debugPrint('⚠️ No user profile returned despite valid token');
+            debugPrint(
+              '✅ [AUTH_PROVIDER] User profile loaded: ${_user!.username}',
+            );
           }
         } catch (e) {
-          debugPrint('❌ Failed to fetch user profile: $e');
-          // Clear invalid session
+          debugPrint('❌ [AUTH_PROVIDER] Failed to fetch user profile: $e');
           await _authService.logout();
           _user = null;
           _userContextProvider.clearCurrentUser();
         }
       } else {
-        debugPrint('ℹ️ No active session found');
+        debugPrint('ℹ️ [AUTH_PROVIDER] No active session found');
       }
       _error = null;
       _isInitialized = true;
     } catch (e) {
-      debugPrint('❌ Session check error: $e');
+      debugPrint('❌ [AUTH_PROVIDER] Session check error: $e');
       _error = e.toString();
       _user = null;
-      _isInitialized = true; // Mark as initialized even on error
+      _isInitialized = true;
     } finally {
+      // Only notify at the very end of initialization
       _isLoading = false;
+      debugPrint(
+        '🔔 [AUTH_PROVIDER] Initialization finished, notifying listeners',
+      );
       notifyListeners();
     }
   }
@@ -92,12 +88,16 @@ class AuthProvider with ChangeNotifier {
     await _authInitializer.value;
   }
 
-  Future<bool> login(String username, String password, {String? sessionId}) async {
+  Future<bool> login(
+    String username,
+    String password, {
+    String? sessionId,
+  }) async {
     debugPrint('🔐 [AUTH_PROVIDER] Starting login process for user: $username');
     if (sessionId != null) {
       debugPrint('🆔 [AUTH_PROVIDER] Using session ID: $sessionId');
     }
-    
+
     // Set loading state
     _isLoading = true;
     _error = null;
@@ -106,27 +106,45 @@ class AuthProvider with ChangeNotifier {
     final startTime = DateTime.now();
 
     try {
-      debugPrint('🔄 [AUTH_PROVIDER] Calling _authService.login() with 30s timeout...');
-
-      // Add timeout to prevent infinite hanging
-      _user = await _authService.login(username, password, sessionId: sessionId).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          debugPrint('⏱️ [AUTH_PROVIDER] Login request timed out after 30 seconds');
-          throw Exception('Login request timed out. Please check your connection and try again.');
-        },
+      debugPrint(
+        '🔄 [AUTH_PROVIDER] Calling _authService.login() with 30s timeout...',
       );
 
+      // Add timeout to prevent infinite hanging
+      _user = await _authService
+          .login(username, password, sessionId: sessionId)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              debugPrint(
+                '⏱️ [AUTH_PROVIDER] Login request timed out after 30 seconds',
+              );
+              throw Exception(
+                'Login request timed out. Please check your connection and try again.',
+              );
+            },
+          );
+
       final duration = DateTime.now().difference(startTime);
-      debugPrint('✅ [AUTH_PROVIDER] _authService.login() completed in ${duration.inMilliseconds}ms');
+      debugPrint(
+        '✅ [AUTH_PROVIDER] _authService.login() completed in ${duration.inMilliseconds}ms',
+      );
 
       if (_user != null) {
-        debugPrint('👤 [AUTH_PROVIDER] Setting current user: ${_user!.username} (${_user!.role})');
+        debugPrint(
+          '👤 [AUTH_PROVIDER] Setting current user: ${_user!.username} (${_user!.role})',
+        );
         _userContextProvider.setCurrentUser(_user!);
         _error = null;
-        debugPrint('⏳ [AUTH_PROVIDER] hasPendingJoinRequest: ${_user!.hasPendingJoinRequest}');
-        debugPrint('📌 [AUTH_PROVIDER] pendingJoinRequestUnitName: ${_user!.pendingJoinRequestUnitName}');
-        debugPrint('📌 [AUTH_PROVIDER] pendingJoinRequestRole: ${_user!.pendingJoinRequestRole}');
+        debugPrint(
+          '⏳ [AUTH_PROVIDER] hasPendingJoinRequest: ${_user!.hasPendingJoinRequest}',
+        );
+        debugPrint(
+          '📌 [AUTH_PROVIDER] pendingJoinRequestUnitName: ${_user!.pendingJoinRequestUnitName}',
+        );
+        debugPrint(
+          '📌 [AUTH_PROVIDER] pendingJoinRequestRole: ${_user!.pendingJoinRequestRole}',
+        );
       } else {
         debugPrint('⚠️ [AUTH_PROVIDER] Login returned null user');
         _error = 'Login failed: No user data received';
@@ -138,7 +156,9 @@ class AuthProvider with ChangeNotifier {
       return _user != null;
     } catch (e) {
       final duration = DateTime.now().difference(startTime);
-      debugPrint('❌ [AUTH_PROVIDER] Login failed after ${duration.inMilliseconds}ms: $e');
+      debugPrint(
+        '❌ [AUTH_PROVIDER] Login failed after ${duration.inMilliseconds}ms: $e',
+      );
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -147,9 +167,9 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> register(
-    String username, 
-    String email, 
-    String password, 
+    String username,
+    String email,
+    String password,
     String role, {
     Map<String, dynamic>? additionalData,
   }) async {
@@ -159,9 +179,9 @@ class AuthProvider with ChangeNotifier {
 
     try {
       _user = await _authService.register(
-        username, 
-        email, 
-        password, 
+        username,
+        email,
+        password,
         role,
         additionalData: additionalData,
       );
@@ -237,10 +257,3 @@ class AuthProvider with ChangeNotifier {
     }
   }
 }
-
-
-
-
-
-
-

@@ -11,7 +11,7 @@ enum ActivityType {
 }
 
 /// Activity Model
-/// Represents a farmer activity log entry
+/// Represents a abbatoir activity log entry
 class Activity {
   final int? id;
   final ActivityType type;
@@ -193,7 +193,7 @@ extension ActivityFactory on Activity {
       entityId: batchId,
       entityType: 'transfer',
       metadata: {'count': count, 'processor': processorName},
-      targetRoute: '/farmer/livestock-history',
+      targetRoute: '/abbatoir/livestock-history',
     );
   }
 
