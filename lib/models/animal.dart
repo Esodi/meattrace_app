@@ -544,12 +544,12 @@ class Animal {
 
       return Animal(
         id: json['id'] != null ? int.parse(json['id'].toString()) : null,
-        abbatoir: int.parse(json['abbatoir'].toString()),
+        abbatoir: json['abbatoir'] != null ? int.parse(json['abbatoir'].toString()) : 0,
         abbatoirUsername: json['abbatoir_username'],
-        species: json['species'],
+        species: json['species'] ?? 'unknown',
         age: json['age'] is num
             ? (json['age'] as num).toDouble()
-            : double.parse(json['age'].toString()),
+            : (json['age'] != null ? double.parse(json['age'].toString()) : 0.0),
         liveWeight: json['live_weight'] != null
             ? (json['live_weight'] is num
                   ? (json['live_weight'] as num).toDouble()
@@ -560,12 +560,12 @@ class Animal {
                   ? (json['remaining_weight'] as num).toDouble()
                   : double.parse(json['remaining_weight'].toString()))
             : null,
-        createdAt: DateTime.parse(json['created_at']),
-        slaughtered: json['slaughtered'],
+        createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+        slaughtered: json['slaughtered'] ?? false,
         slaughteredAt: json['slaughtered_at'] != null
             ? DateTime.parse(json['slaughtered_at'])
             : null,
-        animalId: json['animal_id'],
+        animalId: animalId,
         animalName: json['animal_name'],
         breed: json['breed'],
         abbatoirName: json['abbatoir_name'] ?? '',
