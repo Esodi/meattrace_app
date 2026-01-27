@@ -10,20 +10,26 @@ class CartItem {
   final InventoryProduct product;
   final Inventory inventory;
   double quantity;
+  double weight;
+  String weightUnit;
 
   CartItem({
     required this.product,
     required this.inventory,
     required this.quantity,
+    required this.weight,
+    required this.weightUnit,
   });
 
   double get subtotal => quantity * product.price;
 
-  CartItem copyWith({double? quantity}) {
+  CartItem copyWith({num? quantity, double? weight, String? weightUnit}) {
     return CartItem(
       product: product,
       inventory: inventory,
-      quantity: quantity ?? this.quantity,
+      quantity: quantity?.toDouble() ?? this.quantity,
+      weight: weight ?? this.weight,
+      weightUnit: weightUnit ?? this.weightUnit,
     );
   }
 
@@ -35,10 +41,14 @@ class CartItem {
         'shop': inventory.shop,
         'product': inventory.product,
         'quantity': inventory.quantity,
+        'weight': inventory.weight,
+        'weight_unit': inventory.weightUnit,
         'min_stock_level': inventory.minStockLevel,
         'last_updated': inventory.lastUpdated.toIso8601String(),
       },
       'quantity': quantity,
+      'weight': weight,
+      'weight_unit': weightUnit,
     };
   }
 
@@ -50,10 +60,14 @@ class CartItem {
         shop: json['inventory']['shop'],
         product: json['inventory']['product'],
         quantity: json['inventory']['quantity'].toDouble(),
+        weight: (json['inventory']['weight'] ?? 0.0).toDouble(),
+        weightUnit: json['inventory']['weight_unit'] ?? 'kg',
         minStockLevel: json['inventory']['min_stock_level'].toDouble(),
         lastUpdated: DateTime.parse(json['inventory']['last_updated']),
       ),
-      quantity: json['quantity'].toDouble(),
+      quantity: (json['quantity'] ?? 0.0).toDouble(),
+      weight: (json['weight'] ?? 0.0).toDouble(),
+      weightUnit: json['weight_unit'] ?? 'kg',
     );
   }
 }
@@ -72,7 +86,8 @@ class OrderProvider with ChangeNotifier {
   List<CartItem> get cartItems => _cartItems;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  double get cartTotal => _cartItems.fold(0, (sum, item) => sum + item.subtotal);
+  double get cartTotal =>
+      _cartItems.fold(0, (sum, item) => sum + item.subtotal);
   int get cartItemCount => _cartItems.length;
 
   OrderProvider() {
@@ -163,26 +178,38 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
-  void addToCart(InventoryProduct product, Inventory inventory, double quantity) {
+  void addToCart(
+    InventoryProduct product,
+    Inventory inventory,
+    double quantity,
+  ) {
     // Check if item already in cart
     final existingIndex = _cartItems.indexWhere(
-      (item) => item.product.id == product.id
+      (item) => item.product.id == product.id,
     );
 
     if (existingIndex >= 0) {
       // Update quantity
       final newQuantity = _cartItems[existingIndex].quantity + quantity;
       if (newQuantity <= inventory.quantity) {
-        _cartItems[existingIndex] = _cartItems[existingIndex].copyWith(quantity: newQuantity);
+        _cartItems[existingIndex] = _cartItems[existingIndex].copyWith(
+          quantity: newQuantity,
+          weight: inventory.weight > 0
+              ? (inventory.weight * (newQuantity / inventory.quantity))
+              : 0.0,
+        );
       }
     } else {
-      // Add new item
-      if (quantity <= inventory.quantity) {
-        _cartItems.add(CartItem(
-          product: product,
-          inventory: inventory,
-          quantity: quantity,
-        ));
+      if (quantity > 0 || inventory.weight > 0) {
+        _cartItems.add(
+          CartItem(
+            product: product,
+            inventory: inventory,
+            quantity: quantity,
+            weight: inventory.weight > 0 ? inventory.weight : 0.0,
+            weightUnit: inventory.weightUnit,
+          ),
+        );
       }
     }
 
@@ -215,10 +242,20 @@ class OrderProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  bool canAddToCart(InventoryProduct product, double quantity, Inventory inventory) {
+  bool canAddToCart(
+    InventoryProduct product,
+    double quantity,
+    Inventory inventory,
+  ) {
     final existingItem = _cartItems.firstWhere(
       (item) => item.product.id == product.id,
-      orElse: () => CartItem(product: product, inventory: inventory, quantity: 0),
+      orElse: () => CartItem(
+        product: product,
+        inventory: inventory,
+        quantity: 0,
+        weight: 0,
+        weightUnit: inventory.weightUnit,
+      ),
     );
 
     final totalQuantity = existingItem.quantity + quantity;
@@ -231,6 +268,8 @@ class OrderProvider with ChangeNotifier {
         order: orderId,
         product: cartItem.inventory.product, // Use inventory product ID
         quantity: cartItem.quantity,
+        weight: cartItem.weight,
+        weightUnit: cartItem.weightUnit,
         unitPrice: cartItem.product.price,
         subtotal: cartItem.subtotal,
       );
@@ -243,7 +282,10 @@ class OrderProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final updatedOrder = await _orderService.updateOrderStatus(orderId, status);
+      final updatedOrder = await _orderService.updateOrderStatus(
+        orderId,
+        status,
+      );
 
       // Update the order in the local list
       final index = _orders.indexWhere((order) => order.id == orderId);
@@ -273,10 +315,3 @@ class OrderProvider with ChangeNotifier {
     notifyListeners();
   }
 }
-
-
-
-
-
-
-

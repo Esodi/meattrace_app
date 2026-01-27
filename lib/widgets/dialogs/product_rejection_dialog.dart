@@ -23,18 +23,26 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
 
   bool _rejectAll = true;
   double _rejectionQuantity = 0.0;
+  double _rejectionWeight = 0.0;
+  bool _isWeightBased = false;
+  final _weightController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _rejectionQuantity = widget.product.quantity.toDouble();
+    _rejectionWeight = widget.product.weight ?? 0.0;
     _quantityController.text = _rejectionQuantity.toStringAsFixed(1);
+    _weightController.text = _rejectionWeight.toStringAsFixed(1);
+    _isWeightBased =
+        widget.product.weight != null && widget.product.weight! > 0;
   }
 
   @override
   void dispose() {
     _reasonController.dispose();
     _quantityController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
@@ -42,8 +50,10 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
     if (_formKey.currentState!.validate()) {
       Navigator.pop(context, {
         'quantity': _rejectionQuantity,
+        'weight': _rejectionWeight,
         'reason': _reasonController.text.trim(),
         'reject_all': _rejectAll,
+        'is_weight_based': _isWeightBased,
       });
     }
   }
@@ -189,47 +199,96 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                   // Partial Quantity Input
                   if (!_rejectAll) ...[
                     const SizedBox(height: AppTheme.space12),
-                    TextFormField(
-                      controller: _quantityController,
-                      decoration: InputDecoration(
-                        labelText: 'Quantity to Reject',
-                        hintText: 'Enter quantity',
-                        suffixText: 'units',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusSmall,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _quantityController,
+                            decoration: InputDecoration(
+                              labelText: 'Quantity to Reject',
+                              suffixText: 'units',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusSmall,
+                                ),
+                              ),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d+\.?\d{0,2}'),
+                              ),
+                            ],
+                            validator: (value) {
+                              if (_isWeightBased) return null;
+                              if (value == null || value.isEmpty)
+                                return 'Required';
+                              final quantity = double.tryParse(value);
+                              if (quantity == null || quantity <= 0)
+                                return 'Invalid';
+                              if (quantity > widget.product.quantity)
+                                return 'Max ${widget.product.quantity}';
+                              return null;
+                            },
+                            onChanged: (value) {
+                              final quantity = double.tryParse(value);
+                              if (quantity != null) {
+                                setState(() {
+                                  _rejectionQuantity = quantity;
+                                });
+                              }
+                            },
                           ),
                         ),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d+\.?\d{0,2}'),
-                        ),
+                        if (widget.product.weight != null &&
+                            widget.product.weight! > 0) ...[
+                          const SizedBox(width: AppTheme.space12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _weightController,
+                              decoration: InputDecoration(
+                                labelText: 'Weight to Reject',
+                                suffixText: widget.product.weightUnit,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusSmall,
+                                  ),
+                                ),
+                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d+\.?\d{0,2}'),
+                                ),
+                              ],
+                              validator: (value) {
+                                if (!_isWeightBased) return null;
+                                if (value == null || value.isEmpty)
+                                  return 'Required';
+                                final weight = double.tryParse(value);
+                                if (weight == null || weight <= 0)
+                                  return 'Invalid';
+                                if (weight > widget.product.weight!)
+                                  return 'Max ${widget.product.weight}';
+                                return null;
+                              },
+                              onChanged: (value) {
+                                final weight = double.tryParse(value);
+                                if (weight != null) {
+                                  setState(() {
+                                    _rejectionWeight = weight;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ],
                       ],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter quantity to reject';
-                        }
-                        final quantity = double.tryParse(value);
-                        if (quantity == null || quantity <= 0) {
-                          return 'Please enter a valid quantity';
-                        }
-                        if (quantity > widget.product.quantity) {
-                          return 'Cannot reject more than ${widget.product.quantity} units';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        final quantity = double.tryParse(value);
-                        if (quantity != null) {
-                          setState(() {
-                            _rejectionQuantity = quantity;
-                          });
-                        }
-                      },
                     ),
                     const SizedBox(height: AppTheme.space8),
                     Container(

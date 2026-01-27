@@ -50,10 +50,22 @@ class InventoryProduct {
       productType: map['product_type'] ?? 'meat',
       description: map['description'],
       manufacturer: map['manufacturer'],
-      category: map['category_id'] != null ? int.tryParse(map['category_id'].toString()) : (map['category'] != null ? int.tryParse(map['category'].toString()) : null),
+      category: map['category_id'] != null
+          ? int.tryParse(map['category_id'].toString())
+          : (map['category'] != null
+                ? int.tryParse(map['category'].toString())
+                : null),
       qrCode: map['qr_code'],
-      processingUnit: map['processing_unit_id'] != null ? int.tryParse(map['processing_unit_id'].toString()) : (map['processing_unit'] != null ? int.tryParse(map['processing_unit'].toString()) : null),
-      animal: map['animal_id'] != null ? int.tryParse(map['animal_id'].toString()) : (map['animal'] != null ? int.tryParse(map['animal'].toString()) : null),
+      processingUnit: map['processing_unit_id'] != null
+          ? int.tryParse(map['processing_unit_id'].toString())
+          : (map['processing_unit'] != null
+                ? int.tryParse(map['processing_unit'].toString())
+                : null),
+      animal: map['animal_id'] != null
+          ? int.tryParse(map['animal_id'].toString())
+          : (map['animal'] != null
+                ? int.tryParse(map['animal'].toString())
+                : null),
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])
           : DateTime.now(),
@@ -112,6 +124,8 @@ class Inventory {
   final int shop;
   final int product;
   final double quantity;
+  final double weight;
+  final String weightUnit;
   final double minStockLevel;
   final DateTime lastUpdated;
   final InventoryProduct? productDetails;
@@ -123,6 +137,8 @@ class Inventory {
     required this.shop,
     required this.product,
     required this.quantity,
+    required this.weight,
+    required this.weightUnit,
     required this.minStockLevel,
     required this.lastUpdated,
     this.productDetails,
@@ -133,14 +149,25 @@ class Inventory {
   factory Inventory.fromMap(Map<String, dynamic> map) {
     return Inventory(
       id: map['id'],
-      shop: int.tryParse((map['shop_id'] ?? map['shop'])?.toString() ?? '0') ?? 0,
-      product: map['product'] is Map ? map['product']['id'] : int.tryParse((map['product_id'] ?? map['product'])?.toString() ?? '0') ?? 0,
+      shop:
+          int.tryParse((map['shop_id'] ?? map['shop'])?.toString() ?? '0') ?? 0,
+      product: map['product'] is Map
+          ? map['product']['id']
+          : int.tryParse(
+                  (map['product_id'] ?? map['product'])?.toString() ?? '0',
+                ) ??
+                0,
       quantity: double.tryParse(map['quantity']?.toString() ?? '0.0') ?? 0.0,
-      minStockLevel: double.tryParse(map['min_stock_level']?.toString() ?? '0.0') ?? 0.0,
+      weight: double.tryParse(map['weight']?.toString() ?? '0.0') ?? 0.0,
+      weightUnit: map['weight_unit'] ?? 'kg',
+      minStockLevel:
+          double.tryParse(map['min_stock_level']?.toString() ?? '0.0') ?? 0.0,
       lastUpdated: map['last_updated'] != null
           ? DateTime.parse(map['last_updated'])
           : DateTime.now(),
-      productDetails: map['product'] != null ? InventoryProduct.fromMap(map['product']) : null,
+      productDetails: map['product'] != null
+          ? InventoryProduct.fromMap(map['product'])
+          : null,
       shopUsername: map['shop']?.toString(),
       isLowStock: map['is_low_stock'] == true || map['is_low_stock'] == 1,
     );
@@ -152,6 +179,8 @@ class Inventory {
       'shop': shop,
       'product': product,
       'quantity': quantity,
+      'weight': weight,
+      'weight_unit': weightUnit,
       'min_stock_level': minStockLevel,
       'last_updated': lastUpdated.toIso8601String(),
       'is_low_stock': isLowStock,
@@ -162,6 +191,8 @@ class Inventory {
     return {
       'product_id': product,
       'quantity': quantity,
+      'weight': weight,
+      'weight_unit': weightUnit,
       'min_stock_level': minStockLevel,
     };
   }
@@ -171,6 +202,8 @@ class Inventory {
     int? shop,
     int? product,
     double? quantity,
+    double? weight,
+    String? weightUnit,
     double? minStockLevel,
     DateTime? lastUpdated,
     InventoryProduct? productDetails,
@@ -182,6 +215,8 @@ class Inventory {
       shop: shop ?? this.shop,
       product: product ?? this.product,
       quantity: quantity ?? this.quantity,
+      weight: weight ?? this.weight,
+      weightUnit: weightUnit ?? this.weightUnit,
       minStockLevel: minStockLevel ?? this.minStockLevel,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       productDetails: productDetails ?? this.productDetails,
@@ -195,10 +230,3 @@ class Inventory {
     return 'Inventory(id: $id, shop: $shop, product: $product, quantity: $quantity, minStockLevel: $minStockLevel, lastUpdated: $lastUpdated, isLowStock: $isLowStock)';
   }
 }
-
-
-
-
-
-
-

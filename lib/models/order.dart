@@ -31,14 +31,18 @@ class Order {
       customer: int.parse(json['customer'].toString()),
       shop: int.parse(json['shop'].toString()),
       status: json['status'],
-      totalAmount: json['total_amount'] is num ? (json['total_amount'] as num).toDouble() : double.parse(json['total_amount'].toString()),
+      totalAmount: json['total_amount'] is num
+          ? (json['total_amount'] as num).toDouble()
+          : double.parse(json['total_amount'].toString()),
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       deliveryAddress: json['delivery_address'],
       notes: json['notes'],
       qrCode: json['qr_code'],
       items: json['items'] != null
-          ? (json['items'] as List).map((item) => OrderItem.fromJson(item)).toList()
+          ? (json['items'] as List)
+                .map((item) => OrderItem.fromJson(item))
+                .toList()
           : [],
     );
   }
@@ -93,6 +97,8 @@ class OrderItem {
   final int order;
   final int product;
   final double quantity;
+  final double weight;
+  final String weightUnit;
   final double unitPrice;
   final double subtotal;
 
@@ -101,6 +107,8 @@ class OrderItem {
     required this.order,
     required this.product,
     required this.quantity,
+    required this.weight,
+    required this.weightUnit,
     required this.unitPrice,
     required this.subtotal,
   });
@@ -109,10 +117,22 @@ class OrderItem {
     return OrderItem(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       order: int.parse(json['order'].toString()),
-      product: json['product'] is Map ? json['product']['id'] : int.parse(json['product'].toString()),
-      quantity: json['quantity'] is num ? (json['quantity'] as num).toDouble() : double.parse(json['quantity'].toString()),
-      unitPrice: json['unit_price'] is num ? (json['unit_price'] as num).toDouble() : double.parse(json['unit_price'].toString()),
-      subtotal: json['subtotal'] is num ? (json['subtotal'] as num).toDouble() : double.parse(json['subtotal'].toString()),
+      product: json['product'] is Map
+          ? json['product']['id']
+          : int.parse(json['product'].toString()),
+      quantity: json['quantity'] is num
+          ? (json['quantity'] as num).toDouble()
+          : double.parse(json['quantity'].toString()),
+      weight: json['weight'] is num
+          ? (json['weight'] as num).toDouble()
+          : double.tryParse(json['weight']?.toString() ?? '0.0') ?? 0.0,
+      weightUnit: json['weight_unit'] ?? 'kg',
+      unitPrice: json['unit_price'] is num
+          ? (json['unit_price'] as num).toDouble()
+          : double.parse(json['unit_price'].toString()),
+      subtotal: json['subtotal'] is num
+          ? (json['subtotal'] as num).toDouble()
+          : double.parse(json['subtotal'].toString()),
     );
   }
 
@@ -122,6 +142,8 @@ class OrderItem {
       'order': order,
       'product': product,
       'quantity': quantity,
+      'weight': weight,
+      'weight_unit': weightUnit,
       'unit_price': unitPrice,
       'subtotal': subtotal,
     };
@@ -131,6 +153,8 @@ class OrderItem {
     return {
       'product_id': product,
       'quantity': quantity,
+      'weight': weight,
+      'weight_unit': weightUnit,
       'unit_price': unitPrice,
       'subtotal': subtotal,
     };
@@ -141,6 +165,8 @@ class OrderItem {
     int? order,
     int? product,
     double? quantity,
+    double? weight,
+    String? weightUnit,
     double? unitPrice,
     double? subtotal,
   }) {
@@ -149,15 +175,10 @@ class OrderItem {
       order: order ?? this.order,
       product: product ?? this.product,
       quantity: quantity ?? this.quantity,
+      weight: weight ?? this.weight,
+      weightUnit: weightUnit ?? this.weightUnit,
       unitPrice: unitPrice ?? this.unitPrice,
       subtotal: subtotal ?? this.subtotal,
     );
   }
 }
-
-
-
-
-
-
-

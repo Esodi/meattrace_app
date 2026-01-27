@@ -30,14 +30,16 @@ class Sale {
       soldBy: int.parse(json['sold_by'].toString()),
       customerName: json['customer_name'],
       customerPhone: json['customer_phone'],
-      totalAmount: json['total_amount'] is num 
-          ? (json['total_amount'] as num).toDouble() 
+      totalAmount: json['total_amount'] is num
+          ? (json['total_amount'] as num).toDouble()
           : double.parse(json['total_amount'].toString()),
       paymentMethod: json['payment_method'],
       createdAt: DateTime.parse(json['created_at']),
       qrCode: json['qr_code'],
       items: json['items'] != null
-          ? (json['items'] as List).map((item) => SaleItem.fromJson(item)).toList()
+          ? (json['items'] as List)
+                .map((item) => SaleItem.fromJson(item))
+                .toList()
           : [],
     );
   }
@@ -91,6 +93,8 @@ class SaleItem {
   final String? productName;
   final String? batchNumber;
   final double quantity;
+  final double weight;
+  final String weightUnit;
   final double unitPrice;
   final double subtotal;
 
@@ -101,6 +105,8 @@ class SaleItem {
     this.productName,
     this.batchNumber,
     required this.quantity,
+    required this.weight,
+    required this.weightUnit,
     required this.unitPrice,
     required this.subtotal,
   });
@@ -109,21 +115,27 @@ class SaleItem {
     return SaleItem(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       sale: int.parse(json['sale'].toString()),
-      product: json['product'] is Map 
-          ? json['product']['id'] 
+      product: json['product'] is Map
+          ? json['product']['id']
           : int.parse(json['product'].toString()),
-      productName: json['product_name'] ?? 
+      productName:
+          json['product_name'] ??
           (json['product'] is Map ? json['product']['name'] : null),
-      batchNumber: json['batch_number'] ?? 
+      batchNumber:
+          json['batch_number'] ??
           (json['product'] is Map ? json['product']['batch_number'] : null),
-      quantity: json['quantity'] is num 
-          ? (json['quantity'] as num).toDouble() 
+      quantity: json['quantity'] is num
+          ? (json['quantity'] as num).toDouble()
           : double.parse(json['quantity'].toString()),
-      unitPrice: json['unit_price'] is num 
-          ? (json['unit_price'] as num).toDouble() 
+      weight: json['weight'] is num
+          ? (json['weight'] as num).toDouble()
+          : double.tryParse(json['weight']?.toString() ?? '0.0') ?? 0.0,
+      weightUnit: json['weight_unit'] ?? 'kg',
+      unitPrice: json['unit_price'] is num
+          ? (json['unit_price'] as num).toDouble()
           : double.parse(json['unit_price'].toString()),
-      subtotal: json['subtotal'] is num 
-          ? (json['subtotal'] as num).toDouble() 
+      subtotal: json['subtotal'] is num
+          ? (json['subtotal'] as num).toDouble()
           : double.parse(json['subtotal'].toString()),
     );
   }
@@ -136,6 +148,8 @@ class SaleItem {
       'product_name': productName,
       'batch_number': batchNumber,
       'quantity': quantity,
+      'weight': weight,
+      'weight_unit': weightUnit,
       'unit_price': unitPrice,
       'subtotal': subtotal,
     };

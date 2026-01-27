@@ -25,11 +25,12 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
 
   // State management for selected products
   final Set<int> _selectedProducts = {};
-  
-  // Track products to receive with quantities
+
+  // Track products to receive with quantities and weights
   final Map<int, double> _receiveQuantities = {};
-  
-  // Track products to reject with quantities and reasons
+  final Map<int, double> _receiveWeights = {};
+
+  // Track products to reject with quantities, weights and reasons
   final Map<int, Map<String, dynamic>> _rejections = {};
 
   @override
@@ -43,7 +44,10 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
   Future<void> _loadPendingProducts() async {
     setState(() => _isLoading = true);
     try {
-      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
 
       // Fetch products with pending_receipt=true to get only unreceived products
       // The backend will automatically filter by shop based on user's role
@@ -52,15 +56,17 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       // All products returned are already filtered as pending
       final pending = productProvider.products;
 
-      print('🔍 RECEIVE_PRODUCTS_SCREEN - Pending products from API: ${pending.length}');
+      print(
+        '🔍 RECEIVE_PRODUCTS_SCREEN - Pending products from API: ${pending.length}',
+      );
 
       setState(() => _pendingProducts = pending);
     } catch (e) {
       print('❌ RECEIVE_PRODUCTS_SCREEN - Error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading products: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading products: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -70,27 +76,36 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
   Future<void> _receiveSelectedProducts() async {
     if (_selectedProducts.isEmpty && _rejections.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select products to receive or reject')),
+        const SnackBar(
+          content: Text('Please select products to receive or reject'),
+        ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
 
       // Build receives array
       final List<Map<String, dynamic>> receives = [];
       for (final productId in _selectedProducts) {
         // Skip if this product is being rejected
         if (_rejections.containsKey(productId)) continue;
-        
+
         final product = _pendingProducts.firstWhere((p) => p.id == productId);
-        final quantityToReceive = _receiveQuantities[productId] ?? product.quantity.toDouble();
-        
+        final quantityToReceive =
+            _receiveQuantities[productId] ?? product.quantity.toDouble();
+        final weightToReceive =
+            _receiveWeights[productId] ?? (product.weight ?? 0.0);
+
         receives.add({
           'product_id': productId,
           'quantity_received': quantityToReceive,
+          'weight_received': weightToReceive,
         });
       }
 
@@ -100,6 +115,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
         rejections.add({
           'product_id': entry.key,
           'quantity_rejected': entry.value['quantity'],
+          'weight_rejected': entry.value['weight'],
           'rejection_reason': entry.value['reason'],
         });
       }
@@ -116,11 +132,12 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       // Calculate totals for feedback
       final totalReceived = receives.length;
       final totalRejected = rejections.length;
-      
+
       if (mounted) {
         String message = '';
         if (totalReceived > 0 && totalRejected > 0) {
-          message = 'Received $totalReceived and rejected $totalRejected product(s)';
+          message =
+              'Received $totalReceived and rejected $totalRejected product(s)';
         } else if (totalReceived > 0) {
           message = 'Successfully received $totalReceived product(s)';
         } else if (totalRejected > 0) {
@@ -130,7 +147,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: totalRejected > 0 ? AppColors.warning : AppColors.success,
+            backgroundColor: totalRejected > 0
+                ? AppColors.warning
+                : AppColors.success,
             duration: const Duration(seconds: 4),
             action: totalReceived > 0
                 ? SnackBarAction(
@@ -170,29 +189,41 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
         // Add to rejections
         _rejections[product.id!] = {
           'quantity': result['quantity'],
+          'weight': result['weight'],
           'reason': result['reason'],
           'reject_all': result['reject_all'],
+          'is_weight_based': result['is_weight_based'],
         };
-        
+
         // If partial rejection, also add to receives for remaining quantity
         if (!result['reject_all']) {
-          final remainingQuantity = product.quantity.toDouble() - (result['quantity'] as double);
-          if (remainingQuantity > 0) {
+          final remainingQuantity =
+              product.quantity.toDouble() - (result['quantity'] as double);
+          final remainingWeight =
+              (product.weight ?? 0.0) - (result['weight'] as double);
+
+          if (remainingQuantity > 0 || remainingWeight > 0) {
             _selectedProducts.add(product.id!);
-            _receiveQuantities[product.id!] = remainingQuantity;
+            _receiveQuantities[product.id!] = remainingQuantity > 0
+                ? remainingQuantity
+                : 0.0;
+            _receiveWeights[product.id!] = remainingWeight > 0
+                ? remainingWeight
+                : 0.0;
           }
         } else {
           // Full rejection - remove from selected products
           _selectedProducts.remove(product.id);
           _receiveQuantities.remove(product.id);
+          _receiveWeights.remove(product.id);
         }
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result['reject_all'] 
-                ? 'Product marked for rejection' 
+            result['reject_all']
+                ? 'Product marked for rejection'
                 : 'Partial rejection: ${result['quantity']} units',
           ),
           action: SnackBarAction(
@@ -212,8 +243,11 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasSelections = _selectedProducts.isNotEmpty || _rejections.isNotEmpty;
-    final totalToReceive = _selectedProducts.where((id) => !_rejections.containsKey(id)).length;
+    final hasSelections =
+        _selectedProducts.isNotEmpty || _rejections.isNotEmpty;
+    final totalToReceive = _selectedProducts
+        .where((id) => !_rejections.containsKey(id))
+        .length;
     final totalToReject = _rejections.length;
 
     String selectionText = '';
@@ -234,10 +268,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          'Receive Products',
-          style: AppTypography.headlineMedium(),
-        ),
+        title: Text('Receive Products', style: AppTypography.headlineMedium()),
         actions: [
           IconButton(
             icon: const Icon(CustomIcons.MEATTRACE_ICON),
@@ -271,32 +302,30 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.shopPrimary,
-              ),
+              child: CircularProgressIndicator(color: AppColors.shopPrimary),
             )
           : _pendingProducts.isEmpty
-              ? _buildEmptyState()
-              : Column(
-                  children: [
-                    _buildInfoBanner(),
-                    _buildActionButtons(),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _loadPendingProducts,
-                        color: AppColors.shopPrimary,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(AppTheme.space16),
-                          itemCount: _pendingProducts.length,
-                          itemBuilder: (context, index) {
-                            final product = _pendingProducts[index];
-                            return _buildProductCard(product);
-                          },
-                        ),
-                      ),
+          ? _buildEmptyState()
+          : Column(
+              children: [
+                _buildInfoBanner(),
+                _buildActionButtons(),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _loadPendingProducts,
+                    color: AppColors.shopPrimary,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(AppTheme.space16),
+                      itemCount: _pendingProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = _pendingProducts[index];
+                        return _buildProductCard(product);
+                      },
                     ),
-                  ],
+                  ),
                 ),
+              ],
+            ),
       bottomNavigationBar: hasSelections
           ? Container(
               padding: const EdgeInsets.all(AppTheme.space16),
@@ -315,8 +344,8 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                   label: totalToReceive > 0 && totalToReject > 0
                       ? 'Process All ($totalToReceive + $totalToReject)'
                       : totalToReceive > 0
-                          ? 'Receive $totalToReceive Product(s)'
-                          : 'Reject $totalToReject Product(s)',
+                      ? 'Receive $totalToReceive Product(s)'
+                      : 'Reject $totalToReject Product(s)',
                   onPressed: _isLoading ? null : _receiveSelectedProducts,
                   loading: _isLoading,
                   customColor: totalToReject > 0 && totalToReceive == 0
@@ -336,17 +365,11 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       decoration: BoxDecoration(
         color: AppColors.info.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(
-          color: AppColors.info.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.info_outline,
-            color: AppColors.info,
-            size: 24,
-          ),
+          Icon(Icons.info_outline, color: AppColors.info, size: 24),
           const SizedBox(width: AppTheme.space12),
           Expanded(
             child: Column(
@@ -391,22 +414,16 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                   } else {
                     // Select all pending products
                     _selectedProducts.addAll(
-                      _pendingProducts.map((p) => p.id!)
+                      _pendingProducts.map((p) => p.id!),
                     );
                   }
                 });
               },
               icon: Icon(
-                hasAnySelections
-                    ? Icons.deselect
-                    : Icons.select_all,
+                hasAnySelections ? Icons.deselect : Icons.select_all,
                 size: 20,
               ),
-              label: Text(
-                hasAnySelections
-                    ? 'Deselect All'
-                    : 'Select All',
-              ),
+              label: Text(hasAnySelections ? 'Deselect All' : 'Select All'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.shopPrimary,
                 side: BorderSide(color: AppColors.shopPrimary),
@@ -427,7 +444,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
               label: const Text('Clear'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textSecondary,
-                side: BorderSide(color: AppColors.textSecondary.withValues(alpha: 0.3)),
+                side: BorderSide(
+                  color: AppColors.textSecondary.withValues(alpha: 0.3),
+                ),
               ),
             ),
           ),
@@ -439,7 +458,8 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
   Widget _buildProductCard(Product product) {
     final isSelected = _selectedProducts.contains(product.id);
     final isRejected = _rejections.containsKey(product.id);
-    final isPartialRejection = isRejected && !(_rejections[product.id]!['reject_all'] as bool);
+    final isPartialRejection =
+        isRejected && !(_rejections[product.id]!['reject_all'] as bool);
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.space12),
@@ -450,8 +470,8 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
           color: isRejected
               ? AppColors.error
               : isSelected
-                  ? AppColors.shopPrimary
-                  : Colors.transparent,
+              ? AppColors.shopPrimary
+              : Colors.transparent,
           width: 2,
         ),
       ),
@@ -524,7 +544,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.info.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusSmall,
+                              ),
                             ),
                             child: Text(
                               product.productType,
@@ -620,7 +642,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                     ),
                     const SizedBox(height: AppTheme.space8),
                     Text(
-                      'Quantity: ${_rejections[product.id]!['quantity']} units',
+                      'Quantity: ${_rejections[product.id]!['quantity']} units${_rejections[product.id]!['weight'] > 0 ? ' / ${_rejections[product.id]!['weight']} ${product.weightUnit}' : ''}',
                       style: AppTypography.bodySmall(),
                     ),
                     const SizedBox(height: AppTheme.space4),
@@ -631,7 +653,8 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                     if (isPartialRejection) ...[
                       const SizedBox(height: AppTheme.space4),
                       Text(
-                        'Accepting: ${(product.quantity.toDouble() - (_rejections[product.id]!['quantity'] as double)).toStringAsFixed(1)} units',
+                        'Accepting: ${(product.quantity.toDouble() - (_rejections[product.id]!['quantity'] as double)).toStringAsFixed(1)} units'
+                        ' / ${((product.weight ?? 0.0) - (_rejections[product.id]!['weight'] as double)).toStringAsFixed(1)} ${product.weightUnit}',
                         style: AppTypography.bodySmall().copyWith(
                           color: AppColors.success,
                           fontWeight: FontWeight.w600,
@@ -656,7 +679,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: BorderSide(color: AppColors.error),
-                        padding: const EdgeInsets.symmetric(vertical: AppTheme.space12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppTheme.space12,
+                        ),
                       ),
                     ),
                   )
@@ -675,7 +700,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
                         side: BorderSide(color: AppColors.textSecondary),
-                        padding: const EdgeInsets.symmetric(vertical: AppTheme.space12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppTheme.space12,
+                        ),
                       ),
                     ),
                   ),
@@ -694,7 +721,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                         });
                       },
                       icon: Icon(
-                        isSelected ? Icons.check_circle : Icons.check_circle_outline,
+                        isSelected
+                            ? Icons.check_circle
+                            : Icons.check_circle_outline,
                         size: 18,
                       ),
                       label: Text(isSelected ? 'Selected' : 'Accept'),
@@ -702,9 +731,13 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                         backgroundColor: isSelected
                             ? AppColors.shopPrimary
                             : AppColors.shopPrimary.withValues(alpha: 0.1),
-                        foregroundColor: isSelected ? Colors.white : AppColors.shopPrimary,
+                        foregroundColor: isSelected
+                            ? Colors.white
+                            : AppColors.shopPrimary,
                         elevation: isSelected ? 2 : 0,
-                        padding: const EdgeInsets.symmetric(vertical: AppTheme.space12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppTheme.space12,
+                        ),
                       ),
                     ),
                   ),
@@ -767,10 +800,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
               ),
             ),
             const SizedBox(height: AppTheme.space24),
-            Text(
-              'No Pending Transfers',
-              style: AppTypography.headlineMedium(),
-            ),
+            Text('No Pending Transfers', style: AppTypography.headlineMedium()),
             const SizedBox(height: AppTheme.space8),
             Text(
               'There are no products waiting to be received.\nCheck back later for new transfers.',
