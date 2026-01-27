@@ -114,7 +114,7 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
     print(
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     );
-    print('🏠 FARMER_DASHBOARD - LOAD_DATA START');
+    print('🏠 ABBATOIR_DASHBOARD - LOAD_DATA START');
     print('   Time: ${DateTime.now()}');
     print('   Widget mounted: $mounted');
     print('   Context: ${context.hashCode}');
@@ -217,7 +217,7 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
       print(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('� FARMER_DASHBOARD - LOAD_DATA COMPLETE');
+      print('� ABBATOIR_DASHBOARD - LOAD_DATA COMPLETE');
       print(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );

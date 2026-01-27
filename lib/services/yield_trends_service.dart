@@ -12,9 +12,9 @@ class YieldTrendsService {
 
   YieldTrendsService._internal();
 
-  /// Get yield trends data for farmers
+  /// Get yield trends data for abbatoirs
   /// Includes metrics like animal count, slaughter rates, transfer rates
-  Future<YieldTrendData> getFarmerYieldTrends({
+  Future<YieldTrendData> getAbbatoirYieldTrends({
     String period = '7d', // 7d, 30d, 90d, 1y
     String? species,
   }) async {
@@ -30,7 +30,7 @@ class YieldTrendsService {
       return YieldTrendData.fromMap(response.data);
     } catch (e) {
       // Return mock data if API fails
-      return _getMockFarmerData(period);
+      return _getMockAbbatoirData(period);
     }
   }
 
@@ -100,15 +100,15 @@ class YieldTrendsService {
     } catch (e) {
       // Return mock data if API fails
       return {
-        'abbatoir': _getMockFarmerData(period),
+        'abbatoir': _getMockAbbatoirData(period),
         'processor': _getMockProcessorData(period),
         'shop': _getMockShopData(period),
       };
     }
   }
 
-  /// Mock data for farmers when API is unavailable
-  YieldTrendData _getMockFarmerData(String period) {
+  /// Mock data for abbatoirs when API is unavailable
+  YieldTrendData _getMockAbbatoirData(String period) {
     final now = DateTime.now();
     final days = _getPeriodDays(period);
 

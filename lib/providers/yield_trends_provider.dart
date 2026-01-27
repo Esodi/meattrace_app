@@ -5,7 +5,7 @@ import '../services/yield_trends_service.dart';
 class YieldTrendsProvider with ChangeNotifier {
   final YieldTrendsService _yieldTrendsService = YieldTrendsService();
   
-  YieldTrendData? _farmerTrends;
+  YieldTrendData? _abbatoirTrends;
   YieldTrendData? _processorTrends;
   YieldTrendData? _shopTrends;
   Map<String, YieldTrendData>? _comparativeTrends;
@@ -15,7 +15,7 @@ class YieldTrendsProvider with ChangeNotifier {
   String _currentPeriod = '7d';
 
   // Getters
-  YieldTrendData? get farmerTrends => _farmerTrends;
+  YieldTrendData? get abbatoirTrends => _abbatoirTrends;
   YieldTrendData? get processorTrends => _processorTrends;
   YieldTrendData? get shopTrends => _shopTrends;
   Map<String, YieldTrendData>? get comparativeTrends => _comparativeTrends;
@@ -23,13 +23,13 @@ class YieldTrendsProvider with ChangeNotifier {
   String? get error => _error;
   String get currentPeriod => _currentPeriod;
 
-  /// Fetch yield trends for farmers
-  Future<void> fetchFarmerTrends({
+  /// Fetch yield trends for abbatoirs
+  Future<void> fetchAbbatoirTrends({
     String period = '7d',
     String? species,
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _farmerTrends != null && _farmerTrends!.period == period) {
+    if (!forceRefresh && _abbatoirTrends != null && _abbatoirTrends!.period == period) {
       return; // Use cached data
     }
 
@@ -39,7 +39,7 @@ class YieldTrendsProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _farmerTrends = await _yieldTrendsService.getFarmerYieldTrends(
+      _abbatoirTrends = await _yieldTrendsService.getAbbatoirYieldTrends(
         period: period,
         species: species,
       );
@@ -138,7 +138,7 @@ class YieldTrendsProvider with ChangeNotifier {
   YieldTrendData? getTrendsForRole(String role) {
     switch (role.toLowerCase()) {
       case 'abbatoir':
-        return _farmerTrends;
+        return _abbatoirTrends;
       case 'processingunit':
       case 'processor':
         return _processorTrends;
@@ -153,7 +153,7 @@ class YieldTrendsProvider with ChangeNotifier {
   Future<void> refreshTrendsForRole(String role, {String? filter}) async {
     switch (role.toLowerCase()) {
       case 'abbatoir':
-        await fetchFarmerTrends(
+        await fetchAbbatoirTrends(
           period: _currentPeriod,
           species: filter,
           forceRefresh: true,
@@ -189,7 +189,7 @@ class YieldTrendsProvider with ChangeNotifier {
 
   /// Clear all cached data
   void clearCache() {
-    _farmerTrends = null;
+    _abbatoirTrends = null;
     _processorTrends = null;
     _shopTrends = null;
     _comparativeTrends = null;

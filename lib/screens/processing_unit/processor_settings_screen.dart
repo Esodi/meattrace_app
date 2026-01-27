@@ -537,7 +537,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
             Text('Version 1.0.0', style: AppTypography.bodyLarge()),
             const SizedBox(height: AppTheme.space16),
             Text(
-              'MeatTrace is a comprehensive meat traceability system for farmers, processors, and retailers.',
+              'MeatTrace is a comprehensive meat traceability system for abbatoirs, processors, and retailers.',
               style: AppTypography.bodyMedium(),
             ),
             const SizedBox(height: AppTheme.space16),

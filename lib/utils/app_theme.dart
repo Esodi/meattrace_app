@@ -55,7 +55,7 @@ class AppTheme {
 
   // ========== ROLE-BASED THEMES ==========
 
-  static ThemeData farmerTheme = _buildTheme(
+  static ThemeData abbatoirTheme = _buildTheme(
     brightness: Brightness.light,
     primaryColor: AppColors.abbatoirPrimary,
     primaryLight: AppColors.abbatoirLight,
@@ -629,7 +629,7 @@ class AppTheme {
     switch (role.toLowerCase()) {
       case 'abbatoir':
       case 'abattoir':
-        return farmerTheme;
+        return abbatoirTheme;
       case 'processing_unit':
       case 'processor':
         return processorTheme;

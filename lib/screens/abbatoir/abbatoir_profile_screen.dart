@@ -33,7 +33,7 @@ class _AbbatoirProfileScreenState extends State<AbbatoirProfileScreen>
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _farmNameController = TextEditingController();
+  final _abbatoirNameController = TextEditingController();
   final _locationController = TextEditingController();
 
   // Statistics
@@ -58,7 +58,7 @@ class _AbbatoirProfileScreenState extends State<AbbatoirProfileScreen>
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _farmNameController.dispose();
+    _abbatoirNameController.dispose();
     _locationController.dispose();
     super.dispose();
   }
@@ -75,7 +75,7 @@ class _AbbatoirProfileScreenState extends State<AbbatoirProfileScreen>
           _lastNameController.text = data['last_name'] ?? '';
           _emailController.text = data['email'] ?? '';
           _phoneController.text = data['phone'] ?? '';
-          _farmNameController.text = data['organization'] ?? '';
+          _abbatoirNameController.text = data['organization'] ?? '';
           _locationController.text = data['location'] ?? '';
         });
       }
@@ -142,7 +142,7 @@ class _AbbatoirProfileScreenState extends State<AbbatoirProfileScreen>
         'last_name': _lastNameController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'organization': _farmNameController.text.trim(),
+        'organization': _abbatoirNameController.text.trim(),
         'location': _locationController.text.trim(),
       });
 
@@ -398,7 +398,7 @@ class _AbbatoirProfileScreenState extends State<AbbatoirProfileScreen>
                 _buildSectionTitle('Abbatoir Information', isDark),
                 const SizedBox(height: 16),
                 _buildTextField(
-                  controller: _farmNameController,
+                  controller: _abbatoirNameController,
                   label: 'Abbatoir Name',
                   icon: Icons.agriculture_outlined,
                   enabled: _isEditing,

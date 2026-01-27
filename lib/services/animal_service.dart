@@ -368,7 +368,7 @@ class AnimalService {
     }
   }
 
-  Future<List<Animal>> getTransferredAnimalsForFarmer() async {
+  Future<List<Animal>> getTransferredAnimalsForAbbatoir() async {
     try {
       final response = await _dioClient.dio.get(
         '${Constants.animalsEndpoint}my_transferred_animals/',
@@ -446,7 +446,7 @@ class AnimalService {
 
       final data = response.data;
       if (data is Map && data.containsKey('results')) {
-        // Transform ProcessingUnit entities to the expected format for farmers
+        // Transform ProcessingUnit entities to the expected format for abbatoirs
         final processingUnits = List<Map<String, dynamic>>.from(
           data['results'],
         );

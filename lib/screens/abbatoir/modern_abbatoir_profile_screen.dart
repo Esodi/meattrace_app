@@ -36,7 +36,7 @@ class _ModernAbbatoirProfileScreenState
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _farmNameController = TextEditingController();
+  final _abbatoirNameController = TextEditingController();
   final _locationController = TextEditingController();
 
   // Statistics
@@ -66,7 +66,7 @@ class _ModernAbbatoirProfileScreenState
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _farmNameController.dispose();
+    _abbatoirNameController.dispose();
     _locationController.dispose();
     super.dispose();
   }
@@ -86,7 +86,7 @@ class _ModernAbbatoirProfileScreenState
           _lastNameController.text = data['last_name'] ?? '';
           _emailController.text = data['email'] ?? '';
           _phoneController.text = data['phone'] ?? '';
-          _farmNameController.text = data['organization'] ?? '';
+          _abbatoirNameController.text = data['organization'] ?? '';
           _locationController.text = data['location'] ?? '';
         });
       }
@@ -161,7 +161,7 @@ class _ModernAbbatoirProfileScreenState
         'last_name': _lastNameController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'organization': _farmNameController.text.trim(),
+        'organization': _abbatoirNameController.text.trim(),
         'location': _locationController.text.trim(),
       });
 
@@ -401,7 +401,7 @@ class _ModernAbbatoirProfileScreenState
                 _buildSectionTitle('Abbatoir Information'),
                 const SizedBox(height: AppTheme.space16),
                 _buildModernTextField(
-                  controller: _farmNameController,
+                  controller: _abbatoirNameController,
                   label: 'Abbatoir Name',
                   icon: Icons.agriculture_outlined,
                   enabled: _isEditing,

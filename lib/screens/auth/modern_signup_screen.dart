@@ -42,7 +42,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
   final _phoneController = TextEditingController();
 
   // Role-specific fields
-  final _farmNameController = TextEditingController();
+  final _abbatoirNameController = TextEditingController();
   final _facilityNameController = TextEditingController();
   final _storeNameController = TextEditingController();
   final _licenseController = TextEditingController();
@@ -82,7 +82,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
     _confirmPasswordController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _farmNameController.dispose();
+    _abbatoirNameController.dispose();
     _facilityNameController.dispose();
     _storeNameController.dispose();
     _licenseController.dispose();
@@ -201,7 +201,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
 
       // Add role-specific fields
       if (_selectedRole == 'abbatoir') {
-        userData['farm_name'] = _farmNameController.text;
+        userData['abbatoir_name'] = _abbatoirNameController.text;
       } else if (_selectedRole == 'processing_unit') {
         userData['facility_name'] = _facilityNameController.text;
         userData['license_number'] = _licenseController.text;
@@ -666,7 +666,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
           const SizedBox(height: AppTheme.space32),
           if (_selectedRole == 'abbatoir') ...[
             CustomTextField(
-              controller: _farmNameController,
+              controller: _abbatoirNameController,
               label: 'Abbatoir Name',
               hint: 'Enter your abbatoir name',
               prefixIcon: Icon(CustomIcons.cattle),
@@ -770,7 +770,7 @@ class _ModernSignupScreenState extends State<ModernSignupScreen>
                     ],
                   ),
                   const SizedBox(height: AppTheme.space12),
-                  _buildFeatureItem('Receive animals from farmers'),
+                  _buildFeatureItem('Receive animals from abbatoirs'),
                   _buildFeatureItem('Process and create meat products'),
                   _buildFeatureItem('Manage quality control'),
                   _buildFeatureItem('Transfer products to shops'),

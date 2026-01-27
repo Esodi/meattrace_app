@@ -14,7 +14,7 @@ class UserContextProvider with ChangeNotifier {
 
   bool get isLoggedIn => _currentUser != null;
   bool get isAdmin => _currentUser?.role.toLowerCase() == 'admin';
-  bool get isFarmer => _currentUser?.isFarmer ?? false;
+  bool get isAbbatoir => _currentUser?.isAbbatoir ?? false;
   bool get isProcessingUnit => _currentUser?.isProcessingUnit ?? false;
   bool get isShop => _currentUser?.isShop ?? false;
 
@@ -127,7 +127,7 @@ class UserContextProvider with ChangeNotifier {
 
     _permissions = {
       'isAdmin': isAdmin,
-      'isFarmer': isFarmer,
+      'isAbbatoir': isAbbatoir,
       'isProcessingUnit': isProcessingUnit,
       'isShop': isShop,
       'canRead': hasPermission('read'),

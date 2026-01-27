@@ -338,7 +338,7 @@ class AppTheme {
     final isDark = brightness == Brightness.dark;
     switch (role?.toLowerCase()) {
       case 'abbatoir':
-        return isDark ? _abbatoirDarkTheme : _farmerTheme;
+        return isDark ? _abbatoirDarkTheme : _abbatoirTheme;
       case 'processing_unit':
       case 'processor':
         return isDark ? _processorDarkTheme : _processorTheme;
@@ -353,7 +353,7 @@ class AppTheme {
   }
 
   // Abbatoir Theme - Primary Red focus
-  static final ThemeData _farmerTheme = lightTheme.copyWith(
+  static final ThemeData _abbatoirTheme = lightTheme.copyWith(
     colorScheme: const ColorScheme.light(
       primary: primaryRed,
       secondary: secondaryBlue,

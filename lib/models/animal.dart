@@ -420,7 +420,7 @@ extension AnimalLifecycleStatusExtension on AnimalLifecycleStatus {
 class Animal {
   final int? id;
   final int abbatoir;
-  final String? farmerUsername; // Abbatoir's username for display
+  final String? abbatoirUsername; // Abbatoir's username for display
   final String species;
   final double age;
   final double? liveWeight;
@@ -469,7 +469,7 @@ class Animal {
   Animal({
     this.id,
     required this.abbatoir,
-    this.farmerUsername,
+    this.abbatoirUsername,
     required this.species,
     required this.age,
     required this.liveWeight,
@@ -545,7 +545,7 @@ class Animal {
       return Animal(
         id: json['id'] != null ? int.parse(json['id'].toString()) : null,
         abbatoir: int.parse(json['abbatoir'].toString()),
-        farmerUsername: json['farmer_username'],
+        abbatoirUsername: json['abbatoir_username'],
         species: json['species'],
         age: json['age'] is num
             ? (json['age'] as num).toDouble()
@@ -613,7 +613,7 @@ class Animal {
     return {
       'id': id,
       'abbatoir': abbatoir,
-      'farmer_username': farmerUsername,
+      'abbatoir_username': abbatoirUsername,
       'species': species,
       'age': age,
       'live_weight': liveWeight,

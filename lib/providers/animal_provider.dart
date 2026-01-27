@@ -356,14 +356,14 @@ class AnimalProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<Animal>> fetchTransferredAnimalsForFarmer() async {
+  Future<List<Animal>> fetchTransferredAnimalsForAbbatoir() async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       _transferredAnimals = await _animalService
-          .getTransferredAnimalsForFarmer();
+          .getTransferredAnimalsForAbbatoir();
       return _transferredAnimals;
     } catch (e) {
       _error = e.toString();
@@ -378,7 +378,7 @@ class AnimalProvider with ChangeNotifier {
   Future<int> getTransferredAnimalsCount() async {
     try {
       final transferredAnimals = await _animalService
-          .getTransferredAnimalsForFarmer();
+          .getTransferredAnimalsForAbbatoir();
       return transferredAnimals.length;
     } catch (e) {
       // If API fails, try to count from local data (though it won't have transferred animals)

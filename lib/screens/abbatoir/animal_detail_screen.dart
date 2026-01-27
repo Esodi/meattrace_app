@@ -271,7 +271,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             _buildInfoRow(
               Icons.person,
               'Abbatoir',
-              _animal?.farmerUsername ?? 'N/A',
+              _animal?.abbatoirUsername ?? 'N/A',
             ),
           ],
         ),
