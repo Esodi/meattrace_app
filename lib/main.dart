@@ -25,6 +25,7 @@ import 'providers/activity_provider.dart';
 import 'providers/processing_unit_management_provider.dart';
 import 'providers/shop_management_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/external_vendor_provider.dart';
 import 'services/api_service.dart';
 
 // Modern UI screens (actively used)
@@ -38,15 +39,18 @@ import 'screens/auth/onboarding_screen.dart';
 import 'screens/auth/pending_approval_screen.dart';
 
 import 'screens/processing_unit/modern_processor_home_screen.dart';
+import 'screens/processing_unit/processor_main_scaffold.dart';
+import 'screens/abbatoir/abbatoir_main_scaffold.dart';
+import 'screens/shop/shop_main_scaffold.dart';
 import 'screens/processing_unit/products_list_screen.dart';
 import 'screens/processing_unit/product_detail_screen.dart';
 import 'screens/processing_unit/receive_animals_screen.dart';
-import 'screens/processing_unit/pending_processing_screen.dart';
 import 'screens/processing_unit/create_product_screen.dart';
 import 'screens/processing_unit/processor_settings_screen.dart';
 import 'screens/processing_unit/processor_qr_codes_screen.dart';
 import 'screens/processing_unit/processor_analytics_screen.dart';
 import 'screens/processing_unit/processor_inventory_screen.dart';
+import 'screens/processing_unit/current_inventory_screen.dart';
 import 'screens/processing_unit/transfer_products_screen.dart';
 import 'screens/processing_unit/unit_registration_screen.dart';
 import 'screens/processing_unit/unit_user_management_screen.dart';
@@ -77,6 +81,8 @@ import 'screens/abbatoir/abbatoir_settings_screen.dart';
 import 'screens/abbatoir/modern_abbatoir_profile_screen.dart';
 import 'screens/abbatoir/notification_list_screen.dart';
 import 'screens/abbatoir/sick_animals_screen.dart';
+import 'screens/common/external_vendors_screen.dart';
+import 'screens/common/initial_inventory_onboarding.dart';
 
 import 'screens/common/coming_soon_screen.dart';
 import 'screens/common/user_profile_screen.dart';
@@ -271,51 +277,214 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           path: '/onboarding',
           builder: (context, state) => const OnboardingScreen(),
         ),
-        GoRoute(
-          path: '/abbatoir-home',
-          builder: (context, state) => const ModernAbbatoirHomeScreen(),
+        // ShellRoute for Abbatoir Bottom Navbar Persistence
+        ShellRoute(
+          builder: (context, state, child) =>
+              AbbatoirMainScaffold(child: child),
+          routes: [
+            GoRoute(
+              path: '/abbatoir-home',
+              builder: (context, state) => const ModernAbbatoirHomeScreen(),
+            ),
+            GoRoute(
+              path: '/abbatoir/livestock-history',
+              builder: (context, state) => const LivestockHistoryScreen(),
+            ),
+            GoRoute(
+              path: '/abbatoir/sick-animals',
+              builder: (context, state) => const SickAnimalsScreen(),
+            ),
+            GoRoute(
+              path: '/abbatoir/settings',
+              builder: (context, state) => const AbbatoirSettingsScreen(),
+            ),
+            GoRoute(
+              path: '/abbatoir/profile',
+              builder: (context, state) => const ModernAbbatoirProfileScreen(),
+            ),
+            GoRoute(
+              path: '/abbatoir/notifications',
+              builder: (context, state) => const NotificationListScreen(),
+            ),
+            // Sub-screens under Abbatoir shell
+            GoRoute(
+              path: '/animals/:id',
+              builder: (context, state) =>
+                  AnimalDetailScreen(animalId: state.pathParameters['id']!),
+            ),
+            GoRoute(
+              path: '/animals/:id/edit',
+              builder: (context, state) =>
+                  EditAnimalScreen(animalId: state.pathParameters['id']!),
+            ),
+            GoRoute(
+              path: '/register-animal',
+              builder: (context, state) => const RegisterAnimalScreen(),
+            ),
+            GoRoute(
+              path: '/transfer-animals',
+              builder: (context, state) => const TransferAnimalsScreen(),
+            ),
+            GoRoute(
+              path: '/slaughter-animal',
+              builder: (context, state) => const SlaughterAnimalScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/processor-home',
-          builder: (context, state) {
-            final user = _authProvider.user;
-            if (user != null &&
-                (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
-              return PendingApprovalScreen(
-                entityName: user.pendingJoinRequestUnitName ?? 'Unknown Unit',
-                requestedRole: user.pendingJoinRequestRole ?? 'worker',
-                requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
-                isShop: false,
-                rejectionReason: user.rejectionReason,
-              );
-            }
-            return const ModernProcessorHomeScreen();
-          },
+        // ShellRoute for Processor Bottom Navbar Persistence
+        ShellRoute(
+          builder: (context, state, child) =>
+              ProcessorMainScaffold(child: child),
+          routes: [
+            GoRoute(
+              path: '/processor-home',
+              builder: (context, state) {
+                final user = _authProvider.user;
+                if (user != null &&
+                    (user.hasPendingJoinRequest ||
+                        user.hasRejectedJoinRequest)) {
+                  return PendingApprovalScreen(
+                    entityName:
+                        user.pendingJoinRequestUnitName ?? 'Unknown Unit',
+                    requestedRole: user.pendingJoinRequestRole ?? 'worker',
+                    requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+                    isShop: false,
+                    rejectionReason: user.rejectionReason,
+                  );
+                }
+                return const ModernProcessorHomeScreen();
+              },
+            ),
+            GoRoute(
+              path: '/processor/products',
+              builder: (context, state) => const ProductsListScreen(),
+            ),
+            GoRoute(
+              path: '/qr-scanner',
+              builder: (context, state) => EnhancedQrScannerScreen(
+                source: state.uri.queryParameters['source'],
+              ),
+            ),
+            GoRoute(
+              path: '/processor/settings',
+              builder: (context, state) => const ProcessorSettingsScreen(),
+            ),
+            // Sub-screens that should keep the navbar
+            GoRoute(
+              path: '/products/:id',
+              builder: (context, state) =>
+                  ProductDetailScreen(productId: state.pathParameters['id']!),
+            ),
+            GoRoute(
+              path: '/receive-animals',
+              builder: (context, state) => const ReceiveAnimalsScreen(),
+            ),
+            GoRoute(
+              path: '/create-product',
+              builder: (context, state) => const CreateProductScreen(),
+            ),
+            GoRoute(
+              path: '/processor-qr-codes',
+              builder: (context, state) => const ProcessorQRCodesScreen(),
+            ),
+            GoRoute(
+              path: '/processor/analytics',
+              builder: (context, state) => const ProcessorAnalyticsScreen(),
+            ),
+            GoRoute(
+              path: '/producer-inventory',
+              builder: (context, state) => const ProcessorInventoryScreen(),
+            ),
+            GoRoute(
+              path: '/processor/current-inventory',
+              builder: (context, state) => const CurrentInventoryScreen(),
+            ),
+            GoRoute(
+              path: '/product-history',
+              builder: (context, state) => const ComingSoonScreen(
+                featureName: 'Product History',
+                description: 'View complete history...',
+                icon: Icons.history,
+              ),
+            ),
+            GoRoute(
+              path: '/transfer-products',
+              builder: (context, state) => const TransferProductsScreen(),
+            ),
+            GoRoute(
+              path: '/processor/product-categories',
+              builder: (context, state) => ProductCategoriesScreen(),
+            ),
+            GoRoute(
+              path: '/processor/notifications',
+              builder: (context, state) => const ProcessorNotificationScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/shop-home',
-          builder: (context, state) {
-            final user = _authProvider.user;
-            if (user != null &&
-                (user.hasPendingJoinRequest || user.hasRejectedJoinRequest)) {
-              return PendingApprovalScreen(
-                entityName: user.pendingJoinRequestShopName ?? 'Unknown Shop',
-                requestedRole: user.pendingJoinRequestRole ?? 'worker',
-                requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
-                isShop: true,
-                rejectionReason: user.rejectionReason,
-              );
-            }
-            final index =
-                int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
-            return ModernShopHomeScreen(initialIndex: index);
-          },
-        ),
-        GoRoute(
-          path: '/qr-scanner',
-          builder: (context, state) => EnhancedQrScannerScreen(
-            source: state.uri.queryParameters['source'],
-          ),
+
+        // ShellRoute for Shop Bottom Navbar Persistence
+        ShellRoute(
+          builder: (context, state, child) => ShopMainScaffold(child: child),
+          routes: [
+            GoRoute(
+              path: '/shop-home',
+              builder: (context, state) {
+                final user = _authProvider.user;
+                if (user != null &&
+                    (user.hasPendingJoinRequest ||
+                        user.hasRejectedJoinRequest)) {
+                  return PendingApprovalScreen(
+                    entityName:
+                        user.pendingJoinRequestShopName ?? 'Unknown Shop',
+                    requestedRole: user.pendingJoinRequestRole ?? 'worker',
+                    requestedAt: user.pendingJoinRequestDate ?? DateTime.now(),
+                    isShop: true,
+                    rejectionReason: user.rejectionReason,
+                  );
+                }
+                return const ModernShopHomeScreen();
+              },
+            ),
+            GoRoute(
+              path: '/shop/inventory',
+              builder: (context, state) => const ShopInventoryScreen(),
+            ),
+            GoRoute(
+              path: '/shop/orders',
+              builder: (context, state) => const OrderHistoryScreen(),
+            ),
+            GoRoute(
+              path: '/shop/profile',
+              builder: (context, state) => const ShopProfileScreen(),
+            ),
+            GoRoute(
+              path: '/shop/sell',
+              builder: (context, state) => const SellScreen(),
+            ),
+            GoRoute(
+              path: '/shop/settings',
+              builder: (context, state) => const ShopSettingsScreen(),
+            ),
+            GoRoute(
+              path: '/receive-products',
+              builder: (context, state) => const ReceiveProductsScreen(),
+            ),
+            GoRoute(
+              path: '/place-order',
+              builder: (context, state) => const PlaceOrderScreen(),
+            ),
+            GoRoute(
+              path: '/orders/:id',
+              builder: (context, state) => OrderDetailScreen(
+                orderId: int.parse(state.pathParameters['id']!),
+              ),
+            ),
+            GoRoute(
+              path: '/products/:id',
+              builder: (context, state) =>
+                  ProductDetailScreen(productId: state.pathParameters['id']!),
+            ),
+          ],
         ),
         GoRoute(
           path: '/camera',
@@ -326,108 +495,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         GoRoute(
           path: '/printer-settings',
           builder: (context, state) => const PrinterSettingsScreen(),
-        ),
-        GoRoute(
-          path: '/abbatoir/livestock-history',
-          builder: (context, state) => const LivestockHistoryScreen(),
-        ),
-        GoRoute(
-          path: '/abbatoir/sick-animals',
-          builder: (context, state) => const SickAnimalsScreen(),
-        ),
-
-        GoRoute(
-          path: '/animals/:id',
-          builder: (context, state) =>
-              AnimalDetailScreen(animalId: state.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/animals/:id/edit',
-          builder: (context, state) =>
-              EditAnimalScreen(animalId: state.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/register-animal',
-          builder: (context, state) => const RegisterAnimalScreen(),
-        ),
-        GoRoute(
-          path: '/select-animals-transfer',
-          builder: (context, state) => const TransferAnimalsScreen(),
-        ),
-        GoRoute(
-          path: '/slaughter-animal',
-          builder: (context, state) => SlaughterAnimalScreen(
-            animalId: state.uri.queryParameters['animalId'],
-          ),
-        ),
-        GoRoute(
-          path: '/abbatoir/settings',
-          builder: (context, state) => const AbbatoirSettingsScreen(),
-        ),
-        GoRoute(
-          path: '/abbatoir/profile',
-          builder: (context, state) => const ModernAbbatoirProfileScreen(),
-        ),
-        GoRoute(
-          path: '/abbatoir/notifications',
-          builder: (context, state) => const NotificationListScreen(),
-        ),
-        GoRoute(
-          path: '/processor/products',
-          builder: (context, state) => const ProductsListScreen(),
-        ),
-        GoRoute(
-          path: '/products/:id',
-          builder: (context, state) =>
-              ProductDetailScreen(productId: state.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/receive-animals',
-          builder: (context, state) => const ReceiveAnimalsScreen(),
-        ),
-        GoRoute(
-          path: '/pending-processing',
-          builder: (context, state) => const PendingProcessingScreen(),
-        ),
-        GoRoute(
-          path: '/create-product',
-          builder: (context, state) => const CreateProductScreen(),
-        ),
-        GoRoute(
-          path: '/processor/settings',
-          builder: (context, state) => const ProcessorSettingsScreen(),
-        ),
-        GoRoute(
-          path: '/processor-qr-codes',
-          builder: (context, state) => const ProcessorQRCodesScreen(),
-        ),
-        GoRoute(
-          path: '/processor/analytics',
-          builder: (context, state) => const ProcessorAnalyticsScreen(),
-        ),
-        GoRoute(
-          path: '/producer-inventory',
-          builder: (context, state) => const ProcessorInventoryScreen(),
-        ),
-        GoRoute(
-          path: '/product-history',
-          builder: (context, state) => const ComingSoonScreen(
-            featureName: 'Product History',
-            description: 'View complete history...',
-            icon: Icons.history,
-          ),
-        ),
-        GoRoute(
-          path: '/transfer-products',
-          builder: (context, state) => const TransferProductsScreen(),
-        ),
-        GoRoute(
-          path: '/processor/product-categories',
-          builder: (context, state) => ProductCategoriesScreen(),
-        ),
-        GoRoute(
-          path: '/processor/notifications',
-          builder: (context, state) => const ProcessorNotificationScreen(),
         ),
         GoRoute(
           path: '/processing-unit/register',
@@ -450,46 +517,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           ),
         ),
         GoRoute(
-          path: '/shop/inventory',
-          builder: (context, state) => const ShopInventoryScreen(),
-        ),
-        GoRoute(
-          path: '/shop/orders',
-          builder: (context, state) => const OrderHistoryScreen(),
-        ),
-        GoRoute(
-          path: '/shop/place-order',
-          builder: (context, state) => const PlaceOrderScreen(),
-        ),
-        GoRoute(
-          path: '/shop/sell',
-          builder: (context, state) => const SellScreen(),
-        ),
-        GoRoute(
-          path: '/shop/orders/:orderId',
-          builder: (context, state) => OrderDetailScreen(
-            orderId: int.parse(state.pathParameters['orderId']!),
-          ),
-        ),
-        GoRoute(
-          path: '/shop/profile',
-          builder: (context, state) => const ShopProfileScreen(),
-        ),
-        GoRoute(
-          path: '/receive-products',
-          builder: (context, state) => const ReceiveProductsScreen(),
-        ),
-        GoRoute(
-          path: '/shop/settings',
-          builder: (context, state) => const ShopSettingsScreen(),
-        ),
-        GoRoute(
           path: '/profile',
           builder: (context, state) => const UserProfileScreen(),
         ),
         GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/external-vendors',
+          builder: (context, state) => const ExternalVendorsScreen(),
+        ),
+        GoRoute(
+          path: '/onboarding-inventory',
+          builder: (context, state) => const InitialInventoryOnboardingScreen(),
         ),
       ],
     );
@@ -556,6 +597,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
         ChangeNotifierProvider(create: (_) => ShopManagementProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => ExternalVendorProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

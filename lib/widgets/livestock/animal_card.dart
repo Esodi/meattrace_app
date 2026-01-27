@@ -24,6 +24,7 @@ class AnimalCard extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onTap;
   final bool isSelected;
+  final bool isExternal;
   final Widget? trailing;
 
   const AnimalCard({
@@ -42,6 +43,7 @@ class AnimalCard extends StatelessWidget {
     this.imageUrl,
     this.onTap,
     this.isSelected = false,
+    this.isExternal = false,
     this.trailing,
   });
 
@@ -116,6 +118,16 @@ class AnimalCard extends StatelessWidget {
                       status: healthStatus,
                       size: BadgeSize.small,
                     ),
+
+                    if (isExternal) ...[
+                      const SizedBox(height: AppTheme.space8),
+                      StatusBadge(
+                        label: 'External Source',
+                        color: AppColors.secondaryBlue,
+                        variant: BadgeVariant.soft,
+                        size: BadgeSize.small,
+                      ),
+                    ],
 
                     const SizedBox(height: AppTheme.space12),
 
@@ -224,6 +236,7 @@ class CompactAnimalCard extends StatelessWidget {
   final String? tagNumber;
   final String species;
   final String healthStatus;
+  final bool isExternal;
   final VoidCallback? onTap;
   final bool isSelected;
 
@@ -233,6 +246,7 @@ class CompactAnimalCard extends StatelessWidget {
     this.tagNumber,
     required this.species,
     required this.healthStatus,
+    this.isExternal = false,
     this.onTap,
     this.isSelected = false,
   });
@@ -313,6 +327,14 @@ class CompactAnimalCard extends StatelessWidget {
                           status: healthStatus,
                           size: BadgeSize.small,
                         ),
+                        if (isExternal) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.label_important_outline,
+                            size: 14,
+                            color: AppColors.secondaryBlue,
+                          ),
+                        ],
                       ],
                     ),
                   ],

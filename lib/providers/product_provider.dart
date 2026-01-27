@@ -18,7 +18,9 @@ class ProductProvider with ChangeNotifier {
   bool _isInitialized = false;
 
   // Stream-based updates
-  final BehaviorSubject<List<Product>> _productsStream = BehaviorSubject.seeded([]);
+  final BehaviorSubject<List<Product>> _productsStream = BehaviorSubject.seeded(
+    [],
+  );
   final BehaviorSubject<bool> _isLoadingStream = BehaviorSubject.seeded(false);
   final BehaviorSubject<String?> _errorStream = BehaviorSubject.seeded(null);
 
@@ -105,7 +107,17 @@ class ProductProvider with ChangeNotifier {
     await _dbHelper.insertProducts(_products);
   }
 
-  Future<void> fetchProducts({String? productType, int? animal, int? processingUnitId, String? search, bool? pendingReceipt, bool forceRefresh = false}) async {
+  Future<void> fetchProducts({
+    String? productType,
+    int? animal,
+    int? processingUnitId,
+    String? search,
+    bool? pendingReceipt,
+    bool forceRefresh = false,
+  }) async {
+    // Defer state update to avoid "setState() or markNeedsBuild() called during build"
+    await Future.delayed(Duration.zero);
+
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -136,7 +148,9 @@ class ProductProvider with ChangeNotifier {
     try {
       print('🔄 [ProductProvider] Creating product via service...');
       final newProduct = await _productService.createProduct(product);
-      print('✅ [ProductProvider] Product created successfully, adding to local list');
+      print(
+        '✅ [ProductProvider] Product created successfully, adding to local list',
+      );
       _products.add(newProduct);
       await _saveToDatabase();
       _error = null; // Clear any previous errors
@@ -197,13 +211,13 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> transferProducts(
-    List<int> productIds, 
-    int shopId,
-    {Map<int, double>? productQuantities}
-  ) async {
+    List<int> productIds,
+    int shopId, {
+    Map<int, double>? productQuantities,
+  }) async {
     try {
       final response = await _productService.transferProducts(
-        productIds, 
+        productIds,
         shopId,
         productQuantities: productQuantities,
       );
@@ -315,11 +329,3 @@ class ProductProvider with ChangeNotifier {
     super.dispose();
   }
 }
-
-
-
-
-
-
-
-

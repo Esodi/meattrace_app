@@ -78,7 +78,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
       if (_searchQuery.isNotEmpty) {
         final matchesSearch =
             product.name.toLowerCase().contains(_searchQuery) ||
-            (product.batchNumber.toLowerCase().contains(_searchQuery) ?? false);
+            product.batchNumber.toLowerCase().contains(_searchQuery);
         if (!matchesSearch) return false;
       }
 
@@ -273,7 +273,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    product.batchNumber ?? 'No batch',
+                    product.batchNumber,
                     style: AppTypography.bodyMedium(
                       color: AppColors.textSecondary,
                     ),
@@ -300,7 +300,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
                         color: AppColors.textSecondary,
                       ),
                       Text(
-                        '\$${product.price.toStringAsFixed(2) ?? '0.00'}',
+                        '\$${product.price.toStringAsFixed(2)}',
                         style: AppTypography.bodyMedium(
                           color: AppColors.textSecondary,
                         ),
@@ -433,7 +433,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              product.batchNumber ?? 'No batch',
+              product.batchNumber,
               style: AppTypography.bodyLarge(),
             ),
           ],

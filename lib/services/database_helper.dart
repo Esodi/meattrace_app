@@ -6,6 +6,7 @@ import '../models/animal.dart';
 import '../models/shop_receipt.dart';
 import '../models/inventory.dart';
 import '../models/order.dart';
+import '../models/external_vendor.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -25,7 +26,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'meattrace.db');
     return await openDatabase(
       path,
-      version: 13, // Increment version to add SlaughterPart table
+      version: 16, // Increment version for external vendor support
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       // onOpen ensures missing compatibility columns are added for existing installs
@@ -45,7 +46,9 @@ class DatabaseHelper {
     final result = await db.rawQuery("PRAGMA table_info($tableName)");
     print("🔍 [DatabaseHelper] Schema for table '$tableName':");
     for (final column in result) {
-      print("   Column: ${column['name']} - Type: ${column['type']} - NotNull: ${column['notnull']} - Default: ${column['dflt_value']}");
+      print(
+        "   Column: ${column['name']} - Type: ${column['type']} - NotNull: ${column['notnull']} - Default: ${column['dflt_value']}",
+      );
     }
   }
 
@@ -236,7 +239,7 @@ class DatabaseHelper {
             is_low_stock INTEGER NOT NULL
           )
         ''');
-    
+
         await db.execute('''
           CREATE TABLE orders (
             id INTEGER PRIMARY KEY,
@@ -320,12 +323,16 @@ class DatabaseHelper {
       try {
         // Check if 'weight' column exists in products table and rename it
         final result = await db.rawQuery("PRAGMA table_info(products)");
-        final hasWeightColumn = result.any((column) => column['name'] == 'weight');
+        final hasWeightColumn = result.any(
+          (column) => column['name'] == 'weight',
+        );
 
         if (hasWeightColumn) {
           // SQLite doesn't support direct column rename, so we need to recreate the table
           await db.execute('ALTER TABLE products ADD COLUMN live_weight REAL');
-          await db.execute('UPDATE products SET live_weight = weight WHERE weight IS NOT NULL');
+          await db.execute(
+            'UPDATE products SET live_weight = weight WHERE weight IS NOT NULL',
+          );
           // Note: We can't drop the old column in SQLite without recreating the table
           // The old 'weight' column will remain but won't be used
         }
@@ -376,15 +383,113 @@ class DatabaseHelper {
         // Table might already exist, ignore error
       }
     }
+    if (oldVersion < 14) {
+      // Add abbatoir column to animals table if missing (fix for schema mismatch after rename)
+      try {
+        await db.execute(
+          'ALTER TABLE animals ADD COLUMN abbatoir INTEGER DEFAULT 0',
+        );
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
+    if (oldVersion < 15) {
+      // Fix for "NOT NULL constraint failed: animals.farmer"
+      // The local DB has a legacy 'farmer' column that is NOT NULL.
+      // Since we can't easily DROP COLUMN in SQLite, we'll recreate the table.
+      // This is safe because animals is a cache and will be refetched.
+      try {
+        await db.execute('DROP TABLE IF EXISTS animals');
+        await db.execute('''
+          CREATE TABLE animals (
+            id INTEGER PRIMARY KEY,
+            abbatoir INTEGER NOT NULL,
+            species TEXT NOT NULL,
+            animal_id TEXT,
+            animal_name TEXT,
+            age INTEGER NOT NULL,
+            live_weight REAL,
+            weight REAL,
+            breed TEXT,
+            abbatoir_name TEXT,
+            health_status TEXT,
+            created_at TEXT NOT NULL,
+            slaughtered INTEGER NOT NULL,
+            slaughtered_at TEXT,
+            synced INTEGER NOT NULL DEFAULT 1
+          )
+        ''');
+      } catch (e) {
+        print('Error reconstructing animals table: $e');
+      }
+    }
+    if (oldVersion < 16) {
+      // Create external_vendors table
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS external_vendors (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            contact_info TEXT,
+            location TEXT,
+            category TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          )
+        ''');
+      } catch (e) {
+        print('Error creating external_vendors table: $e');
+      }
+
+      // Add external source tracking columns to animals table
+      final animalColumns = [
+        'is_external_source INTEGER NOT NULL DEFAULT 0',
+        'external_vendor_id INTEGER',
+        'external_vendor_name TEXT',
+        'acquisition_price REAL',
+        'acquisition_date TEXT',
+        'origin_type TEXT DEFAULT "BORN_HERE"',
+      ];
+
+      for (final columnDef in animalColumns) {
+        try {
+          await db.execute('ALTER TABLE animals ADD COLUMN $columnDef');
+        } catch (e) {
+          // Column might already exist
+        }
+      }
+
+      // Add external source tracking columns to products table
+      final productColumns = [
+        'is_external_source INTEGER NOT NULL DEFAULT 0',
+        'external_vendor_id INTEGER',
+        'external_vendor_name TEXT',
+        'acquisition_price REAL',
+      ];
+
+      for (final columnDef in productColumns) {
+        try {
+          await db.execute('ALTER TABLE products ADD COLUMN $columnDef');
+        } catch (e) {
+          // Column might already exist
+        }
+      }
+    }
   }
 
   // Ensure a column exists on a table; add it if missing (best-effort compatibility)
-  Future<void> _ensureColumnExists(Database db, String table, String columnName, String columnType) async {
+  Future<void> _ensureColumnExists(
+    Database db,
+    String table,
+    String columnName,
+    String columnType,
+  ) async {
     try {
       final info = await db.rawQuery("PRAGMA table_info($table)");
       final hasColumn = info.any((column) => column['name'] == columnName);
       if (!hasColumn) {
-        await db.execute('ALTER TABLE $table ADD COLUMN $columnName $columnType');
+        await db.execute(
+          'ALTER TABLE $table ADD COLUMN $columnName $columnType',
+        );
       }
     } catch (e) {
       // Ignore - best effort to fix schema mismatches
@@ -431,7 +536,10 @@ class DatabaseHelper {
         'description': product.description,
         'manufacturer': product.manufacturer,
         'category': product.category?.toString(),
-        'timeline': product.timeline.map((e) => e.toMap()).toList().toString(), // Simple string
+        'timeline': product.timeline
+            .map((e) => e.toMap())
+            .toList()
+            .toString(), // Simple string
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit();
@@ -471,10 +579,15 @@ class DatabaseHelper {
       };
 
       if (hasWeightColumn) {
-        map['weight'] = animal.liveWeight; // populate legacy column only if present
+        map['weight'] =
+            animal.liveWeight; // populate legacy column only if present
       }
 
-      batch.insert('animals', map, conflictAlgorithm: ConflictAlgorithm.replace);
+      batch.insert(
+        'animals',
+        map,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
 
     await batch.commit();
@@ -531,22 +644,13 @@ class DatabaseHelper {
 
   Future<List<Animal>> getUnsyncedAnimals() async {
     final db = await database;
-    final maps = await db.query(
-      'animals',
-      where: 'synced = ?',
-      whereArgs: [0],
-    );
+    final maps = await db.query('animals', where: 'synced = ?', whereArgs: [0]);
     return maps.map((map) => Animal.fromMap(map)).toList();
   }
 
   Future<void> markAnimalAsSynced(int id) async {
     final db = await database;
-    await db.update(
-      'animals',
-      {'synced': 1},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.update('animals', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
   // ShopReceipt operations
@@ -621,13 +725,20 @@ class DatabaseHelper {
     final maps = await db.query('orders', orderBy: 'created_at DESC');
     return maps.map((map) => Order.fromJson(map)).toList();
   }
+
+  // External Vendor operations
+  Future<int> insertExternalVendor(ExternalVendor vendor) async {
+    final db = await database;
+    return await db.insert(
+      'external_vendors',
+      vendor.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<ExternalVendor>> getExternalVendors() async {
+    final db = await database;
+    final maps = await db.query('external_vendors', orderBy: 'name ASC');
+    return maps.map((map) => ExternalVendor.fromMap(map)).toList();
+  }
 }
-
-
-
-
-
-
-
-
-

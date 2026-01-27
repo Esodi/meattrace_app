@@ -12,6 +12,10 @@ import 'package:meattrace_app/models/animal.dart';
 import 'package:meattrace_app/models/product_category.dart';
 import 'package:meattrace_app/widgets/core/custom_app_bar.dart';
 import 'package:meattrace_app/widgets/core/enhanced_back_button.dart';
+import 'package:meattrace_app/models/external_vendor.dart';
+import 'package:meattrace_app/providers/external_vendor_provider.dart';
+import 'package:meattrace_app/screens/common/external_vendors_screen.dart';
+import 'package:meattrace_app/screens/common/initial_inventory_onboarding.dart';
 import 'package:meattrace_app/services/bluetooth_printing_service.dart';
 import 'package:meattrace_app/utils/constants.dart';
 import 'package:meattrace_app/utils/app_colors.dart';
@@ -39,6 +43,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final Map<int, TextEditingController> _weightControllers = {};
   final Map<int, String> _weightUnits = {};
   final Map<int, TextEditingController> _quantityControllers = {};
+  final Map<int, TextEditingController> _priceControllers = {};
   bool _isSubmitting = false;
   bool _isPrinting = false;
   List<Product> _createdProducts = [];
@@ -53,9 +58,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   bool _isLoadingAnimals = false;
   String? _animalsError;
 
-  // Selection mode: 'animal' or 'part'
+  // Selection mode: 'animal', 'part', or 'external'
   String _selectionMode = 'animal';
   SlaughterPart? _selectedPart;
+
+  // External Vendor State
+  bool _isExternalSource = false;
+  ExternalVendor? _selectedVendor;
+  final _externalPriceController = TextEditingController();
 
   // Bluetooth Scale
   final BluetoothScaleService _scaleService = BluetoothScaleService();
@@ -70,6 +80,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     _initializePipeline();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      context.read<ExternalVendorProvider>().fetchVendors();
       // Auto-fill processing unit field with the name of the logged-in processing unit
       final authProvider = context.read<AuthProvider>();
       final processingUnitName = authProvider.user?.processingUnitName ?? '';
@@ -387,6 +398,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     for (var controller in _quantityControllers.values) {
       controller.dispose();
     }
+    for (var controller in _priceControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -567,7 +581,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   Widget _buildAnimalSelection() {
     String selectionText;
-    if (_selectedAnimal != null) {
+    if (_isExternalSource) {
+      selectionText = _selectedVendor != null
+          ? 'External: ${_selectedVendor!.name}'
+          : 'Select External Vendor...';
+    } else if (_selectedAnimal != null) {
       selectionText = _selectedAnimal!.animalName != null
           ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
           : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}';
@@ -596,31 +614,124 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Semantics(
-          label: 'Select a slaughtered animal or part for the product',
-          child: ElevatedButton(
-            onPressed: _showAnimalSelectionDialog,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              alignment: Alignment.centerLeft,
+
+        // Source Toggle
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(
+              value: false,
+              label: Text('Internal Stock'),
+              icon: Icon(Icons.warehouse),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    selectionText,
-                    style: TextStyle(
-                      color: (_selectedAnimal != null || _selectedPart != null)
-                          ? Colors.black
-                          : Colors.grey,
-                    ),
-                  ),
+            ButtonSegment(
+              value: true,
+              label: Text('External Vendor'),
+              icon: Icon(Icons.local_shipping),
+            ),
+          ],
+          selected: {_isExternalSource},
+          onSelectionChanged: (Set<bool> newSelection) {
+            setState(() {
+              _isExternalSource = newSelection.first;
+              if (_isExternalSource) {
+                _selectionMode = 'external';
+                _selectedAnimal = null;
+                _selectedPart = null;
+              } else {
+                _selectionMode = 'animal';
+                _selectedVendor = null;
+              }
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+
+        if (_isExternalSource) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Consumer<ExternalVendorProvider>(
+                  builder: (context, provider, child) {
+                    return DropdownButtonFormField<ExternalVendor>(
+                      value: _selectedVendor,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Vendor',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.business),
+                      ),
+                      items: provider.vendors.map((vendor) {
+                        return DropdownMenuItem(
+                          value: vendor,
+                          child: Text(vendor.name),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedVendor = value;
+                        });
+                      },
+                      validator: (value) => _isExternalSource && value == null
+                          ? 'Required'
+                          : null,
+                    );
+                  },
                 ),
-                const Icon(Icons.arrow_drop_down),
-              ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle, color: Colors.blue),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ExternalVendorsScreen(),
+                    ),
+                  ).then((_) {
+                    context.read<ExternalVendorProvider>().fetchVendors();
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _externalPriceController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Acquisition Price (Total)',
+              border: OutlineInputBorder(),
+              prefixText: 'TZS ',
             ),
           ),
-        ),
+        ] else
+          Semantics(
+            label: 'Select a slaughtered animal or part for the product',
+            child: ElevatedButton(
+              onPressed: _showAnimalSelectionDialog,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                alignment: Alignment.centerLeft,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectionText,
+                      style: TextStyle(
+                        color:
+                            (_selectedAnimal != null || _selectedPart != null)
+                            ? Colors.black
+                            : Colors.grey,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down),
+                ],
+              ),
+            ),
+          ),
         if (_animalsError != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -672,6 +783,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           _weightUnits[category.id!] = 'kg';
                           _quantityControllers[category.id!] =
                               TextEditingController(text: '1');
+                          _priceControllers[category.id!] =
+                              TextEditingController();
                         }
                       } else {
                         _selectedCategories.remove(category);
@@ -681,6 +794,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           _weightUnits.remove(category.id!);
                           _quantityControllers[category.id!]?.dispose();
                           _quantityControllers.remove(category.id!);
+                          _priceControllers[category.id!]?.dispose();
+                          _priceControllers.remove(category.id!);
                         }
                       }
                     });
@@ -732,7 +847,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   Widget _buildWeightFields() {
     // Calculate available weight for validation (always in kg)
-    final double maxAvailableWeight = _selectedAnimal != null
+    final double maxAvailableWeight = _isExternalSource
+        ? 1000000.0 // High limit for external sources
+        : _selectedAnimal != null
         ? (_selectedAnimal!.remainingWeight ??
               _selectedAnimal!.liveWeight ??
               0.0)
@@ -896,6 +1013,32 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           singleRead?.cancel();
                         }
                       });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  // Price Field
+                  TextFormField(
+                    controller: _priceControllers[category.id!],
+                    decoration: const InputDecoration(
+                      labelText: 'Price (TZS)',
+                      border: OutlineInputBorder(),
+                      prefixText: 'TZS ',
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: (value) {
+                      if (value != null && value.isNotEmpty) {
+                        final price = double.tryParse(value);
+                        if (price == null || price < 0) {
+                          return 'Enter a valid price';
+                        }
+                      }
+                      return null;
                     },
                   ),
                 ],
@@ -1155,7 +1298,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           weightUnit: _weightUnits[category.id!]!,
           quantity: double.parse(_quantityControllers[category.id!]!.text),
           batchNumber: batchNumber,
-          price: 0.0, // Default
+          price:
+              double.tryParse(_priceControllers[category.id!]?.text ?? '0') ??
+              0.0,
           description: _selectedAnimal != null
               ? 'Product created from slaughtered animal'
               : 'Product created from slaughter part: ${_selectedPart!.partType.displayName}',

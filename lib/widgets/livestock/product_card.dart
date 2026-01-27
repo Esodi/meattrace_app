@@ -25,6 +25,7 @@ class ProductCard extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onTap;
   final bool isSelected;
+  final bool isExternal;
   final Widget? trailing;
 
   const ProductCard({
@@ -44,6 +45,7 @@ class ProductCard extends StatelessWidget {
     this.imageUrl,
     this.onTap,
     this.isSelected = false,
+    this.isExternal = false,
     this.trailing,
   });
 
@@ -122,6 +124,16 @@ class ProductCard extends StatelessWidget {
 
                     // Quality Badge
                     QualityBadge(grade: qualityGrade, size: BadgeSize.small),
+
+                    if (isExternal) ...[
+                      const SizedBox(height: AppTheme.space8),
+                      StatusBadge(
+                        label: 'External Source',
+                        color: AppColors.secondaryBlue,
+                        variant: BadgeVariant.soft,
+                        size: BadgeSize.small,
+                      ),
+                    ],
 
                     const SizedBox(height: AppTheme.space12),
 

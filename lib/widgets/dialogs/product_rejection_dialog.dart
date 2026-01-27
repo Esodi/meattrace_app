@@ -223,13 +223,16 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                             ],
                             validator: (value) {
                               if (_isWeightBased) return null;
-                              if (value == null || value.isEmpty)
+                              if (value == null || value.isEmpty) {
                                 return 'Required';
+                              }
                               final quantity = double.tryParse(value);
-                              if (quantity == null || quantity <= 0)
+                              if (quantity == null || quantity <= 0) {
                                 return 'Invalid';
-                              if (quantity > widget.product.quantity)
+                              }
+                              if (quantity > widget.product.quantity) {
                                 return 'Max ${widget.product.quantity}';
+                              }
                               return null;
                             },
                             onChanged: (value) {
@@ -268,13 +271,16 @@ class _ProductRejectionDialogState extends State<ProductRejectionDialog> {
                               ],
                               validator: (value) {
                                 if (!_isWeightBased) return null;
-                                if (value == null || value.isEmpty)
+                                if (value == null || value.isEmpty) {
                                   return 'Required';
+                                }
                                 final weight = double.tryParse(value);
-                                if (weight == null || weight <= 0)
+                                if (weight == null || weight <= 0) {
                                   return 'Invalid';
-                                if (weight > widget.product.weight!)
+                                }
+                                if (weight > widget.product.weight!) {
                                   return 'Max ${widget.product.weight}';
+                                }
                                 return null;
                               },
                               onChanged: (value) {

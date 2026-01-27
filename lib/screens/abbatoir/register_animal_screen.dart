@@ -12,6 +12,9 @@ import '../../widgets/bluetooth_weight_display.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../widgets/core/custom_text_field.dart';
+import '../../models/external_vendor.dart';
+import '../../providers/external_vendor_provider.dart';
+import '../common/external_vendors_screen.dart';
 
 /// Register Animal Screen - Modern UI following design system
 /// Based on DESIGN_SCREENS_LAYOUTS.md specifications
@@ -47,6 +50,11 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   bool _isLoading = false;
   final bool _useManualWeightInput = false;
 
+  // External Vendor State
+  bool _isExternalSource = false;
+  ExternalVendor? _selectedVendor;
+  final _vendorPriceController = TextEditingController();
+
   // Bluetooth Scale
   final BluetoothScaleService _scaleService = BluetoothScaleService();
   StreamSubscription? _weightSubscription;
@@ -65,6 +73,9 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   void initState() {
     super.initState();
     print('🔵 [RegisterAnimalScreen] initState called');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ExternalVendorProvider>().fetchVendors();
+    });
     _generateTagId();
   }
 
@@ -395,6 +406,13 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         healthStatus: _selectedHealthStatus,
         gender: _selectedGender,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+        // External Source Data
+        isExternal: _isExternalSource,
+        externalVendorId: _isExternalSource ? _selectedVendor?.id : null,
+        externalVendorName: _isExternalSource ? _selectedVendor?.name : null,
+        acquisitionPrice: _isExternalSource
+            ? double.tryParse(_vendorPriceController.text)
+            : null,
       );
 
       // Additional validation for manual tag IDs
@@ -600,6 +618,8 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildSourceSection(),
+          const SizedBox(height: 24),
           _buildPhotoSection(),
           const SizedBox(height: 24),
           _buildBasicInfoSection(),
@@ -612,6 +632,123 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           const SizedBox(height: 32),
           _buildRegisterButton(),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSourceSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Animal Source', style: AppTypography.titleMedium()),
+          const SizedBox(height: 16),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(
+                value: false,
+                label: Text('My Farm/Stock'),
+                icon: Icon(Icons.home),
+              ),
+              ButtonSegment(
+                value: true,
+                label: Text('External Purchase'),
+                icon: Icon(Icons.shopping_cart),
+              ),
+            ],
+            selected: {_isExternalSource},
+            onSelectionChanged: (Set<bool> newSelection) {
+              setState(() {
+                _isExternalSource = newSelection.first;
+              });
+            },
+            style: ButtonStyle(
+              backgroundColor: MaterialStateProperty.resolveWith<Color?>((
+                states,
+              ) {
+                if (states.contains(MaterialState.selected)) {
+                  return AppColors.abbatoirPrimary.withOpacity(0.2);
+                }
+                return null;
+              }),
+            ),
+          ),
+          if (_isExternalSource) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Consumer<ExternalVendorProvider>(
+                    builder: (context, provider, child) {
+                      return DropdownButtonFormField<ExternalVendor>(
+                        value: _selectedVendor,
+                        decoration: const InputDecoration(
+                          labelText: 'Select Vendor',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.business),
+                        ),
+                        items: provider.vendors.map((vendor) {
+                          return DropdownMenuItem(
+                            value: vendor,
+                            child: Text(vendor.name),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedVendor = value;
+                          });
+                        },
+                        validator: (value) => _isExternalSource && value == null
+                            ? 'Please select a vendor'
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.add_circle,
+                    color: AppColors.abbatoirPrimary,
+                  ),
+                  tooltip: 'Add New Vendor',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ExternalVendorsScreen(),
+                      ),
+                    ).then((_) {
+                      context.read<ExternalVendorProvider>().fetchVendors();
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _vendorPriceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Purchase Price (Optional)',
+                border: OutlineInputBorder(),
+                prefixText: 'TZS ',
+                prefixIcon: Icon(Icons.attach_money),
+              ),
+            ),
+          ],
         ],
       ),
     );

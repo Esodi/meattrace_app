@@ -121,13 +121,13 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
 
   void _populateFormFields(Animal animal) {
     setState(() {
-      _tagIdController.text = animal.animalId ?? '';
+      _tagIdController.text = animal.animalId;
       _selectedSpecies = animal.species;
       _breedController.text = animal.breed ?? '';
-      _abbatoirController.text = animal.abbatoirName ?? '';
+      _abbatoirController.text = animal.abbatoirName;
       _weightValue = animal.liveWeight ?? 0.0;
       _weightController.text = _weightValue.toStringAsFixed(1);
-      _selectedGender = animal.gender ?? 'male';
+      _selectedGender = animal.gender;
       _selectedHealthStatus = animal.healthStatus ?? 'healthy';
       _notesController.text = animal.notes ?? '';
 
@@ -276,7 +276,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       _isTagIdEditable = !_isTagIdEditable;
       if (!_isTagIdEditable && _animal != null) {
         // Restore original tag ID if canceling edit
-        _tagIdController.text = _animal!.animalId ?? '';
+        _tagIdController.text = _animal!.animalId;
       }
     });
   }

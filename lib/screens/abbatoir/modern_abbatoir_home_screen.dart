@@ -34,7 +34,6 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
 
   int _transferredCount = 0;
   bool _isLoadingTransferred = false;
-  int _selectedIndex = 0;
   Timer? _autoRefreshTimer;
   bool _isDataLoading = false;
   bool _hasInitialLoaded = false;
@@ -262,27 +261,6 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
 
   Future<void> _refreshData() async {
     await _loadData();
-  }
-
-  void _onNavItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    switch (index) {
-      case 0:
-        // Already on home
-        break;
-      case 1:
-        context.push('/abbatoir/livestock-history');
-        break;
-      case 2:
-        context.push('/abbatoir/sick-animals');
-        break;
-      case 3:
-        context.push('/abbatoir/profile');
-        break;
-    }
   }
 
   @override
@@ -624,6 +602,7 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
                             tagNumber: animal.animalName,
                             species: animal.species,
                             healthStatus: animal.computedLifecycleStatus.name,
+                            isExternal: animal.isExternal,
                             onTap: () {
                               // Navigate to animal details
                               if (animal.id != null) {
@@ -645,58 +624,6 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
             ],
           ),
         ),
-      ),
-      floatingActionButton: CustomFAB(
-        icon: Icons.add,
-        onPressed: () => context.push('/register-animal'),
-        backgroundColor: AppColors.abbatoirPrimary,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        clipBehavior: Clip.antiAlias,
-        elevation: 8,
-        color: Theme.of(context).colorScheme.surface,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.pets, 'Animals'),
-              _buildNavItem(1, Icons.history, 'History'),
-              const SizedBox(width: 48), // Space for FAB
-              _buildNavItem(2, Icons.health_and_safety_outlined, 'Sick'),
-              _buildNavItem(3, Icons.person, 'Profile'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _selectedIndex == index;
-    final color = isSelected
-        ? AppColors.abbatoirPrimary
-        : AppColors.textSecondary;
-
-    return InkWell(
-      onTap: () => _onNavItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTypography.labelMedium().copyWith(
-              color: color,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              fontSize: 12,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -917,12 +844,24 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
         color: AppColors.info,
         route: '/abbatoir/livestock-history',
       ),
+      _QuickAction(
+        icon: Icons.business_center,
+        label: 'Vendors',
+        color: AppColors.secondaryBlue,
+        route: '/external-vendors',
+      ),
+      _QuickAction(
+        icon: Icons.add_home_work,
+        label: 'Stock',
+        color: AppColors.abbatoirPrimary,
+        route: '/onboarding-inventory',
+      ),
     ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppTheme.space16,
-        AppTheme.space56, // Increased top padding for floating card
+        AppTheme.space32,
         AppTheme.space16,
         0,
       ),
@@ -931,11 +870,24 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
         children: [
           Text('Quick Actions', style: AppTypography.headlineMedium()),
           const SizedBox(height: AppTheme.space12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: actions.map((action) {
-              return _buildQuickActionButton(action);
-            }).toList(),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final int crossAxisCount = constraints.maxWidth < 360 ? 3 : 4;
+              return GridView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.8,
+                ),
+                itemCount: actions.length,
+                itemBuilder: (context, index) =>
+                    _buildQuickActionButton(actions[index]),
+              );
+            },
           ),
         ],
       ),
@@ -943,50 +895,60 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
   }
 
   Widget _buildQuickActionButton(_QuickAction action) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-        child: InkWell(
-          onTap: () => context.push(action.route),
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: AppTheme.space20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-              border: Border.all(
-                color: AppColors.divider.withValues(alpha: 0.5),
-                width: 1,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: InkWell(
+        onTap: () => context.push(action.route),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppTheme.space12,
+            horizontal: 4,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
+            ],
+            border: Border.all(
+              color: AppColors.divider.withValues(alpha: 0.5),
+              width: 1,
             ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.space12),
-                  decoration: BoxDecoration(
-                    color: action.color.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(action.icon, color: action.color, size: 24),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppTheme.space8),
+                decoration: BoxDecoration(
+                  color: action.color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: AppTheme.space12),
-                Text(
-                  action.label,
-                  style: AppTypography.labelMedium().copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                child: Icon(action.icon, color: action.color, size: 24),
+              ),
+              const SizedBox(height: AppTheme.space8),
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    action.label,
+                    style: AppTypography.labelMedium().copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

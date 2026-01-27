@@ -55,14 +55,17 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
   Future<void> _loadAnimal() async {
     setState(() => _isLoading = true);
     try {
-      final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+      final animalProvider = Provider.of<AnimalProvider>(
+        context,
+        listen: false,
+      );
       await animalProvider.fetchAnimals(slaughtered: null);
-      
+
       final animal = animalProvider.animals.firstWhere(
         (a) => a.id.toString() == widget.animalId,
         orElse: () => throw Exception('Animal not found'),
       );
-      
+
       setState(() {
         _animal = animal;
         _isLoading = false;
@@ -70,9 +73,9 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading animal: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading animal: $e')));
       }
     }
   }
@@ -82,24 +85,24 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     final userContext = Provider.of<UserContextProvider>(context);
     final userRole = userContext.currentUser?.role;
     final primaryColor = AppColors.getPrimaryColorForRole(userRole);
-    
+
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _animal == null
-              ? _buildErrorState()
-              : CustomScrollView(
-                  slivers: [
-                    _buildAppBar(primaryColor, userRole),
-                    SliverToBoxAdapter(
-                      child: FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: _buildContent(primaryColor),
-                      ),
-                    ),
-                  ],
+          ? _buildErrorState()
+          : CustomScrollView(
+              slivers: [
+                _buildAppBar(primaryColor, userRole),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: _buildContent(primaryColor),
+                  ),
                 ),
+              ],
+            ),
     );
   }
 
@@ -143,13 +146,21 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         PopupMenuButton<String>(
           onSelected: _handleMenuAction,
           itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('Edit Details')),
-            // Only show slaughter option if not already slaughtered
-            if (_animal?.slaughtered != true)
-              const PopupMenuItem(value: 'slaughter', child: Text('Mark as Slaughtered')),
-            // Only show delete option if not slaughtered
-            if (_animal?.slaughtered != true)
-              const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
+            // Only show edit option if not transferred and not slaughtered
+            if (_animal?.transferredTo == null && _animal?.slaughtered != true)
+              const PopupMenuItem(value: 'edit', child: Text('Edit Details')),
+            // Only show slaughter option if not already slaughtered and not transferred
+            if (_animal?.slaughtered != true && _animal?.transferredTo == null)
+              const PopupMenuItem(
+                value: 'slaughter',
+                child: Text('Mark as Slaughtered'),
+              ),
+            // Only show delete option if not slaughtered and not transferred
+            if (_animal?.slaughtered != true && _animal?.transferredTo == null)
+              const PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete', style: TextStyle(color: Colors.red)),
+              ),
           ],
         ),
       ],
@@ -162,10 +173,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            primaryColor,
-            primaryColor.withValues(alpha: 0.7),
-          ],
+          colors: [primaryColor, primaryColor.withValues(alpha: 0.7)],
         ),
       ),
       child: Center(
@@ -185,10 +193,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
               ),
             ),
             const SizedBox(height: 16),
-            StatusBadge(
-              label: _getStatusLabel(),
-              color: _getStatusColor(),
-            ),
+            StatusBadge(label: _getStatusLabel(), color: _getStatusColor()),
           ],
         ),
       ),
@@ -223,7 +228,11 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
           children: [
             Text('Basic Information', style: AppTypography.headlineSmall()),
             const SizedBox(height: 16),
-            _buildInfoRow(Icons.fingerprint, 'Animal ID', _animal?.animalId ?? 'N/A'),
+            _buildInfoRow(
+              Icons.fingerprint,
+              'Animal ID',
+              _animal?.animalId ?? 'N/A',
+            ),
             const Divider(height: 24),
             _buildInfoRow(Icons.pets, 'Species', _animal?.species ?? 'N/A'),
             const Divider(height: 24),
@@ -329,26 +338,26 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
 
   Widget _buildTimelineSection(Color primaryColor) {
     final items = <Map<String, dynamic>>[];
-    
+
     if (_animal?.slaughtered == true && _animal?.slaughteredAt != null) {
       items.add({
         'title': 'Slaughtered',
         'date': _formatDate(_animal?.slaughteredAt),
       });
     }
-    
+
     if (_animal?.transferredTo != null && _animal?.transferredAt != null) {
       items.add({
         'title': 'Transferred to Processing Unit',
         'date': _formatDate(_animal?.transferredAt),
       });
     }
-    
+
     items.add({
       'title': 'Animal Registered',
       'date': _formatDate(_animal?.createdAt),
     });
-    
+
     return CustomCard(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Padding(
@@ -372,7 +381,12 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     );
   }
 
-  Widget _buildTimelineItem(String title, String date, bool isFirst, Color primaryColor) {
+  Widget _buildTimelineItem(
+    String title,
+    String date,
+    bool isFirst,
+    Color primaryColor,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -384,10 +398,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
               decoration: BoxDecoration(
                 color: isFirst ? primaryColor : Colors.grey,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 3,
-                ),
+                border: Border.all(color: Colors.white, width: 3),
               ),
             ),
             if (!isFirst)
@@ -421,7 +432,10 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     if (_animal == null) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Text('Loading animal data...', style: AppTypography.bodyMedium(color: AppColors.textSecondary)),
+        child: Text(
+          'Loading animal data...',
+          style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+        ),
       );
     }
 
@@ -438,16 +452,20 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: canSlaughter ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+              color: canSlaughter
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.grey.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: canSlaughter ? Colors.green.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+                color: canSlaughter
+                    ? Colors.green.withOpacity(0.3)
+                    : Colors.grey.withOpacity(0.3),
               ),
             ),
             child: Text(
               canSlaughter
-                ? 'Animal is active and can be slaughtered'
-                : isTransferred
+                  ? 'Animal is active and can be slaughtered'
+                  : isTransferred
                   ? 'Animal has been transferred and cannot be slaughtered'
                   : 'Animal has already been slaughtered',
               style: AppTypography.bodySmall(
@@ -457,7 +475,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
           ),
 
           // Action buttons
-          if (canSlaughter)
+          if (canSlaughter && !isTransferred)
             CustomButton(
               label: '🐄 Slaughter Animal',
               onPressed: _confirmSlaughter,
@@ -482,8 +500,8 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
                   Expanded(
                     child: Text(
                       isTransferred
-                        ? 'This animal has been transferred to a processing unit'
-                        : 'This animal has already been slaughtered',
+                          ? 'This animal has been transferred to a processing unit'
+                          : 'This animal has already been slaughtered',
                       style: AppTypography.bodyMedium(color: Colors.grey),
                     ),
                   ),
@@ -491,14 +509,16 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
               ),
             ),
 
-          const SizedBox(height: 12),
-          CustomButton(
-            label: 'Delete Animal',
-            onPressed: _confirmDelete,
-            variant: ButtonVariant.text,
-            customColor: Colors.red,
-            fullWidth: true,
-          ),
+          if (!isTransferred && !(_animal?.slaughtered ?? false))
+            const SizedBox(height: 12),
+          if (!isTransferred && !(_animal?.slaughtered ?? false))
+            CustomButton(
+              label: 'Delete Animal',
+              onPressed: _confirmDelete,
+              variant: ButtonVariant.text,
+              customColor: Colors.red,
+              fullWidth: true,
+            ),
         ],
       ),
     );
@@ -531,7 +551,11 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline, size: 80, color: Colors.red.withValues(alpha: 0.5)),
+          Icon(
+            Icons.error_outline,
+            size: 80,
+            color: Colors.red.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 24),
           Text('Animal not found', style: AppTypography.displaySmall()),
           const SizedBox(height: 24),
@@ -548,7 +572,9 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
   void _handleMenuAction(String action) {
     switch (action) {
       case 'edit':
-        // Navigate to edit screen
+        if (_animal != null) {
+          context.push('/animals/${_animal!.id}/edit');
+        }
         break;
       case 'slaughter':
         _confirmSlaughter();

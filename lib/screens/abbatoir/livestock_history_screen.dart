@@ -29,8 +29,15 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
   bool _isLoading = false;
 
   // Display names for species (UI labels)
-  final List<String> _speciesOptions = ['All', 'Cattle', 'Pig', 'Chicken', 'Sheep', 'Goat'];
-  
+  final List<String> _speciesOptions = [
+    'All',
+    'Cattle',
+    'Pig',
+    'Chicken',
+    'Sheep',
+    'Goat',
+  ];
+
   // Map UI display names to backend values
   final Map<String, String> _speciesMapping = {
     'All': 'All',
@@ -40,13 +47,20 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     'Sheep': 'sheep',
     'Goat': 'goat',
   };
-  final List<String> _statusOptions = ['All', 'Rejected', 'Healthy', 'Slaughtered', 'Transferred', 'Semi-Transferred'];
+  final List<String> _statusOptions = [
+    'All',
+    'Rejected',
+    'Healthy',
+    'Slaughtered',
+    'Transferred',
+    'Semi-Transferred',
+  ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -98,20 +112,26 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     setState(() => _isLoading = true);
     try {
       final provider = Provider.of<AnimalProvider>(context, listen: false);
-      print('📋 [LivestockHistory] Current animals count: ${provider.animals.length}');
-      
+      print(
+        '📋 [LivestockHistory] Current animals count: ${provider.animals.length}',
+      );
+
       // Clear cache first to ensure fresh data
       await provider.clearAnimals();
       print('📋 [LivestockHistory] Cache cleared');
-      
+
       // Fetch all animals (both active and slaughtered)
       await provider.fetchAnimals(slaughtered: null);
-      print('📋 [LivestockHistory] After fetch, animals count: ${provider.animals.length}');
-      
+      print(
+        '📋 [LivestockHistory] After fetch, animals count: ${provider.animals.length}',
+      );
+
       // Log each animal for debugging
       for (var i = 0; i < provider.animals.length && i < 5; i++) {
         final animal = provider.animals[i];
-        print('  [$i] ${animal.animalId} - ${animal.species} (slaughtered: ${animal.slaughtered})');
+        print(
+          '  [$i] ${animal.animalId} - ${animal.species} (slaughtered: ${animal.slaughtered})',
+        );
       }
     } finally {
       if (mounted) {
@@ -126,7 +146,8 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
       // Search filter
       if (_searchQuery.isNotEmpty) {
         final searchLower = _searchQuery.toLowerCase();
-        final matchesSearch = animal.animalId.toLowerCase().contains(searchLower) ||
+        final matchesSearch =
+            animal.animalId.toLowerCase().contains(searchLower) ||
             (animal.animalName?.toLowerCase().contains(searchLower) ?? false) ||
             animal.species.toLowerCase().contains(searchLower) ||
             (animal.breed?.toLowerCase().contains(searchLower) ?? false);
@@ -135,7 +156,8 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
 
       // Species filter
       if (_selectedSpecies != 'All') {
-        final backendSpecies = _speciesMapping[_selectedSpecies] ?? _selectedSpecies.toLowerCase();
+        final backendSpecies =
+            _speciesMapping[_selectedSpecies] ?? _selectedSpecies.toLowerCase();
         if (animal.species != backendSpecies) {
           return false;
         }
@@ -144,11 +166,26 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
       // Status filter - using lifecycle status
       if (_selectedStatus != 'All') {
         final lifecycleStatus = animal.computedLifecycleStatus;
-        if (_selectedStatus == 'Rejected' && lifecycleStatus != AnimalLifecycleStatus.rejected) return false;
-        if (_selectedStatus == 'Healthy' && lifecycleStatus != AnimalLifecycleStatus.healthy) return false;
-        if (_selectedStatus == 'Slaughtered' && lifecycleStatus != AnimalLifecycleStatus.slaughtered) return false;
-        if (_selectedStatus == 'Transferred' && lifecycleStatus != AnimalLifecycleStatus.transferred) return false;
-        if (_selectedStatus == 'Semi-Transferred' && lifecycleStatus != AnimalLifecycleStatus.semiTransferred) return false;
+        if (_selectedStatus == 'Rejected' &&
+            lifecycleStatus != AnimalLifecycleStatus.rejected) {
+          return false;
+        }
+        if (_selectedStatus == 'Healthy' &&
+            lifecycleStatus != AnimalLifecycleStatus.healthy) {
+          return false;
+        }
+        if (_selectedStatus == 'Slaughtered' &&
+            lifecycleStatus != AnimalLifecycleStatus.slaughtered) {
+          return false;
+        }
+        if (_selectedStatus == 'Transferred' &&
+            lifecycleStatus != AnimalLifecycleStatus.transferred) {
+          return false;
+        }
+        if (_selectedStatus == 'Semi-Transferred' &&
+            lifecycleStatus != AnimalLifecycleStatus.semiTransferred) {
+          return false;
+        }
       }
 
       return true;
@@ -186,9 +223,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
             _buildFilterChips(),
 
             // Animals List
-            Expanded(
-              child: _buildAnimalsList(),
-            ),
+            Expanded(child: _buildAnimalsList()),
           ],
         ),
       ),
@@ -197,7 +232,9 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
           // Navigate to register screen and reload animals when returning
           await context.push('/register-animal');
           // Reload animals after returning from registration
-          print('📋 [LivestockHistory] Returned from registration, reloading...');
+          print(
+            '📋 [LivestockHistory] Returned from registration, reloading...',
+          );
           if (mounted) {
             _loadAnimals();
           }
@@ -228,7 +265,10 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -318,8 +358,16 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
   Widget _buildAnimalCard(Animal animal) {
     return Dismissible(
       key: Key(animal.id.toString()),
-      background: _buildSwipeBackground(Colors.blue, Icons.edit, Alignment.centerLeft),
-      secondaryBackground: _buildSwipeBackground(Colors.red, Icons.delete, Alignment.centerRight),
+      background: _buildSwipeBackground(
+        Colors.blue,
+        Icons.edit,
+        Alignment.centerLeft,
+      ),
+      secondaryBackground: _buildSwipeBackground(
+        Colors.red,
+        Icons.delete,
+        Alignment.centerRight,
+      ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
           // Edit action
@@ -387,10 +435,13 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
                           color: AppColors.textSecondary,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          '${animal.liveWeight ?? 0} kg',
-                          style: AppTypography.bodyMedium(
-                            color: AppColors.textSecondary,
+                        Flexible(
+                          child: Text(
+                            '${animal.liveWeight ?? 0} kg',
+                            style: AppTypography.bodyMedium(
+                              color: AppColors.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -400,10 +451,13 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
                           color: AppColors.textSecondary,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          '${animal.age.toStringAsFixed(1)} months',
-                          style: AppTypography.bodyMedium(
-                            color: AppColors.textSecondary,
+                        Flexible(
+                          child: Text(
+                            '${animal.age.toStringAsFixed(1)} months',
+                            style: AppTypography.bodyMedium(
+                              color: AppColors.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -425,7 +479,11 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     );
   }
 
-  Widget _buildSwipeBackground(Color color, IconData icon, Alignment alignment) {
+  Widget _buildSwipeBackground(
+    Color color,
+    IconData icon,
+    Alignment alignment,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: color,
@@ -452,11 +510,15 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
             const SizedBox(height: 24),
             Text(
               'No animals found',
-              style: AppTypography.headlineMedium(color: AppColors.textSecondary),
+              style: AppTypography.headlineMedium(
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
-              _searchQuery.isNotEmpty || _selectedSpecies != 'All' || _selectedStatus != 'All'
+              _searchQuery.isNotEmpty ||
+                      _selectedSpecies != 'All' ||
+                      _selectedStatus != 'All'
                   ? 'Try adjusting your filters or search'
                   : 'Start by registering your first animal',
               style: AppTypography.bodyLarge(color: AppColors.textSecondary),
@@ -483,13 +545,22 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
             const SizedBox(height: 24),
             Text(
               'Something went wrong',
-              style: AppTypography.headlineMedium(color: AppColors.textSecondary),
+              style: AppTypography.headlineMedium(
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 12),
-            Text(
-              error,
-              style: AppTypography.bodyLarge(color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
+            Container(
+              constraints: const BoxConstraints(maxHeight: 150),
+              child: SingleChildScrollView(
+                child: Text(
+                  error,
+                  style: AppTypography.bodyLarge(
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -522,14 +593,16 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
             Wrap(
               spacing: 8,
               children: _speciesOptions
-                  .map((species) => FilterChip(
-                        label: Text(species),
-                        selected: _selectedSpecies == species,
-                        onSelected: (selected) {
-                          setState(() => _selectedSpecies = species);
-                          Navigator.pop(context);
-                        },
-                      ))
+                  .map(
+                    (species) => FilterChip(
+                      label: Text(species),
+                      selected: _selectedSpecies == species,
+                      onSelected: (selected) {
+                        setState(() => _selectedSpecies = species);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 24),
@@ -538,14 +611,16 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
             Wrap(
               spacing: 8,
               children: _statusOptions
-                  .map((status) => FilterChip(
-                        label: Text(status),
-                        selected: _selectedStatus == status,
-                        onSelected: (selected) {
-                          setState(() => _selectedStatus = status);
-                          Navigator.pop(context);
-                        },
-                      ))
+                  .map(
+                    (status) => FilterChip(
+                      label: Text(status),
+                      selected: _selectedStatus == status,
+                      onSelected: (selected) {
+                        setState(() => _selectedStatus = status);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 16),
@@ -561,21 +636,23 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
         children: _speciesOptions
-            .map((species) => ListTile(
-                  title: Text(species),
-                  leading: Radio<String>(
-                    value: species,
-                    groupValue: _selectedSpecies,
-                    onChanged: (value) {
-                      setState(() => _selectedSpecies = value!);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  onTap: () {
-                    setState(() => _selectedSpecies = species);
+            .map(
+              (species) => ListTile(
+                title: Text(species),
+                leading: Radio<String>(
+                  value: species,
+                  groupValue: _selectedSpecies,
+                  onChanged: (value) {
+                    setState(() => _selectedSpecies = value!);
                     Navigator.pop(context);
                   },
-                ))
+                ),
+                onTap: () {
+                  setState(() => _selectedSpecies = species);
+                  Navigator.pop(context);
+                },
+              ),
+            )
             .toList(),
       ),
     );
@@ -587,21 +664,23 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
         children: _statusOptions
-            .map((status) => ListTile(
-                  title: Text(status),
-                  leading: Radio<String>(
-                    value: status,
-                    groupValue: _selectedStatus,
-                    onChanged: (value) {
-                      setState(() => _selectedStatus = value!);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  onTap: () {
-                    setState(() => _selectedStatus = status);
+            .map(
+              (status) => ListTile(
+                title: Text(status),
+                leading: Radio<String>(
+                  value: status,
+                  groupValue: _selectedStatus,
+                  onChanged: (value) {
+                    setState(() => _selectedStatus = value!);
                     Navigator.pop(context);
                   },
-                ))
+                ),
+                onTap: () {
+                  setState(() => _selectedStatus = status);
+                  Navigator.pop(context);
+                },
+              ),
+            )
             .toList(),
       ),
     );
@@ -620,7 +699,9 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Delete Animal'),
-            content: Text('Are you sure you want to delete ${animal.animalName ?? animal.animalId}?'),
+            content: Text(
+              'Are you sure you want to delete ${animal.animalName ?? animal.animalId}?',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),

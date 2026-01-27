@@ -254,10 +254,15 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
             color: Colors.grey.shade700,
           ),
         ),
-        Text(
-          value,
-          style: AppTypography.bodyMedium().copyWith(
-            fontWeight: FontWeight.w600,
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            value,
+            style: AppTypography.bodyMedium().copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

@@ -97,9 +97,8 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
       filtered = filtered
           .where(
             (p) =>
-                p.batchNumber.toLowerCase().contains(query.toLowerCase()) ??
-                false ||
-                    p.productType.toLowerCase().contains(query.toLowerCase()),
+                p.batchNumber.toLowerCase().contains(query.toLowerCase()) ||
+                p.productType.toLowerCase().contains(query.toLowerCase()),
           )
           .toList();
     }
@@ -335,7 +334,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                     ),
                     const SizedBox(height: AppTheme.space4),
                     Text(
-                      'Batch: ${product.batchNumber ?? 'N/A'}',
+                      'Batch: ${product.batchNumber}',
                       style: AppTypography.bodySmall().copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -598,7 +597,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                   const SizedBox(height: AppTheme.space16),
                   Text(product.productType, style: AppTypography.titleMedium()),
                   Text(
-                    'Batch: ${product.batchNumber ?? 'N/A'}',
+                    'Batch: ${product.batchNumber}',
                     style: AppTypography.bodySmall().copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -706,7 +705,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                 ),
               ),
               Text(
-                'Batch: ${product.batchNumber ?? 'N/A'}',
+                'Batch: ${product.batchNumber}',
                 style: AppTypography.bodySmall().copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -840,7 +839,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                 ),
               ),
               Text(
-                'Batch: ${product.batchNumber ?? 'N/A'}',
+                'Batch: ${product.batchNumber}',
                 style: AppTypography.bodySmall().copyWith(
                   color: AppColors.textSecondary,
                 ),

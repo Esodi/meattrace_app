@@ -13,7 +13,6 @@ import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/custom_icons.dart';
 import '../../widgets/core/custom_button.dart';
-import '../../widgets/core/custom_card.dart';
 import '../../widgets/core/role_avatar.dart';
 
 /// Modern Processing Unit Dashboard with Material Design 3
@@ -37,7 +36,6 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   bool _isLoadingPending = false;
   int _selectedIndex = 0;
   ProductionStats? _productionStats;
-  bool _isLoadingStats = false;
   Timer? _autoRefreshTimer;
 
   // Getter to return pending count from production stats or fallback to local count
@@ -195,7 +193,6 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
 
   Future<void> _loadProductionStats() async {
     if (!mounted) return;
-    setState(() => _isLoadingStats = true);
 
     try {
       final apiService = ApiService();
@@ -209,10 +206,6 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       // Keep existing stats or set to null on error
       if (mounted) {
         setState(() => _productionStats = null);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingStats = false);
       }
     }
   }
@@ -254,11 +247,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppColors.textPrimary),
-          tooltip: 'Menu',
-          onPressed: () => scaffoldKey.currentState?.openDrawer(),
-        ),
+        automaticallyImplyLeading: false, // Hide drawer icon
         title: Row(
           children: [
             Container(
@@ -322,6 +311,12 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
             tooltip: 'Settings',
             onPressed: () => context.push('/processor/settings'),
           ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.error),
+            tooltip: 'Logout',
+            onPressed: () => context.read<AuthProvider>().logout(),
+          ),
+          const SizedBox(width: AppTheme.space8),
           Padding(
             padding: const EdgeInsets.only(right: AppTheme.space16),
             child: RoleAvatar(
@@ -474,286 +469,212 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
           ),
         ),
       ),
-      floatingActionButton: _buildSpeedDialFAB(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.processorPrimary,
-        unselectedItemColor: AppColors.textSecondary,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        selectedLabelStyle: AppTypography.labelMedium().copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: AppTypography.labelMedium(),
-        elevation: 8,
-        backgroundColor: Colors.white,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
-            label: 'Products',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code_scanner),
-            label: 'Scan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildWelcomeHeader(String username) {
-    // Gather provider-driven stats inside the welcome card so the overview
-    // appears within the same hero card (following the abbatoir dashboard pattern)
-    final animalProvider = Provider.of<AnimalProvider>(context, listen: false);
+    // Gather provider-driven stats
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final productProvider = Provider.of<ProductProvider>(
       context,
       listen: false,
     );
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUserId = authProvider.user?.id;
     final processingUnitId = authProvider.user?.processingUnitId;
     final processingUnitName =
         authProvider.user?.processingUnitName ?? 'Processing Unit';
 
     // RECEIVED: Total number of received animals/parts since account creation
-    // Use the getter which prioritizes production stats
-    int receivedAnimals = receivedCount > 0
-        ? receivedCount
-        : animalProvider.animals
-              .where((a) => a.receivedBy == currentUserId)
-              .length;
+    int receivedAnimals = receivedCount;
 
-    // PENDING: Total number of animals/parts not yet received/accepted or rejected
-    // Use the getter which prioritizes production stats
+    // PENDING: Total number of animals/parts not yet received
     int pendingAnimals = pendingCount;
 
-    // PRODUCTS: Total number of products created since account creation
-    int totalProducts;
-    if (_productionStats != null) {
-      totalProducts = _productionStats!.totalProductsCreated;
-    } else {
-      // Fallback: Filter products by processing unit
-      totalProducts = productProvider.products
-          .where((p) => p.processingUnit == processingUnitId)
-          .length;
-    }
+    // PRODUCTS: Total number of products created
+    int totalProducts = _productionStats?.totalProductsCreated ?? 0;
 
-    // IN STOCK: Total number of products not yet fully transferred to shops
-    int inStockProducts;
-    if (_productionStats != null) {
-      // Use the inStock value directly from the API
-      inStockProducts = _productionStats!.inStock;
-    } else {
-      // Fallback: Count products not transferred (transferredTo is null)
-      inStockProducts = productProvider.products
-          .where(
-            (p) =>
-                p.processingUnit == processingUnitId && p.transferredTo == null,
-          )
-          .length;
-    }
+    // TRANSFERRED: Products transferred out
+    int transferredProducts = productProvider.products
+        .where(
+          (p) =>
+              p.processingUnit.toString() == processingUnitId?.toString() &&
+              p.transferredTo != null,
+        )
+        .length;
 
-    return Container(
-      margin: const EdgeInsets.all(AppTheme.space16),
-      padding: const EdgeInsets.all(AppTheme.space24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.processorPrimary,
-            AppColors.processorPrimary.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.processorPrimary.withValues(alpha: 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Main Header Container
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(
+            AppTheme.space24,
+            AppTheme.space24,
+            AppTheme.space24,
+            80.0, // Extra bottom padding for floating card
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.processorPrimary,
+                AppColors.processorPrimary.withValues(alpha: 0.8),
+              ],
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(32),
+              bottomRight: Radius.circular(32),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.processorPrimary.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(AppTheme.space12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                ),
-                child: Icon(
-                  CustomIcons.processingPlant,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back,',
-                      style: AppTypography.bodyMedium().copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                    Text(
-                      username,
-                      style: AppTypography.headlineLarge().copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      processingUnitName,
-                      style: AppTypography.bodyLarge().copyWith(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (pendingCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space12,
-                    vertical: AppTheme.space8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  ),
-                  child: Row(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.notifications_active,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: AppTheme.space4),
                       Text(
-                        '$pendingCount Pending',
-                        style: AppTypography.labelMedium().copyWith(
+                        'Good Morning,',
+                        style: AppTypography.bodyMedium().copyWith(
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      Text(
+                        username,
+                        style: AppTypography.headlineLarge().copyWith(
                           color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        processingUnitName,
+                        style: AppTypography.bodyLarge().copyWith(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space16),
-          Container(
-            padding: const EdgeInsets.all(AppTheme.space12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.white, size: 18),
-                const SizedBox(width: AppTheme.space8),
-                Expanded(
-                  child: Text(
-                    'Process animals into quality meat products',
-                    style: AppTypography.bodyMedium().copyWith(
-                      color: Colors.white.withValues(alpha: 0.95),
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.space8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.account_circle_outlined,
+                      color: Colors.white,
+                      size: 32,
                     ),
                   ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Floating Stats Grid
+        Positioned(
+          bottom: -40,
+          left: AppTheme.space16,
+          right: AppTheme.space16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: AppTheme.space16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildModernStatItem(
+                  'Received',
+                  receivedAnimals.toString(),
+                  Icons.inbox,
+                  AppColors.processorPrimary,
+                ),
+                _buildStatDivider(),
+                _buildModernStatItem(
+                  'Pending',
+                  _isLoadingPending ? '...' : pendingAnimals.toString(),
+                  Icons.schedule,
+                  AppColors.warning,
+                ),
+                _buildStatDivider(),
+                _buildModernStatItem(
+                  'Products',
+                  totalProducts.toString(),
+                  CustomIcons.meatCut,
+                  AppColors.secondaryBlue,
+                ),
+                _buildStatDivider(),
+                _buildModernStatItem(
+                  'Transferred',
+                  transferredProducts.toString(),
+                  Icons.local_shipping_outlined,
+                  AppColors.success,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppTheme.space24),
-          // Production Overview inside the welcome card (abbatoir-style)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Production Overview',
-                style: AppTypography.headlineMedium().copyWith(
-                  color: Colors.white,
-                ),
-              ),
-              if (_isLoadingStats)
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatsCardInWelcome(
-                  label: 'Received',
-                  value: receivedAnimals.toString(),
-                  subtitle: 'Animals/Parts',
-                  icon: Icons.inbox,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space12),
-              Expanded(
-                child: _buildStatsCardInWelcome(
-                  label: 'Pending',
-                  value: _isLoadingPending ? '...' : pendingAnimals.toString(),
-                  subtitle: 'Not Received',
-                  icon: Icons.schedule,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatsCardInWelcome(
-                  label: 'Products',
-                  value: totalProducts.toString(),
-                  subtitle: 'Total Created',
-                  icon: CustomIcons.meatCut,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space12),
-              Expanded(
-                child: _buildStatsCardInWelcome(
-                  label: 'In Stock',
-                  value: inStockProducts.toString(),
-                  subtitle: 'Not Transferred',
-                  icon: Icons.inventory,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
+  }
+
+  Widget _buildModernStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppTheme.space8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: AppTheme.space8),
+        Text(
+          value,
+          style: AppTypography.titleLarge().copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: AppTypography.labelSmall().copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatDivider() {
+    return Container(height: 40, width: 1, color: AppColors.divider);
   }
 
   Widget _buildStatsSection(
@@ -766,125 +687,106 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     return const SizedBox.shrink();
   }
 
-  Widget _buildStatsCardInWelcome({
-    required String label,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.space12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: AppTheme.space8),
-              Text(
-                label,
-                style: AppTypography.labelMedium().copyWith(
-                  color: color.withValues(alpha: 0.9),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space4),
-          Text(
-            value,
-            style: AppTypography.headlineSmall().copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: AppTypography.bodySmall().copyWith(
-              color: color.withValues(alpha: 0.8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildQuickActions() {
     final actions = [
       _QuickAction(
-        icon: Icons.inbox,
+        icon: Icons.download_rounded,
         label: 'Receive',
-        color: AppColors.info,
+        color: AppColors.processorPrimary,
         route: '/receive-animals',
         badge: pendingCount > 0 ? pendingCount : null,
       ),
       _QuickAction(
-        icon: Icons.pending_actions,
-        label: 'Pending',
-        color: AppColors.warning,
-        route: '/pending-processing',
-      ),
-      _QuickAction(
         icon: CustomIcons.meatCut,
         label: 'Process',
-        color: AppColors.processorPrimary,
+        color: const Color(0xFF6C63FF),
         route: '/create-product',
       ),
       _QuickAction(
-        icon: Icons.category,
+        icon: Icons.grid_view_rounded,
         label: 'Categories',
-        color: AppColors.secondaryBlue,
+        color: const Color(0xFF00BFA5),
         route: '/processor/product-categories',
       ),
       _QuickAction(
-        icon: Icons.send,
+        icon: Icons.local_shipping_rounded,
         label: 'Transfer',
-        color: AppColors.warning,
+        color: const Color(0xFFFF6B6B),
         route: '/transfer-products',
+      ),
+      _QuickAction(
+        icon: Icons.warehouse_rounded,
+        label: 'Inventory',
+        color: const Color(0xFF4B7BEC),
+        route: '/processor/current-inventory',
+      ),
+      _QuickAction(
+        icon: Icons.add_home_work,
+        label: 'Stock',
+        color: AppColors.processorPrimary,
+        route: '/onboarding-inventory',
+      ),
+      _QuickAction(
+        icon: Icons.business_center,
+        label: 'Vendors',
+        color: AppColors.secondaryBlue,
+        route: '/external-vendors',
       ),
     ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppTheme.space16,
-        AppTheme.space24,
-        AppTheme.space16,
+        AppTheme.space20,
+        AppTheme.space32,
+        AppTheme.space20,
         0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick Actions', style: AppTypography.headlineMedium()),
-          const SizedBox(height: AppTheme.space12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Quick Actions',
+                style: AppTypography.headlineSmall().copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.processorPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Operations',
+                  style: AppTypography.labelSmall().copyWith(
+                    color: AppColors.processorPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space20),
           LayoutBuilder(
             builder: (context, constraints) {
-              // Responsive column count based on available width
-              // For small screens (< 360px): 3 columns
-              // For medium screens (360-500px): 4 columns
-              // For larger screens (> 500px): 5 columns
-              final int crossAxisCount;
-              if (constraints.maxWidth < 360) {
-                crossAxisCount = 3;
-              } else if (constraints.maxWidth < 500) {
-                crossAxisCount = 4;
-              } else {
-                crossAxisCount = 5;
-              }
-
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: AppTheme.space8,
-                mainAxisSpacing: AppTheme.space8,
-                childAspectRatio: 0.85,
+              final int crossAxisCount = constraints.maxWidth < 360 ? 3 : 4;
+              return GridView.builder(
                 shrinkWrap: true,
+                padding: EdgeInsets.zero,
                 physics: const NeverScrollableScrollPhysics(),
-                children: actions
-                    .map((action) => _buildQuickActionButton(action))
-                    .toList(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.82,
+                ),
+                itemCount: actions.length,
+                itemBuilder: (context, index) =>
+                    _buildQuickActionButton(actions[index]),
               );
             },
           ),
@@ -896,25 +798,22 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   Widget _buildQuickActionButton(_QuickAction action) {
     return InkWell(
       onTap: () => context.push(action.route),
-      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppTheme.space8,
-          horizontal: AppTheme.space4,
-        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(
-            color: AppColors.textSecondary.withValues(alpha: 0.2),
-          ),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: action.color.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+          border: Border.all(
+            color: action.color.withValues(alpha: 0.1),
+            width: 1.5,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -923,33 +822,42 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(AppTheme.space8),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: action.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    color: action.color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                   ),
-                  child: Icon(action.icon, color: action.color, size: 22),
+                  child: Icon(action.icon, color: action.color, size: 24),
                 ),
                 if (action.badge != null)
                   Positioned(
-                    right: -6,
-                    top: -6,
+                    right: -4,
+                    top: -4,
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.error,
                         shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.error.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
+                        minWidth: 20,
+                        minHeight: 20,
                       ),
                       child: Center(
                         child: Text(
                           '${action.badge}',
-                          style: AppTypography.labelSmall().copyWith(
+                          style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 9,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -957,37 +865,17 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   ),
               ],
             ),
-            const SizedBox(height: AppTheme.space6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Text(
-                action.label,
-                style: AppTypography.labelMedium().copyWith(
-                  color: AppColors.textPrimary,
-                  fontSize: 11,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 12),
+            Text(
+              action.label,
+              style: AppTypography.labelMedium().copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.all(AppTheme.space32),
-      child: EmptyStateCard(
-        icon: CustomIcons.meatCut,
-        message: 'No Products Yet',
-        subtitle:
-            'Start by receiving animals and creating your first products.',
-        action: CustomButton(
-          label: 'Receive Animals',
-          onPressed: () => context.push('/receive-animals'),
         ),
       ),
     );
@@ -1085,158 +973,188 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     required dynamic product,
     required int index,
   }) {
+    final String productType = product.productType ?? 'Unknown Product';
+    final String batchNumber = product.batchNumber ?? 'N/A';
+    final double weight = product.weight ?? 0.0;
+    final String weightUnit = product.weightUnit ?? 'kg';
+    final DateTime? createdAt = product.createdAt;
+
     return InkWell(
       onTap: () => context.push('/products/${product.id}'),
-      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.space20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-          border: Border.all(
-            color: AppColors.textSecondary.withValues(alpha: 0.1),
-            width: 1,
-          ),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
-            BoxShadow(
-              color: AppColors.processorPrimary.withValues(alpha: 0.05),
-              blurRadius: 40,
-              offset: const Offset(0, 16),
-            ),
           ],
+          border: Border.all(
+            color: AppColors.textSecondary.withValues(alpha: 0.05),
+            width: 1,
+          ),
         ),
-        child: Row(
-          children: [
-            // Product Icon with Gradient Background
-            Container(
-              padding: const EdgeInsets.all(AppTheme.space16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.processorPrimary.withValues(alpha: 0.15),
-                    AppColors.processorPrimary.withValues(alpha: 0.08),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                border: Border.all(
-                  color: AppColors.processorPrimary.withValues(alpha: 0.2),
-                  width: 1.5,
-                ),
-              ),
-              child: Icon(
-                CustomIcons.meatCut,
-                color: AppColors.processorPrimary,
-                size: 32,
-              ),
-            ),
-            const SizedBox(width: AppTheme.space16),
-
-            // Product Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        clipBehavior: Clip.antiAlias,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Lead Indicator Side
+              Container(width: 6, color: AppColors.processorPrimary),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          product.productType ?? 'Product',
-                          style: AppTypography.headlineSmall().copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                      // Icon Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.space8,
-                          vertical: AppTheme.space4,
-                        ),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusSmall,
+                          color: AppColors.processorPrimary.withValues(
+                            alpha: 0.08,
                           ),
-                          border: Border.all(
-                            color: AppColors.success.withValues(alpha: 0.3),
-                          ),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Text(
-                          'Premium',
-                          style: AppTypography.labelSmall().copyWith(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Icon(
+                          CustomIcons.meatCut,
+                          color: AppColors.processorPrimary,
+                          size: 24,
                         ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    productType.toUpperCase(),
+                                    style: AppTypography.labelLarge().copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (product.isExternal) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.secondaryBlue.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'External',
+                                      style: AppTypography.labelSmall()
+                                          .copyWith(
+                                            color: AppColors.secondaryBlue,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Active',
+                                    style: AppTypography.labelSmall().copyWith(
+                                      color: AppColors.success,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Batch #$batchNumber',
+                              style: AppTypography.labelMedium().copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                _buildProductBadge(
+                                  Icons.monitor_weight_outlined,
+                                  '$weight $weightUnit',
+                                  Colors.blueGrey,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildProductBadge(
+                                  Icons.event_available_outlined,
+                                  createdAt != null
+                                      ? '${createdAt.day}/${createdAt.month}/${createdAt.year}'
+                                      : 'N/A',
+                                  Colors.blueGrey,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary.withValues(alpha: 0.3),
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppTheme.space4),
-                  Text(
-                    'Batch: ${product.batchNumber ?? 'N/A'}',
-                    style: AppTypography.bodyMedium().copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.space8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.monitor_weight_outlined,
-                        color: AppColors.processorPrimary,
-                        size: 18,
-                      ),
-                      const SizedBox(width: AppTheme.space4),
-                      Text(
-                        '${product.weight ?? 0} kg',
-                        style: AppTypography.bodyMedium().copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: AppTheme.space16),
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        color: AppColors.textSecondary,
-                        size: 18,
-                      ),
-                      const SizedBox(width: AppTheme.space4),
-                      Text(
-                        product.createdAt != null
-                            ? '${product.createdAt.day}/${product.createdAt.month}/${product.createdAt.year}'
-                            : 'N/A',
-                        style: AppTypography.bodyMedium().copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-
-            // Arrow Icon
-            Container(
-              padding: const EdgeInsets.all(AppTheme.space8),
-              decoration: BoxDecoration(
-                color: AppColors.processorPrimary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-              ),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                color: AppColors.processorPrimary,
-                size: 16,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProductBadge(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color.withValues(alpha: 0.7)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTypography.labelSmall().copyWith(
+              color: color.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1300,6 +1218,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   title: 'Dashboard',
                   onTap: () {
                     Navigator.pop(context);
+                    if (_selectedIndex != 0) _onNavItemTapped(0);
                   },
                 ),
                 _buildDrawerItem(
@@ -1311,28 +1230,11 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                   },
                 ),
                 _buildDrawerItem(
-                  icon: Icons.inbox,
-                  title: 'Receive Animals',
-                  badge: pendingCount > 0 ? pendingCount : null,
+                  icon: Icons.qr_code_scanner,
+                  title: 'Scan QR',
                   onTap: () {
                     Navigator.pop(context);
-                    context.push('/receive-animals');
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.qr_code,
-                  title: 'QR Codes',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.push('/processor-qr-codes');
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.analytics,
-                  title: 'Analytics',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.push('/processor/analytics');
+                    context.push('/qr-scanner');
                   },
                 ),
                 const Divider(),
@@ -1445,158 +1347,6 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   // Pipeline helpers and fallback stage removed
 
   /// Speed Dial FAB Widget
-  Widget _buildSpeedDialFAB() {
-    return FloatingActionButton(
-      onPressed: () => _showSpeedDialActions(),
-      backgroundColor: AppColors.processorPrimary,
-      child: const Icon(Icons.add, color: Colors.white),
-    );
-  }
-
-  void _showSpeedDialActions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppTheme.radiusLarge),
-          ),
-        ),
-        padding: const EdgeInsets.all(AppTheme.space16),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight:
-                MediaQuery.of(context).size.height *
-                0.7, // Max 70% of screen height
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: AppTheme.space16),
-                decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Text('Quick Actions', style: AppTypography.headlineMedium()),
-              const SizedBox(height: AppTheme.space16),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildSpeedDialAction(
-                        icon: Icons.play_arrow,
-                        label: 'Process Batch',
-                        color: AppColors.processorPrimary,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.push('/create-product');
-                        },
-                      ),
-                      _buildSpeedDialAction(
-                        icon: Icons.inventory_2,
-                        label: 'Producer Inventory',
-                        color: AppColors.info,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.push('/producer-inventory');
-                        },
-                      ),
-                      _buildSpeedDialAction(
-                        icon: Icons.inbox,
-                        label: 'Receive Animals',
-                        color: AppColors.warning,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.push('/receive-animals');
-                        },
-                      ),
-                      _buildSpeedDialAction(
-                        icon: Icons.qr_code,
-                        label: 'View QR Codes',
-                        color: AppColors.success,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.push('/processor-qr-codes');
-                        },
-                      ),
-                      _buildSpeedDialAction(
-                        icon: Icons.send,
-                        label: 'Transfer Products',
-                        color: AppColors.warning,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.push('/transfer-products');
-                        },
-                      ),
-                      _buildSpeedDialAction(
-                        icon: Icons.category,
-                        label: 'Product Categories',
-                        color: AppColors.info,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.push('/processor/product-categories');
-                        },
-                      ),
-                      const SizedBox(height: AppTheme.space8),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSpeedDialAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppTheme.space8),
-        padding: const EdgeInsets.all(AppTheme.space16),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: AppColors.textSecondary.withValues(alpha: 0.2),
-          ),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppTheme.space12),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: AppTheme.space16),
-            Text(
-              label,
-              style: AppTypography.bodyLarge().copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// Quick action button data model

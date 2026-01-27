@@ -29,7 +29,12 @@ class _SellScreenState extends State<SellScreen>
   final Map<int, CartItem> _cart = {};
 
   // Track toggle state for weight vs quantity for each product
-  final Map<int, bool> _useWeight = {};
+  // NOT USED ANYMORE - we now allow both quantity and weight
+  // final Map<int, bool> _useWeight = {};
+
+  // Controllers for quantity and weight per product (by product ID)
+  final Map<int, TextEditingController> _qtyControllers = {};
+  final Map<int, TextEditingController> _weightControllers = {};
 
   // Customer info
   final TextEditingController _customerNameController = TextEditingController();
@@ -52,6 +57,13 @@ class _SellScreenState extends State<SellScreen>
     _tabController.dispose();
     _customerNameController.dispose();
     _customerPhoneController.dispose();
+    // Dispose all product controllers
+    for (var controller in _qtyControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in _weightControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -63,38 +75,35 @@ class _SellScreenState extends State<SellScreen>
     return _cart.length;
   }
 
-  void _addToCart(Product product, double quantity) {
-    final useWeight = _useWeight[product.id] ?? false;
-
-    if (!useWeight && quantity <= 0) {
+  void _addToCart(Product product, double quantity, double weight) {
+    // Validate at least one is specified
+    if (quantity <= 0 && weight <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid quantity')),
+        const SnackBar(
+          content: Text('Please enter quantity or weight'),
+          backgroundColor: AppColors.warning,
+        ),
       );
       return;
     }
 
-    if (useWeight && quantity <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid weight')),
-      );
-      return;
-    }
-
-    if (!useWeight && quantity > product.quantity) {
+    // Validate quantity against stock
+    if (quantity > 0 && quantity > product.quantity) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Only ${product.quantity} units available in stock'),
+          content: Text('Only ${product.quantity.toStringAsFixed(0)} units available in stock'),
           backgroundColor: AppColors.error,
         ),
       );
       return;
     }
 
-    if (useWeight && product.weight != null && quantity > product.weight!) {
+    // Validate weight against stock
+    if (weight > 0 && product.weight != null && weight > product.weight!) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Only ${product.weight} ${product.weightUnit} available in stock',
+            'Only ${product.weight!.toStringAsFixed(1)} ${product.weightUnit} available in stock',
           ),
           backgroundColor: AppColors.error,
         ),
@@ -103,34 +112,52 @@ class _SellScreenState extends State<SellScreen>
     }
 
     setState(() {
-      final double weight = useWeight ? quantity : 0.0;
-      final double qty = useWeight ? 0.0 : quantity;
-      final String unit = useWeight ? product.weightUnit : 'units';
+      // Calculate subtotal: qty * price + weight * price
+      // If both are specified, we calculate based on the mode
+      // For simplicity: if qty > 0, use qty * price; if weight > 0, add weight * price
+      double subtotal = 0;
+      if (quantity > 0) {
+        subtotal += quantity * product.price;
+      }
+      if (weight > 0) {
+        subtotal += weight * product.price;
+      }
 
       if (_cart.containsKey(product.id)) {
         final existingItem = _cart[product.id]!;
-        final newQuantity = existingItem.quantity + qty;
+        final newQuantity = existingItem.quantity + quantity;
         final newWeight = existingItem.weight + weight;
+        double newSubtotal = 0;
+        if (newQuantity > 0) {
+          newSubtotal += newQuantity * product.price;
+        }
+        if (newWeight > 0) {
+          newSubtotal += newWeight * product.price;
+        }
 
         _cart[product.id!] = CartItem(
           product: product,
           quantity: newQuantity,
           weight: newWeight,
-          weightUnit: unit,
+          weightUnit: product.weightUnit,
           unitPrice: product.price,
-          subtotal: (newQuantity > 0 ? newQuantity : newWeight) * product.price,
+          subtotal: newSubtotal,
         );
       } else {
         _cart[product.id!] = CartItem(
           product: product,
-          quantity: qty,
+          quantity: quantity,
           weight: weight,
-          weightUnit: unit,
+          weightUnit: product.weightUnit,
           unitPrice: product.price,
-          subtotal: (qty > 0 ? qty : weight) * product.price,
+          subtotal: subtotal,
         );
       }
     });
+
+    // Clear the input controllers after adding
+    _qtyControllers[product.id]?.text = '';
+    _weightControllers[product.id]?.text = '';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -152,23 +179,36 @@ class _SellScreenState extends State<SellScreen>
     });
   }
 
-  void _updateCartItemQuantity(int productId, double newQuantity) {
-    if (newQuantity <= 0) {
+  void _updateCartItemQuantity(int productId, double newQuantity, {bool isWeight = false}) {
+    final item = _cart[productId];
+    if (item == null) return;
+
+    final updatedQty = isWeight ? item.quantity : newQuantity;
+    final updatedWeight = isWeight ? newQuantity : item.weight;
+
+    // Remove if both are zero or less
+    if (updatedQty <= 0 && updatedWeight <= 0) {
       _removeFromCart(productId);
       return;
     }
 
-    final item = _cart[productId];
-    if (item == null) return;
+    // Calculate new subtotal
+    double newSubtotal = 0;
+    if (updatedQty > 0) {
+      newSubtotal += updatedQty * item.unitPrice;
+    }
+    if (updatedWeight > 0) {
+      newSubtotal += updatedWeight * item.unitPrice;
+    }
 
     setState(() {
       _cart[productId] = CartItem(
         product: item.product,
-        quantity: item.quantity > 0 ? newQuantity : 0.0,
-        weight: item.weight > 0 ? newQuantity : 0.0,
+        quantity: updatedQty,
+        weight: updatedWeight,
         weightUnit: item.weightUnit,
         unitPrice: item.unitPrice,
-        subtotal: newQuantity * item.unitPrice,
+        subtotal: newSubtotal,
       );
     });
   }
@@ -197,6 +237,7 @@ class _SellScreenState extends State<SellScreen>
     setState(() => _isProcessing = true);
 
     try {
+      if (!mounted) return;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final shopId = authProvider.user?.shopId;
       final userId = authProvider.user?.id;
@@ -234,36 +275,36 @@ class _SellScreenState extends State<SellScreen>
       // Create sale
       final sale = await _saleService.createSale(saleData);
 
+      if (!mounted) return;
       setState(() => _isProcessing = false);
 
       // Show success dialog with print option
+      final shouldPrint = await _showSuccessDialog(sale);
+
+      // Clear cart and customer info
+      _clearCart();
+      _customerNameController.clear();
+      _customerPhoneController.clear();
+
+      // Force refresh products from backend (not cache)
+      if (!mounted) return;
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
+      await productProvider.fetchProducts();
+
+      // Add another small delay to ensure UI updates
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Print receipt if user chose to
+      if (shouldPrint == true && mounted) {
+        await ReceiptPrinter.printSaleReceipt(context, sale);
+      }
+
+      // Navigate back
       if (mounted) {
-        final shouldPrint = await _showSuccessDialog(sale);
-
-        // Clear cart and customer info
-        _clearCart();
-        _customerNameController.clear();
-        _customerPhoneController.clear();
-
-        // Force refresh products from backend (not cache)
-        final productProvider = Provider.of<ProductProvider>(
-          context,
-          listen: false,
-        );
-        await productProvider.fetchProducts();
-
-        // Add another small delay to ensure UI updates
-        await Future.delayed(const Duration(milliseconds: 300));
-
-        // Print receipt if user chose to
-        if (shouldPrint == true && mounted) {
-          await ReceiptPrinter.printSaleReceipt(context, sale);
-        }
-
-        // Navigate back
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
+        Navigator.of(context).pop();
       }
     } catch (e) {
       setState(() => _isProcessing = false);
@@ -628,23 +669,26 @@ class _SellScreenState extends State<SellScreen>
   }
 
   Widget _buildProductCard(Product product) {
-    final quantityController = TextEditingController(text: '1.0');
-    final isUsingWeight = _useWeight[product.id] ?? false;
-    final currentQty = isUsingWeight
-        ? (product.weight ?? 0.0)
-        : product.quantity;
-    final unitLabel = isUsingWeight ? product.weightUnit : 'units';
+    // Get or create controllers for this product
+    _qtyControllers[product.id!] ??= TextEditingController();
+    _weightControllers[product.id!] ??= TextEditingController();
+    
+    final qtyController = _qtyControllers[product.id!]!;
+    final weightController = _weightControllers[product.id!]!;
+    
+    final hasWeight = product.weight != null && product.weight! > 0;
 
     return CustomCard(
       margin: const EdgeInsets.only(bottom: AppTheme.space12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Product Info Row
           Row(
             children: [
               Container(
-                width: 60,
-                height: 60,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   color: AppColors.shopPrimary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
@@ -652,125 +696,144 @@ class _SellScreenState extends State<SellScreen>
                 child: const Icon(
                   Icons.inventory_2,
                   color: AppColors.shopPrimary,
-                  size: 32,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: AppTheme.space16),
-              Expanded(
+              const SizedBox(width: AppTheme.space12),
+              Flexible(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       product.name,
                       style: AppTypography.titleMedium().copyWith(
                         fontWeight: FontWeight.w600,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppTheme.space4),
                     Text(
-                      'Batch: ${product.batchNumber ?? 'N/A'}',
+                      'Batch: ${product.batchNumber}',
                       style: AppTypography.bodySmall().copyWith(
                         color: AppColors.textSecondary,
                       ),
-                    ),
-                    const SizedBox(height: AppTheme.space8),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.space8,
-                            vertical: AppTheme.space4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: currentQty > 5
-                                ? AppColors.success.withValues(alpha: 0.1)
-                                : AppColors.warning.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusSmall,
-                            ),
-                          ),
-                          child: Text(
-                            '${currentQty.toStringAsFixed(1)} $unitLabel available',
-                            style: AppTypography.labelSmall().copyWith(
-                              color: currentQty > 5
-                                  ? AppColors.success
-                                  : AppColors.warning,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
+              ),
+              // Price
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'TZS ${product.price.toStringAsFixed(0)}',
+                    style: AppTypography.titleMedium().copyWith(
+                      color: AppColors.shopPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '/unit',
+                    style: AppTypography.labelSmall().copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space16),
+          const SizedBox(height: AppTheme.space12),
+          
+          // Stock Info Row
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Price',
-                      style: AppTypography.bodySmall().copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      'TZS ${product.price.toStringAsFixed(2)}/$unitLabel',
-                      style: AppTypography.titleMedium().copyWith(
-                        color: AppColors.shopPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+              // Quantity stock
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space8,
+                  vertical: AppTheme.space4,
                 ),
-              ),
-              if (product.weight != null && product.weight! > 0)
-                Padding(
-                  padding: const EdgeInsets.only(right: AppTheme.space8),
-                  child: FilterChip(
-                    label: Text(
-                      isUsingWeight ? 'Weight' : 'Qty',
-                      style: AppTypography.labelSmall().copyWith(
-                        color: isUsingWeight
-                            ? Colors.white
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                    selected: isUsingWeight,
-                    onSelected: (val) {
-                      setState(() {
-                        _useWeight[product.id!] = val;
-                      });
-                    },
-                    backgroundColor: Colors.white,
-                    selectedColor: AppColors.shopPrimary,
-                    checkmarkColor: Colors.white,
-                    padding: EdgeInsets.zero,
+                decoration: BoxDecoration(
+                  color: product.quantity > 5
+                      ? AppColors.success.withValues(alpha: 0.1)
+                      : AppColors.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Text(
+                  '${product.quantity.toStringAsFixed(0)} units',
+                  style: AppTypography.labelSmall().copyWith(
+                    color: product.quantity > 5
+                        ? AppColors.success
+                        : AppColors.warning,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              SizedBox(
-                width: 80,
+              ),
+              if (hasWeight) ...[
+                const SizedBox(width: AppTheme.space8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space8,
+                    vertical: AppTheme.space4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: Text(
+                    '${product.weight!.toStringAsFixed(1)} ${product.weightUnit}',
+                    style: AppTypography.labelSmall().copyWith(
+                      color: AppColors.info,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppTheme.space12),
+          
+          // Input Row - Quantity and Weight
+          Row(
+            children: [
+              // Quantity Input
+              Expanded(
                 child: NumberTextField(
-                  controller: quantityController,
-                  label: isUsingWeight ? 'Wt' : 'Qty',
-                  allowDecimals: true,
+                  controller: qtyController,
+                  label: 'Qty (units)',
+                  allowDecimals: false,
                 ),
               ),
+              if (hasWeight) ...[
+                const SizedBox(width: AppTheme.space8),
+                // Weight Input
+                Expanded(
+                  child: NumberTextField(
+                    controller: weightController,
+                    label: 'Weight (${product.weightUnit})',
+                    allowDecimals: true,
+                  ),
+                ),
+              ],
               const SizedBox(width: AppTheme.space8),
-              CustomButton(
-                icon: Icons.add_shopping_cart,
-                label: 'Add',
-                size: ButtonSize.small,
-                onPressed: () {
-                  final quantity =
-                      double.tryParse(quantityController.text) ?? 0;
-                  _addToCart(product, quantity);
-                },
+              // Add to Cart Button
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: IconButton.filled(
+                  onPressed: () {
+                    final qty = double.tryParse(qtyController.text) ?? 0;
+                    final wt = double.tryParse(weightController.text) ?? 0;
+                    _addToCart(product, qty, wt);
+                  },
+                  icon: const Icon(Icons.add_shopping_cart, size: 22),
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.shopPrimary,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ),
             ],
           ),
@@ -856,10 +919,11 @@ class _SellScreenState extends State<SellScreen>
   }
 
   Widget _buildCartItemCard(CartItem item) {
-    final quantityController = TextEditingController(
-      text: (item.quantity > 0 ? item.quantity : item.weight).toStringAsFixed(
-        1,
-      ),
+    final qtyController = TextEditingController(
+      text: item.quantity > 0 ? item.quantity.toStringAsFixed(0) : '',
+    );
+    final weightController = TextEditingController(
+      text: item.weight > 0 ? item.weight.toStringAsFixed(1) : '',
     );
 
     return CustomCard(
@@ -867,24 +931,28 @@ class _SellScreenState extends State<SellScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row - Product Name and Delete
           Row(
             children: [
-              Expanded(
+              Flexible(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       item.product.name,
                       style: AppTypography.titleMedium().copyWith(
                         fontWeight: FontWeight.w600,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppTheme.space4),
                     Text(
-                      'Batch: ${item.product.batchNumber ?? 'N/A'}',
+                      'Batch: ${item.product.batchNumber}',
                       style: AppTypography.bodySmall().copyWith(
                         color: AppColors.textSecondary,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -895,50 +963,114 @@ class _SellScreenState extends State<SellScreen>
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space16),
+          const SizedBox(height: AppTheme.space12),
+          
+          // Price Row
+          Text(
+            'Unit Price: TZS ${item.unitPrice.toStringAsFixed(2)}',
+            style: AppTypography.bodySmall().copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppTheme.space12),
+          
+          // Quantity and Weight Row
           Row(
             children: [
+              // Quantity Field
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Unit Price',
-                      style: AppTypography.bodySmall().copyWith(
+                      'Quantity',
+                      style: AppTypography.labelSmall().copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    Text(
-                      'TZS ${item.unitPrice.toStringAsFixed(2)}/${item.quantity > 0 ? 'unit' : item.weightUnit}',
-                      style: AppTypography.bodyMedium(),
+                    const SizedBox(height: AppTheme.space4),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 60,
+                          child: NumberTextField(
+                            controller: qtyController,
+                            label: '',
+                            allowDecimals: false,
+                            onChanged: (value) {
+                              final newVal = double.tryParse(value) ?? 0;
+                              _updateCartItemQuantity(item.product.id!, newVal, isWeight: false);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.space4),
+                        Text(
+                          'units',
+                          style: AppTypography.bodySmall().copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              SizedBox(
-                width: 100,
-                child: NumberTextField(
-                  controller: quantityController,
-                  label: item.quantity > 0 ? 'Qty' : 'Wt (${item.weightUnit})',
-                  allowDecimals: true,
-                  onChanged: (value) {
-                    final newVal = double.tryParse(value) ?? 0;
-                    _updateCartItemQuantity(item.product.id!, newVal);
-                  },
+              
+              // Weight Field
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Weight',
+                      style: AppTypography.labelSmall().copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space4),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 60,
+                          child: NumberTextField(
+                            controller: weightController,
+                            label: '',
+                            allowDecimals: true,
+                            onChanged: (value) {
+                              final newVal = double.tryParse(value) ?? 0;
+                              _updateCartItemQuantity(item.product.id!, newVal, isWeight: true);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.space4),
+                        Text(
+                          item.weightUnit,
+                          style: AppTypography.bodySmall().copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: AppTheme.space16),
+              
+              // Subtotal
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Subtotal',
-                    style: AppTypography.bodySmall().copyWith(
+                    style: AppTypography.labelSmall().copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: AppTheme.space4),
                   Text(
-                    'TZS ${item.subtotal.toStringAsFixed(2)}',
+                    'TZS ${item.subtotal.toStringAsFixed(0)}',
                     style: AppTypography.titleMedium().copyWith(
                       color: AppColors.shopPrimary,
                       fontWeight: FontWeight.w700,

@@ -37,7 +37,7 @@ class Product {
   // so we accept either and coerce when building the API payload.
   final dynamic processingUnit;
   final String? processingUnitName;
-  final int animal;
+  final int? animal;
   final String? animalAnimalId;
   final String? animalSpecies;
   final int? slaughterPartId; // Reference to the specific slaughter part
@@ -64,6 +64,12 @@ class Product {
   final int? receivedBy;
   final DateTime? receivedAt;
   final String? receivedByName;
+
+  // External Source Tracking
+  final bool isExternal;
+  final int? externalVendorId;
+  final String? externalVendorName;
+  final double? acquisitionPrice;
 
   Product({
     this.id,
@@ -94,6 +100,10 @@ class Product {
     this.receivedBy,
     this.receivedAt,
     this.receivedByName,
+    this.isExternal = false,
+    this.externalVendorId,
+    this.externalVendorName,
+    this.acquisitionPrice,
   });
 
   factory Product.fromMap(Map<String, dynamic> json) {
@@ -101,10 +111,18 @@ class Product {
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       processingUnit: json['processing_unit'].toString(),
       processingUnitName: json['processing_unit_name'],
-      animal: json['animal'] is Map ? json['animal']['id'] : int.parse(json['animal'].toString()),
+      animal: json['animal'] != null
+          ? (json['animal'] is Map
+                ? json['animal']['id']
+                : int.parse(json['animal'].toString()))
+          : null,
       animalAnimalId: json['animal_animal_id'],
       animalSpecies: json['animal_species'],
-      slaughterPartId: json['slaughter_part'] != null ? (json['slaughter_part'] is Map ? json['slaughter_part']['id'] : int.parse(json['slaughter_part'].toString())) : null,
+      slaughterPartId: json['slaughter_part'] != null
+          ? (json['slaughter_part'] is Map
+                ? json['slaughter_part']['id']
+                : int.parse(json['slaughter_part'].toString()))
+          : null,
       slaughterPartName: json['slaughter_part_name'],
       slaughterPartType: json['slaughter_part_type'],
       productType: json['product_type'] ?? 'meat',
@@ -112,22 +130,53 @@ class Product {
       createdAt: DateTime.parse(json['created_at']),
       name: json['name'] ?? 'Unnamed Product',
       batchNumber: json['batch_number'] ?? 'N/A',
-      weight: json['weight'] != null ? (json['weight'] is num ? (json['weight'] as num).toDouble() : double.parse(json['weight'].toString())) : null,
+      weight: json['weight'] != null
+          ? (json['weight'] is num
+                ? (json['weight'] as num).toDouble()
+                : double.parse(json['weight'].toString()))
+          : null,
       weightUnit: json['weight_unit'] ?? 'kg',
-      price: json['price'] is num ? (json['price'] as num).toDouble() : double.parse(json['price'].toString()),
+      price: json['price'] is num
+          ? (json['price'] as num).toDouble()
+          : double.parse(json['price'].toString()),
       description: json['description'] ?? '',
       manufacturer: json['manufacturer'] ?? 'Unknown',
-      category: json['category'] is Map ? json['category']['id'] : (json['category'] != null && json['category'].toString().isNotEmpty ? int.parse(json['category'].toString()) : null),
+      category: json['category'] is Map
+          ? json['category']['id']
+          : (json['category'] != null && json['category'].toString().isNotEmpty
+                ? int.parse(json['category'].toString())
+                : null),
       qrCode: json['qr_code'],
-      timeline: (json['timeline'] as List<dynamic>?)
-          ?.map((e) => ProductTimelineEvent.fromMap(e as Map<String, dynamic>))
-          .toList() ?? [],
-      transferredTo: json['transferred_to'] != null ? int.parse(json['transferred_to'].toString()) : null,
-      transferredAt: json['transferred_at'] != null ? DateTime.parse(json['transferred_at']) : null,
+      timeline:
+          (json['timeline'] as List<dynamic>?)
+              ?.map(
+                (e) => ProductTimelineEvent.fromMap(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          [],
+      transferredTo: json['transferred_to'] != null
+          ? int.parse(json['transferred_to'].toString())
+          : null,
+      transferredAt: json['transferred_at'] != null
+          ? DateTime.parse(json['transferred_at'])
+          : null,
       transferredToName: json['transferred_to_name'],
-      receivedBy: json['received_by_shop'] != null ? int.parse(json['received_by_shop'].toString()) : null,
-      receivedAt: json['received_at'] != null ? DateTime.parse(json['received_at']) : null,
+      receivedBy: json['received_by_shop'] != null
+          ? int.parse(json['received_by_shop'].toString())
+          : null,
+      receivedAt: json['received_at'] != null
+          ? DateTime.parse(json['received_at'])
+          : null,
       receivedByName: json['received_by_shop_name'],
+      isExternal:
+          json['is_external_source'] == 1 || json['is_external_source'] == true,
+      externalVendorId: json['external_vendor_id'] != null
+          ? int.tryParse(json['external_vendor_id'].toString())
+          : null,
+      externalVendorName: json['external_vendor_name'],
+      acquisitionPrice: json['acquisition_price'] != null
+          ? double.tryParse(json['acquisition_price'].toString())
+          : null,
     );
   }
 
@@ -161,6 +210,10 @@ class Product {
       'received_by_shop': receivedBy,
       'received_at': receivedAt?.toIso8601String(),
       'received_by_shop_name': receivedByName,
+      'is_external_source': isExternal ? 1 : 0,
+      'external_vendor_id': externalVendorId,
+      'external_vendor_name': externalVendorName,
+      'acquisition_price': acquisitionPrice,
     };
   }
 
@@ -204,6 +257,10 @@ class Product {
       'description': description,
       'manufacturer': manufacturer,
       'category': category,
+      'is_external_source': isExternal ? 1 : 0,
+      'external_vendor_id': externalVendorId,
+      'external_vendor_name': externalVendorName,
+      'acquisition_price': acquisitionPrice,
     };
   }
 
@@ -277,14 +334,11 @@ class Product {
       receivedBy: receivedBy ?? this.receivedBy,
       receivedAt: receivedAt ?? this.receivedAt,
       receivedByName: receivedByName ?? this.receivedByName,
+      isExternal:
+          isExternal, // No override for now, assume copy preserves original unless manually handled
+      externalVendorId: externalVendorId,
+      externalVendorName: externalVendorName,
+      acquisitionPrice: acquisitionPrice,
     );
   }
 }
-
-
-
-
-
-
-
-

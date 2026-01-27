@@ -466,6 +466,14 @@ class Animal {
   final bool? isTransferredStatus;
   final bool? isSemiTransferredStatus;
 
+  // External Source Tracking
+  final bool isExternal;
+  final int? externalVendorId;
+  final String? externalVendorName;
+  final double? acquisitionPrice;
+  final DateTime? acquisitionDate;
+  final String originType; // 'BORN_HERE', 'PURCHASED', 'INITIAL_STOCK'
+
   Animal({
     this.id,
     required this.abbatoir,
@@ -503,6 +511,12 @@ class Animal {
     this.isSlaughteredStatus,
     this.isTransferredStatus,
     this.isSemiTransferredStatus,
+    this.isExternal = false,
+    this.externalVendorId,
+    this.externalVendorName,
+    this.acquisitionPrice,
+    this.acquisitionDate,
+    this.originType = 'BORN_HERE',
   });
 
   factory Animal.fromMap(Map<String, dynamic> json) {
@@ -544,12 +558,16 @@ class Animal {
 
       return Animal(
         id: json['id'] != null ? int.parse(json['id'].toString()) : null,
-        abbatoir: json['abbatoir'] != null ? int.parse(json['abbatoir'].toString()) : 0,
+        abbatoir: json['abbatoir'] != null
+            ? int.parse(json['abbatoir'].toString())
+            : 0,
         abbatoirUsername: json['abbatoir_username'],
         species: json['species'] ?? 'unknown',
         age: json['age'] is num
             ? (json['age'] as num).toDouble()
-            : (json['age'] != null ? double.parse(json['age'].toString()) : 0.0),
+            : (json['age'] != null
+                  ? double.parse(json['age'].toString())
+                  : 0.0),
         liveWeight: json['live_weight'] != null
             ? (json['live_weight'] is num
                   ? (json['live_weight'] as num).toDouble()
@@ -560,7 +578,9 @@ class Animal {
                   ? (json['remaining_weight'] as num).toDouble()
                   : double.parse(json['remaining_weight'].toString()))
             : null,
-        createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+        createdAt: json['created_at'] != null
+            ? DateTime.parse(json['created_at'])
+            : DateTime.now(),
         slaughtered: json['slaughtered'] ?? false,
         slaughteredAt: json['slaughtered_at'] != null
             ? DateTime.parse(json['slaughtered_at'])
@@ -603,6 +623,20 @@ class Animal {
         isSlaughteredStatus: json['is_slaughtered_status'],
         isTransferredStatus: json['is_transferred_status'],
         isSemiTransferredStatus: json['is_semi_transferred_status'],
+        isExternal:
+            json['is_external_source'] == 1 ||
+            json['is_external_source'] == true,
+        externalVendorId: json['external_vendor_id'] != null
+            ? int.tryParse(json['external_vendor_id'].toString())
+            : null,
+        externalVendorName: json['external_vendor_name'],
+        acquisitionPrice: json['acquisition_price'] != null
+            ? double.tryParse(json['acquisition_price'].toString())
+            : null,
+        acquisitionDate: json['acquisition_date'] != null
+            ? DateTime.tryParse(json['acquisition_date'])
+            : null,
+        originType: json['origin_type'] ?? 'BORN_HERE',
       );
     } catch (e) {
       rethrow;
@@ -640,6 +674,12 @@ class Animal {
       'carcass_measurement': carcassMeasurement?.toMap(),
       'slaughter_parts': slaughterParts.map((part) => part.toMap()).toList(),
       'photo': photo,
+      'is_external_source': isExternal ? 1 : 0,
+      'external_vendor_id': externalVendorId,
+      'external_vendor_name': externalVendorName,
+      'acquisition_price': acquisitionPrice,
+      'acquisition_date': acquisitionDate?.toIso8601String(),
+      'origin_type': originType,
     };
   }
 
