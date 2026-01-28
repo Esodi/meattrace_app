@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../models/sale.dart';
+import '../models/category_sales_summary.dart';
 import 'dio_client.dart';
 import '../utils/constants.dart';
 
@@ -13,15 +14,27 @@ class SaleService {
 
   SaleService._internal();
 
-  /// Fetch sales with optional filters
+  /// Fetch sales with optional filters including date range and product name
   Future<List<Sale>> getSales({
     int? shop,
     String? ordering,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? productName,
+    int? productId,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (shop != null) queryParams['shop'] = shop;
       if (ordering != null) queryParams['ordering'] = ordering;
+      if (dateFrom != null) {
+        queryParams['date_from'] = dateFrom.toIso8601String().split('T')[0];
+      }
+      if (dateTo != null) {
+        queryParams['date_to'] = dateTo.toIso8601String().split('T')[0];
+      }
+      if (productName != null) queryParams['product_name'] = productName;
+      if (productId != null) queryParams['product_id'] = productId;
 
       final response = await _dioClient.dio.get(
         '${Constants.baseUrl}/sales/',
@@ -57,6 +70,48 @@ class SaleService {
     }
   }
 
+  /// Get aggregated sales summary for a product name/category
+  Future<CategorySalesSummary> getCategorySalesSummary(
+    String productName,
+  ) async {
+    try {
+      final encodedName = Uri.encodeComponent(productName);
+      final response = await _dioClient.dio.get(
+        '${Constants.baseUrl}/sales/category-summary/$encodedName/',
+      );
+      return CategorySalesSummary.fromJson(response.data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception('Product not found');
+      }
+      throw Exception('Failed to fetch category summary: ${e.message}');
+    }
+  }
+
+  /// Get public sale receipt by UUID (no auth required)
+  Future<Map<String, dynamic>> getPublicReceipt(String receiptUuid) async {
+    try {
+      // Use a separate Dio instance without auth headers for public endpoint
+      final publicDio = Dio(
+        BaseOptions(
+          baseUrl: Constants.baseUrl.replaceAll('/api/v2', ''),
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+
+      final response = await publicDio.get(
+        '/api/v2/public/sale-receipt/$receiptUuid/',
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception('Receipt not found');
+      }
+      throw Exception('Failed to fetch receipt: ${e.message}');
+    }
+  }
+
   /// Create new sale with items
   Future<Sale> createSale(Map<String, dynamic> saleData) async {
     try {
@@ -68,7 +123,9 @@ class SaleService {
         data: saleData,
       );
 
-      print('✅ [SaleService] Sale created successfully: ${response.statusCode}');
+      print(
+        '✅ [SaleService] Sale created successfully: ${response.statusCode}',
+      );
       print('📄 [SaleService] Response data: ${response.data}');
       return Sale.fromJson(response.data);
     } on DioException catch (e) {

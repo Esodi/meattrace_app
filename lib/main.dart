@@ -56,6 +56,7 @@ import 'screens/processing_unit/unit_registration_screen.dart';
 import 'screens/processing_unit/unit_user_management_screen.dart';
 import 'screens/processing_unit/product_categories_screen.dart';
 import 'screens/processing_unit/processor_notification_screen.dart';
+import 'screens/processing_unit/traceability_dashboard_screen.dart';
 import 'screens/shop/modern_shop_home_screen.dart';
 import 'screens/shop/receive_products_screen.dart';
 import 'screens/shop/shop_registration_screen.dart';
@@ -67,6 +68,9 @@ import 'screens/shop/order_history_screen.dart';
 import 'screens/shop/place_order_screen.dart';
 import 'screens/shop/order_detail_screen.dart';
 import 'screens/shop/sell_screen.dart';
+import 'screens/shop/sales_history_screen.dart';
+import 'screens/shop/sale_detail_screen.dart';
+import 'screens/shop/product_sales_tracking_screen.dart';
 import 'screens/common/enhanced_qr_scanner_screen.dart';
 import 'screens/common/camera_screen.dart';
 import 'screens/common/printer_settings_screen.dart';
@@ -84,7 +88,6 @@ import 'screens/abbatoir/sick_animals_screen.dart';
 import 'screens/common/external_vendors_screen.dart';
 import 'screens/common/initial_inventory_onboarding.dart';
 
-import 'screens/common/coming_soon_screen.dart';
 import 'screens/common/user_profile_screen.dart';
 import 'screens/common/settings_screen.dart';
 
@@ -400,12 +403,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => const CurrentInventoryScreen(),
             ),
             GoRoute(
-              path: '/product-history',
-              builder: (context, state) => const ComingSoonScreen(
-                featureName: 'Product History',
-                description: 'View complete history...',
-                icon: Icons.history,
-              ),
+              path: '/processor/traceability',
+              builder: (context, state) => const ProcessingTraceabilityScreen(),
             ),
             GoRoute(
               path: '/transfer-products',
@@ -483,6 +482,22 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               path: '/products/:id',
               builder: (context, state) =>
                   ProductDetailScreen(productId: state.pathParameters['id']!),
+            ),
+            GoRoute(
+              path: '/shop/sales',
+              builder: (context, state) => const SalesHistoryScreen(),
+            ),
+            GoRoute(
+              path: '/shop/sales/:id',
+              builder: (context, state) => SaleDetailScreen(
+                saleId: int.parse(state.pathParameters['id']!),
+              ),
+            ),
+            GoRoute(
+              path: '/shop/product-sales/:productName',
+              builder: (context, state) => ProductSalesTrackingScreen(
+                productName: state.pathParameters['productName']!,
+              ),
             ),
           ],
         ),

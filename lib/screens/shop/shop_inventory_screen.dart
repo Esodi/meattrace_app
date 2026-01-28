@@ -426,6 +426,8 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                     _editProduct(product);
                   } else if (value == 'qr') {
                     _showQRCode(product);
+                  } else if (value == 'tracking') {
+                    context.push('/shop/product-sales/${product.productType}');
                   } else if (value == 'delete') {
                     _deleteProduct(product);
                   }
@@ -438,6 +440,16 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                         Icon(Icons.edit, color: AppColors.textPrimary),
                         const SizedBox(width: AppTheme.space8),
                         Text('Edit', style: AppTypography.bodyMedium()),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'tracking',
+                    child: Row(
+                      children: [
+                        Icon(Icons.analytics, color: AppColors.textPrimary),
+                        const SizedBox(width: AppTheme.space8),
+                        Text('Tracking', style: AppTypography.bodyMedium()),
                       ],
                     ),
                   ),

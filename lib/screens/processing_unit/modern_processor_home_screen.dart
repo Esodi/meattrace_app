@@ -732,6 +732,12 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         color: AppColors.secondaryBlue,
         route: '/external-vendors',
       ),
+      _QuickAction(
+        icon: Icons.analytics_outlined,
+        label: 'Traceability',
+        color: const Color(0xFFF39C12),
+        route: '/processor/traceability',
+      ),
     ];
 
     return Padding(

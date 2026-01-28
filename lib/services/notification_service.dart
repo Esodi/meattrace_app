@@ -99,7 +99,9 @@ class NotificationService {
 
   /// Dismiss all active notifications
   static void dismissAll(BuildContext context) {
-    ScaffoldMessenger.of(context).clearSnackBars();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+    }
   }
 
   /// Internal method to show notifications
@@ -112,8 +114,9 @@ class NotificationService {
     VoidCallback? onTap,
   }) {
     final config = _getNotificationConfig(type);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+
+    messenger.showSnackBar(
       SnackBar(
         content: GestureDetector(
           onTap: onTap,
@@ -126,14 +129,10 @@ class NotificationService {
                   color: config.iconBackgroundColor,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  config.icon,
-                  color: config.iconColor,
-                  size: 24,
-                ),
+                child: Icon(config.icon, color: config.iconColor, size: 24),
               ),
               const SizedBox(width: AppTheme.space12),
-              
+
               // Content
               Expanded(
                 child: Column(
@@ -161,7 +160,7 @@ class NotificationService {
                   ],
                 ),
               ),
-              
+
               // Loading indicator for loading type
               if (type == NotificationType.loading) ...[
                 const SizedBox(width: AppTheme.space12),
@@ -190,7 +189,7 @@ class NotificationService {
                 label: 'Dismiss',
                 textColor: Colors.white.withValues(alpha: 0.9),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  messenger.hideCurrentSnackBar();
                 },
               )
             : null,
@@ -248,42 +247,53 @@ class NotificationService {
     if (errorMessage.contains('username already exists') ||
         errorMessage.contains('already registered')) {
       title = 'Account Already Exists';
-      userFriendlyMessage = 'This username is already registered. Please try logging in or use a different username.';
+      userFriendlyMessage =
+          'This username is already registered. Please try logging in or use a different username.';
     } else if (errorMessage.contains('Invalid credentials') ||
         errorMessage.contains('incorrect password') ||
         errorMessage.contains('wrong password')) {
       title = 'Invalid Credentials';
-      userFriendlyMessage = 'The username or password you entered is incorrect. Please try again.';
+      userFriendlyMessage =
+          'The username or password you entered is incorrect. Please try again.';
     } else if (errorMessage.contains('User not found') ||
         errorMessage.contains('username not found')) {
       title = 'Account Not Found';
-      userFriendlyMessage = 'No account found with this username. Please check your username or sign up.';
+      userFriendlyMessage =
+          'No account found with this username. Please check your username or sign up.';
     } else if (errorMessage.contains('email already') ||
         errorMessage.contains('Email already registered')) {
       title = 'Email Already Registered';
-      userFriendlyMessage = 'This email address is already associated with an account. Please use a different email or try logging in.';
+      userFriendlyMessage =
+          'This email address is already associated with an account. Please use a different email or try logging in.';
     } else if (errorMessage.contains('invalid email') ||
         errorMessage.contains('email format')) {
       title = 'Invalid Email';
-      userFriendlyMessage = 'Please enter a valid email address (e.g., user@example.com).';
-    } else if (errorMessage.contains('password') && errorMessage.contains('requirement')) {
+      userFriendlyMessage =
+          'Please enter a valid email address (e.g., user@example.com).';
+    } else if (errorMessage.contains('password') &&
+        errorMessage.contains('requirement')) {
       title = 'Password Requirements Not Met';
-      userFriendlyMessage = 'Password must be at least 6 characters long and contain letters and numbers.';
-    } else if (errorMessage.contains('password') && errorMessage.contains('short')) {
+      userFriendlyMessage =
+          'Password must be at least 6 characters long and contain letters and numbers.';
+    } else if (errorMessage.contains('password') &&
+        errorMessage.contains('short')) {
       title = 'Password Too Short';
       userFriendlyMessage = 'Password must be at least 6 characters long.';
     } else if (errorMessage.contains('account locked') ||
         errorMessage.contains('too many attempts')) {
       title = 'Account Locked';
-      userFriendlyMessage = 'Your account has been temporarily locked due to multiple failed login attempts. Please try again later.';
+      userFriendlyMessage =
+          'Your account has been temporarily locked due to multiple failed login attempts. Please try again later.';
     } else if (errorMessage.contains('email verification') ||
         errorMessage.contains('verify your email')) {
       title = 'Email Verification Required';
-      userFriendlyMessage = 'Please verify your email address before logging in. Check your inbox for the verification link.';
+      userFriendlyMessage =
+          'Please verify your email address before logging in. Check your inbox for the verification link.';
     } else if (errorMessage.contains('account disabled') ||
         errorMessage.contains('account suspended')) {
       title = 'Account Disabled';
-      userFriendlyMessage = 'Your account has been disabled. Please contact support for assistance.';
+      userFriendlyMessage =
+          'Your account has been disabled. Please contact support for assistance.';
     } else if (errorMessage.contains('session expired') ||
         errorMessage.contains('token expired')) {
       title = 'Session Expired';
@@ -292,12 +302,14 @@ class NotificationService {
         errorMessage.contains('connection') ||
         errorMessage.contains('timeout')) {
       title = 'Connection Error';
-      userFriendlyMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+      userFriendlyMessage =
+          'Unable to connect to the server. Please check your internet connection and try again.';
     } else if (errorMessage.contains('server error') ||
         errorMessage.contains('500') ||
         errorMessage.contains('503')) {
       title = 'Server Error';
-      userFriendlyMessage = 'The server is experiencing issues. Please try again in a few moments.';
+      userFriendlyMessage =
+          'The server is experiencing issues. Please try again in a few moments.';
     } else {
       title = 'Authentication Error';
       userFriendlyMessage = errorMessage;
@@ -324,7 +336,8 @@ class NotificationService {
       case 'signup':
       case 'register':
         title = 'Account Created';
-        message = 'Your account has been created successfully. Welcome to MeatTrace Pro!';
+        message =
+            'Your account has been created successfully. Welcome to MeatTrace Pro!';
         break;
       case 'logout':
         title = 'Logged Out';
@@ -332,7 +345,8 @@ class NotificationService {
         break;
       case 'password_reset':
         title = 'Password Reset';
-        message = 'Your password has been reset successfully. You can now log in with your new password.';
+        message =
+            'Your password has been reset successfully. You can now log in with your new password.';
         break;
       case 'email_verified':
         title = 'Email Verified';
@@ -353,13 +367,7 @@ class NotificationService {
 }
 
 /// Notification types
-enum NotificationType {
-  success,
-  error,
-  warning,
-  info,
-  loading,
-}
+enum NotificationType { success, error, warning, info, loading }
 
 /// Internal notification configuration
 class _NotificationConfig {

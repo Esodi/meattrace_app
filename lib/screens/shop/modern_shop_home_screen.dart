@@ -634,6 +634,12 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                 '/shop/sell',
               ),
               _buildQuickBtn(
+                Icons.history,
+                'Sales History',
+                AppColors.secondaryBlue,
+                '/shop/sales',
+              ),
+              _buildQuickBtn(
                 Icons.qr_code_scanner,
                 'Scan',
                 AppColors.warning,

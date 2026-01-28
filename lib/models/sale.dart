@@ -8,6 +8,7 @@ class Sale {
   final String paymentMethod;
   final DateTime createdAt;
   final String? qrCode;
+  final String? receiptUuid;
   final List<SaleItem> items;
 
   Sale({
@@ -20,6 +21,7 @@ class Sale {
     required this.paymentMethod,
     required this.createdAt,
     this.qrCode,
+    this.receiptUuid,
     this.items = const [],
   });
 
@@ -36,6 +38,7 @@ class Sale {
       paymentMethod: json['payment_method'],
       createdAt: DateTime.parse(json['created_at']),
       qrCode: json['qr_code'],
+      receiptUuid: json['receipt_uuid'],
       items: json['items'] != null
           ? (json['items'] as List)
                 .map((item) => SaleItem.fromJson(item))
@@ -55,8 +58,15 @@ class Sale {
       'payment_method': paymentMethod,
       'created_at': createdAt.toIso8601String(),
       'qr_code': qrCode,
+      'receipt_uuid': receiptUuid,
       'items': items.map((item) => item.toJson()).toList(),
     };
+  }
+
+  /// Get the public receipt URL for QR code sharing
+  String? get publicReceiptUrl {
+    if (receiptUuid == null) return null;
+    return '/sale-receipt/$receiptUuid/';
   }
 
   Sale copyWith({
@@ -69,6 +79,7 @@ class Sale {
     String? paymentMethod,
     DateTime? createdAt,
     String? qrCode,
+    String? receiptUuid,
     List<SaleItem>? items,
   }) {
     return Sale(
@@ -81,6 +92,7 @@ class Sale {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       createdAt: createdAt ?? this.createdAt,
       qrCode: qrCode ?? this.qrCode,
+      receiptUuid: receiptUuid ?? this.receiptUuid,
       items: items ?? this.items,
     );
   }
