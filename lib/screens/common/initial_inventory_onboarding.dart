@@ -96,6 +96,11 @@ class _InitialInventoryOnboardingScreenState
           externalVendorName: 'Opening Stock', // System reserved name
           acquisitionPrice: double.tryParse(_priceController.text),
           liveWeight: double.tryParse(_weightController.text) ?? 50.0,
+          remainingWeight: double.tryParse(_weightController.text) ?? 50.0,
+          receivedBy: currentUser.id,
+          receivedAt: DateTime.now(),
+          transferredTo: currentUser.processingUnitId,
+          transferredAt: DateTime.now(),
         );
 
         await context.read<AnimalProvider>().createAnimal(animal);
@@ -121,6 +126,11 @@ class _InitialInventoryOnboardingScreenState
           isExternal: true,
           externalVendorName: 'Opening Stock',
           acquisitionPrice: double.tryParse(_priceController.text) ?? 0.0,
+          remainingWeight: double.tryParse(_weightController.text) ?? 1.0,
+          receivedBy: currentUser.id,
+          receivedAt: DateTime.now(),
+          transferredTo: currentUser.processingUnitId,
+          transferredAt: DateTime.now(),
         );
 
         await context.read<ProductProvider>().createProduct(product);

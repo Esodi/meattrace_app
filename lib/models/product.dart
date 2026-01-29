@@ -70,6 +70,7 @@ class Product {
   final int? externalVendorId;
   final String? externalVendorName;
   final double? acquisitionPrice;
+  final double? remainingWeight;
 
   Product({
     this.id,
@@ -104,6 +105,7 @@ class Product {
     this.externalVendorId,
     this.externalVendorName,
     this.acquisitionPrice,
+    this.remainingWeight,
   });
 
   factory Product.fromMap(Map<String, dynamic> json) {
@@ -177,6 +179,9 @@ class Product {
       acquisitionPrice: json['acquisition_price'] != null
           ? double.tryParse(json['acquisition_price'].toString())
           : null,
+      remainingWeight: json['remaining_weight'] != null
+          ? double.tryParse(json['remaining_weight'].toString())
+          : null,
     );
   }
 
@@ -214,6 +219,7 @@ class Product {
       'external_vendor_id': externalVendorId,
       'external_vendor_name': externalVendorName,
       'acquisition_price': acquisitionPrice,
+      'remaining_weight': remainingWeight,
     };
   }
 
@@ -261,6 +267,7 @@ class Product {
       'external_vendor_id': externalVendorId,
       'external_vendor_name': externalVendorName,
       'acquisition_price': acquisitionPrice,
+      'remaining_weight': remainingWeight,
     };
   }
 
@@ -304,6 +311,11 @@ class Product {
     int? receivedBy,
     DateTime? receivedAt,
     String? receivedByName,
+    bool? isExternal,
+    int? externalVendorId,
+    String? externalVendorName,
+    double? acquisitionPrice,
+    double? remainingWeight,
   }) {
     return Product(
       id: id ?? this.id,
@@ -334,11 +346,11 @@ class Product {
       receivedBy: receivedBy ?? this.receivedBy,
       receivedAt: receivedAt ?? this.receivedAt,
       receivedByName: receivedByName ?? this.receivedByName,
-      isExternal:
-          isExternal, // No override for now, assume copy preserves original unless manually handled
-      externalVendorId: externalVendorId,
-      externalVendorName: externalVendorName,
-      acquisitionPrice: acquisitionPrice,
+      isExternal: isExternal ?? this.isExternal,
+      externalVendorId: externalVendorId ?? this.externalVendorId,
+      externalVendorName: externalVendorName ?? this.externalVendorName,
+      acquisitionPrice: acquisitionPrice ?? this.acquisitionPrice,
+      remainingWeight: remainingWeight ?? this.remainingWeight,
     );
   }
 }

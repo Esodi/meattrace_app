@@ -540,30 +540,36 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Good Morning,',
-                        style: AppTypography.bodyMedium().copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Good Morning,',
+                          style: AppTypography.bodyMedium().copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
                         ),
-                      ),
-                      Text(
-                        username,
-                        style: AppTypography.headlineLarge().copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          username,
+                          style: AppTypography.headlineLarge().copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        processingUnitName,
-                        style: AppTypography.bodyLarge().copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w500,
+                        Text(
+                          processingUnitName,
+                          style: AppTypography.bodyLarge().copyWith(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(AppTheme.space8),

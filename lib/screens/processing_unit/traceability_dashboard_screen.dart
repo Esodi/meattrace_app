@@ -476,12 +476,15 @@ class _ProcessingTraceabilityScreenState
             '$label: ',
             style: TextStyle(color: Colors.grey[600], fontSize: 13),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -504,13 +507,17 @@ class _ProcessingTraceabilityScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                u.name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+              Expanded(
+                child: Text(
+                  u.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 u.formattedDate,
                 style: TextStyle(color: Colors.grey[500], fontSize: 11),
@@ -520,9 +527,12 @@ class _ProcessingTraceabilityScreenState
           const SizedBox(height: 4),
           Row(
             children: [
-              Text(
-                'Batch: ${u.batchNumber}',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              Expanded(
+                child: Text(
+                  'Batch: ${u.batchNumber}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const Spacer(),
               Text(
@@ -545,9 +555,11 @@ class _ProcessingTraceabilityScreenState
                   color: Colors.blue,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  'Transferred to: ',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                Expanded(
+                  child: Text(
+                    'Transferred to: ',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                  ),
                 ),
                 Text(
                   u.transferredTo!,

@@ -66,6 +66,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   bool _isExternalSource = false;
   ExternalVendor? _selectedVendor;
   final _externalPriceController = TextEditingController();
+  final _externalWeightController = TextEditingController();
 
   // Bluetooth Scale
   final BluetoothScaleService _scaleService = BluetoothScaleService();
@@ -401,6 +402,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     for (var controller in _priceControllers.values) {
       controller.dispose();
     }
+    _externalPriceController.dispose();
+    _externalWeightController.dispose();
     super.dispose();
   }
 
@@ -702,6 +705,21 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               prefixText: 'TZS ',
             ),
           ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _externalWeightController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Available Weight / Total Quantity',
+              border: OutlineInputBorder(),
+              suffixText: 'kg',
+              prefixIcon: Icon(Icons.scale),
+            ),
+            validator: (value) =>
+                _isExternalSource && (value == null || value.isEmpty)
+                ? 'Required'
+                : null,
+          ),
         ] else
           Semantics(
             label: 'Select a slaughtered animal or part for the product',
@@ -848,7 +866,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   Widget _buildWeightFields() {
     // Calculate available weight for validation (always in kg)
     final double maxAvailableWeight = _isExternalSource
-        ? 1000000.0 // High limit for external sources
+        ? (double.tryParse(_externalWeightController.text) ?? 1000000.0)
         : _selectedAnimal != null
         ? (_selectedAnimal!.remainingWeight ??
               _selectedAnimal!.liveWeight ??
@@ -1208,12 +1226,21 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       return;
     }
 
-    // Check if an animal or part is selected
-    if (_selectedAnimal == null && _selectedPart == null) {
+    // Check if an animal or part or external vendor is selected
+    if (!_isExternalSource &&
+        _selectedAnimal == null &&
+        _selectedPart == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select an animal or slaughter part'),
         ),
+      );
+      return;
+    }
+
+    if (_isExternalSource && _selectedVendor == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an external vendor')),
       );
       return;
     }
@@ -1223,10 +1250,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     _pipelineManager.startStage('validation');
 
     // Get the animal ID (either from selected animal or from the part's animal)
-    final animalId = _selectedAnimal?.id ?? _selectedPart!.animalId;
-    final sourceName = _selectedAnimal != null
-        ? '${_selectedAnimal!.species} (${_selectedAnimal!.animalId})'
-        : '${_selectedPart!.partType.displayName} from Animal ${_selectedPart!.animalId}';
+    final animalId = _isExternalSource
+        ? 0
+        : (_selectedAnimal?.id ?? _selectedPart!.animalId);
+    final sourceName = _isExternalSource
+        ? 'External Vendor (${_selectedVendor?.name})'
+        : (_selectedAnimal != null
+              ? '${_selectedAnimal!.species} (${_selectedAnimal!.animalId})'
+              : '${_selectedPart!.partType.displayName} from Animal ${_selectedPart!.animalId}');
 
     print('🚀 [CreateProductScreen] Starting product creation process...');
     print('📊 [CreateProductScreen] Source: $sourceName');
@@ -1283,14 +1314,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           '🔄 [CreateProductScreen] Creating product ${i + 1}/${_selectedCategories.length} for category: ${category.name}',
         );
 
-        final productName = _selectedAnimal != null
-            ? '${category.name} from ${_selectedAnimal!.species}'
-            : '${category.name} from ${_selectedPart!.partType.displayName}';
+        final productName = _isExternalSource
+            ? '${category.name} from ${_selectedVendor?.name}'
+            : (_selectedAnimal != null
+                  ? '${category.name} from ${_selectedAnimal!.species}'
+                  : '${category.name} from ${_selectedPart!.partType.displayName}');
 
         final product = Product(
           animal: animalId,
-          slaughterPartId:
-              _selectedPart?.id, // Include slaughter part ID if selected
+          slaughterPartId: _isExternalSource ? null : _selectedPart?.id,
           productType: 'meat', // Must match backend choices
           createdAt: DateTime.now(),
           name: productName,
@@ -1301,13 +1333,24 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           price:
               double.tryParse(_priceControllers[category.id!]?.text ?? '0') ??
               0.0,
-          description: _selectedAnimal != null
-              ? 'Product created from slaughtered animal'
-              : 'Product created from slaughter part: ${_selectedPart!.partType.displayName}',
+          description: _isExternalSource
+              ? 'External acquisition from ${_selectedVendor?.name}'
+              : (_selectedAnimal != null
+                    ? 'Product created from slaughtered animal'
+                    : 'Product created from slaughter part: ${_selectedPart!.partType.displayName}'),
           manufacturer: 'Processing Unit $processingUnitName',
           processingUnit: int.tryParse(processingUnitId) ?? 0,
           timeline: [],
           id: null, // Will be set by backend
+          isExternal: _isExternalSource,
+          externalVendorId: _selectedVendor?.id,
+          externalVendorName: _selectedVendor?.name,
+          acquisitionPrice: _isExternalSource
+              ? double.tryParse(_externalPriceController.text)
+              : null,
+          remainingWeight: _isExternalSource
+              ? double.tryParse(_weightControllers[category.id!]!.text)
+              : null,
         );
 
         print(
