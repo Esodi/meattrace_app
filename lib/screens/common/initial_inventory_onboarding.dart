@@ -99,7 +99,9 @@ class _InitialInventoryOnboardingScreenState
           remainingWeight: double.tryParse(_weightController.text) ?? 50.0,
           receivedBy: currentUser.id,
           receivedAt: DateTime.now(),
-          transferredTo: currentUser.processingUnitId,
+          transferredTo: currentUser.role == 'Processor'
+              ? currentUser.processingUnitId
+              : null,
           transferredAt: DateTime.now(),
         );
 
@@ -107,7 +109,9 @@ class _InitialInventoryOnboardingScreenState
       } else {
         // Create an "Initial Stock" Product
         final product = Product(
-          processingUnit: currentUser.processingUnitId ?? 0,
+          processingUnit: currentUser.role == 'Processor'
+              ? (currentUser.processingUnitId ?? 0)
+              : 0,
           processingUnitName: currentUser.processingUnitName,
           animal: 0, // No specific origin animal
           productType: 'meat', // Default
@@ -129,8 +133,13 @@ class _InitialInventoryOnboardingScreenState
           remainingWeight: double.tryParse(_weightController.text) ?? 1.0,
           receivedBy: currentUser.id,
           receivedAt: DateTime.now(),
-          transferredTo: currentUser.processingUnitId,
+          transferredTo: currentUser.role == 'Processor'
+              ? currentUser.processingUnitId
+              : null,
           transferredAt: DateTime.now(),
+          receivedByShopId: currentUser.role == 'ShopOwner'
+              ? currentUser.shopId
+              : null,
         );
 
         await context.read<ProductProvider>().createProduct(product);

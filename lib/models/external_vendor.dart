@@ -62,7 +62,7 @@ class ExternalVendor {
     this.location,
     this.category = ExternalVendorCategory.other,
     DateTime? createdAt,
-  }) : this.createdAt = createdAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now();
 
   factory ExternalVendor.fromMap(Map<String, dynamic> json) {
     return ExternalVendor(

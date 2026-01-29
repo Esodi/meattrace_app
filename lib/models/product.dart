@@ -57,13 +57,13 @@ class Product {
   final String? qrCode;
   final List<ProductTimelineEvent> timeline;
 
-  // Transfer fields
   final int? transferredTo;
   final DateTime? transferredAt;
   final String? transferredToName;
-  final int? receivedBy;
+  final int? receivedBy; // User who received it
+  final int? receivedByShopId; // Shop that received it
   final DateTime? receivedAt;
-  final String? receivedByName;
+  final String? receivedByName; // Display name for receiver
 
   // External Source Tracking
   final bool isExternal;
@@ -101,6 +101,7 @@ class Product {
     this.receivedBy,
     this.receivedAt,
     this.receivedByName,
+    this.receivedByShopId,
     this.isExternal = false,
     this.externalVendorId,
     this.externalVendorName,
@@ -163,13 +164,17 @@ class Product {
           ? DateTime.parse(json['transferred_at'])
           : null,
       transferredToName: json['transferred_to_name'],
-      receivedBy: json['received_by_shop'] != null
-          ? int.parse(json['received_by_shop'].toString())
+      receivedBy: json['received_by'] != null
+          ? int.tryParse(json['received_by'].toString())
+          : null,
+      receivedByShopId: json['received_by_shop'] != null
+          ? int.tryParse(json['received_by_shop'].toString())
           : null,
       receivedAt: json['received_at'] != null
-          ? DateTime.parse(json['received_at'])
+          ? DateTime.tryParse(json['received_at'])
           : null,
-      receivedByName: json['received_by_shop_name'],
+      receivedByName:
+          json['received_by_username'] ?? json['received_by_shop_name'],
       isExternal:
           json['is_external_source'] == 1 || json['is_external_source'] == true,
       externalVendorId: json['external_vendor_id'] != null
@@ -212,9 +217,10 @@ class Product {
       'transferred_to': transferredTo,
       'transferred_at': transferredAt?.toIso8601String(),
       'transferred_to_name': transferredToName,
-      'received_by_shop': receivedBy,
+      'received_by': receivedBy,
+      'received_by_shop': receivedByShopId,
       'received_at': receivedAt?.toIso8601String(),
-      'received_by_shop_name': receivedByName,
+      'received_by_username': receivedByName,
       'is_external_source': isExternal ? 1 : 0,
       'external_vendor_id': externalVendorId,
       'external_vendor_name': externalVendorName,
@@ -263,11 +269,16 @@ class Product {
       'description': description,
       'manufacturer': manufacturer,
       'category': category,
-      'is_external_source': isExternal ? 1 : 0,
+      'is_external_source': isExternal,
       'external_vendor_id': externalVendorId,
       'external_vendor_name': externalVendorName,
       'acquisition_price': acquisitionPrice,
       'remaining_weight': remainingWeight,
+      'transferred_to': transferredTo,
+      'received_by': receivedBy,
+      'received_at': receivedAt?.toIso8601String(),
+      'transferred_at': transferredAt?.toIso8601String(),
+      'received_by_shop': receivedByShopId,
     };
   }
 

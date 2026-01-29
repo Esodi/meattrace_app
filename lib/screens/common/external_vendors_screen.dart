@@ -22,11 +22,11 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
   }
 
   void _showAddVendorDialog(BuildContext context) {
-    final _formKey = GlobalKey<FormState>();
-    final _nameController = TextEditingController();
-    final _contactController = TextEditingController();
-    final _locationController = TextEditingController();
-    ExternalVendorCategory _selectedCategory = ExternalVendorCategory.farmer;
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final contactController = TextEditingController();
+    final locationController = TextEditingController();
+    ExternalVendorCategory selectedCategory = ExternalVendorCategory.farmer;
 
     showDialog(
       context: context,
@@ -36,12 +36,12 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
             title: const Text('Add External Vendor'),
             content: SingleChildScrollView(
               child: Form(
-                key: _formKey,
+                key: formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextFormField(
-                      controller: _nameController,
+                      controller: nameController,
                       decoration: const InputDecoration(
                         labelText: 'Vendor Name',
                         hintText: 'e.g., John Doe Farm',
@@ -53,7 +53,7 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<ExternalVendorCategory>(
-                      value: _selectedCategory,
+                      initialValue: selectedCategory,
                       decoration: const InputDecoration(
                         labelText: 'Category',
                         prefixIcon: Icon(Icons.category),
@@ -66,13 +66,13 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
                       }).toList(),
                       onChanged: (value) {
                         if (value != null) {
-                          setState(() => _selectedCategory = value);
+                          setState(() => selectedCategory = value);
                         }
                       },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _contactController,
+                      controller: contactController,
                       decoration: const InputDecoration(
                         labelText: 'Contact Info (Optional)',
                         hintText: 'Phone, Email, etc.',
@@ -81,7 +81,7 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _locationController,
+                      controller: locationController,
                       decoration: const InputDecoration(
                         labelText: 'Location (Optional)',
                         hintText: 'City, Region',
@@ -99,16 +99,16 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
+                  if (formKey.currentState!.validate()) {
                     final newVendor = ExternalVendor(
-                      name: _nameController.text.trim(),
-                      contactInfo: _contactController.text.trim().isEmpty
+                      name: nameController.text.trim(),
+                      contactInfo: contactController.text.trim().isEmpty
                           ? null
-                          : _contactController.text.trim(),
-                      location: _locationController.text.trim().isEmpty
+                          : contactController.text.trim(),
+                      location: locationController.text.trim().isEmpty
                           ? null
-                          : _locationController.text.trim(),
-                      category: _selectedCategory,
+                          : locationController.text.trim(),
+                      category: selectedCategory,
                     );
 
                     final provider = context.read<ExternalVendorProvider>();

@@ -66,7 +66,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
 
     // Filter by shop ownership - receivedBy contains the shop ID, not user ID
     var filtered = products
-        .where((p) => p.receivedBy == currentShopId)
+        .where((p) => p.receivedByShopId == currentShopId)
         .toList();
 
     // Filter by stock status (tab)

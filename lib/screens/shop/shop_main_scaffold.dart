@@ -15,8 +15,9 @@ class ShopMainScaffold extends StatelessWidget {
     if (location == '/shop-home') return 0;
     if (location.startsWith('/shop/inventory')) return 1;
     if (location.startsWith('/shop/orders') ||
-        location.startsWith('/shop/sell'))
+        location.startsWith('/shop/sell')) {
       return 2;
+    }
     if (location.startsWith('/shop/profile')) return 3;
 
     return 0;

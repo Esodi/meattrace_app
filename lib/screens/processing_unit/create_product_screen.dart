@@ -656,7 +656,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 child: Consumer<ExternalVendorProvider>(
                   builder: (context, provider, child) {
                     return DropdownButtonFormField<ExternalVendor>(
-                      value: _selectedVendor,
+                      initialValue: _selectedVendor,
                       decoration: const InputDecoration(
                         labelText: 'Select Vendor',
                         border: OutlineInputBorder(),

@@ -195,15 +195,17 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     if (!mounted) return;
 
     try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final apiService = ApiService();
-      final stats = await apiService.fetchProductionStats();
+      final stats = await apiService.fetchProductionStats(
+        unitId: authProvider.user?.processingUnitId,
+      );
 
       if (mounted) {
         setState(() => _productionStats = stats);
       }
     } catch (e) {
       debugPrint('Error loading production stats: $e');
-      // Keep existing stats or set to null on error
       if (mounted) {
         setState(() => _productionStats = null);
       }

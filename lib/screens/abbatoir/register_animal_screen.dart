@@ -676,10 +676,10 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
               });
             },
             style: ButtonStyle(
-              backgroundColor: MaterialStateProperty.resolveWith<Color?>((
+              backgroundColor: WidgetStateProperty.resolveWith<Color?>((
                 states,
               ) {
-                if (states.contains(MaterialState.selected)) {
+                if (states.contains(WidgetState.selected)) {
                   return AppColors.abbatoirPrimary.withOpacity(0.2);
                 }
                 return null;
@@ -694,7 +694,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                   child: Consumer<ExternalVendorProvider>(
                     builder: (context, provider, child) {
                       return DropdownButtonFormField<ExternalVendor>(
-                        value: _selectedVendor,
+                        initialValue: _selectedVendor,
                         decoration: const InputDecoration(
                           labelText: 'Select Vendor',
                           border: OutlineInputBorder(),

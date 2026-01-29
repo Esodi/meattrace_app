@@ -15,8 +15,9 @@ class AbbatoirMainScaffold extends StatelessWidget {
 
     if (location == '/abbatoir-home') return 0;
     if (location.startsWith('/abbatoir/livestock-history') ||
-        location.startsWith('/animals/'))
+        location.startsWith('/animals/')) {
       return 1;
+    }
     if (location.startsWith('/abbatoir/sick-animals')) return 2;
     if (location.startsWith('/abbatoir/profile')) return 3;
 

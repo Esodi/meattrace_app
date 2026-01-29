@@ -121,7 +121,8 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
       final shopId = authProvider.user?.shopId;
       if (shopId != null) {
         final pendingProducts = productProvider.products.where((product) {
-          return product.transferredTo == shopId && product.receivedBy == null;
+          return product.transferredTo == shopId &&
+              product.receivedByShopId == null;
         }).length;
         if (mounted) setState(() => _pendingProductsCount = pendingProducts);
       }
@@ -285,7 +286,8 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                       productProvider.products
                           .where(
                             (p) =>
-                                p.receivedBy == currentShopId && p.quantity > 0,
+                                p.receivedByShopId == currentShopId &&
+                                p.quantity > 0,
                           )
                           .toList()
                         ..sort((a, b) => b.price.compareTo(a.price))
@@ -348,7 +350,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                 builder: (context, productProvider, child) {
                   final currentShopId = authProvider.user?.shopId;
                   final shopProducts = productProvider.products
-                      .where((p) => p.receivedBy == currentShopId)
+                      .where((p) => p.receivedByShopId == currentShopId)
                       .take(5)
                       .toList();
                   if (shopProducts.isEmpty) {
@@ -398,7 +400,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
     final authProvider = Provider.of<AuthProvider>(context);
     final currentShopId = authProvider.user?.shopId;
     final shopProducts = productProvider.products
-        .where((p) => p.receivedBy == currentShopId)
+        .where((p) => p.receivedByShopId == currentShopId)
         .toList();
     final totalProducts = shopProducts.length;
     final lowStock = shopProducts
@@ -687,7 +689,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
   Widget _buildInventoryOverview(ProductProvider productProvider) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final shopProducts = productProvider.products
-        .where((p) => p.receivedBy == authProvider.user?.shopId)
+        .where((p) => p.receivedByShopId == authProvider.user?.shopId)
         .toList();
     final total = shopProducts.length;
     if (total == 0) return const SizedBox.shrink();

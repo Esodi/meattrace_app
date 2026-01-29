@@ -91,7 +91,9 @@ class _SellScreenState extends State<SellScreen>
     if (quantity > 0 && quantity > product.quantity) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Only ${product.quantity.toStringAsFixed(0)} units available in stock'),
+          content: Text(
+            'Only ${product.quantity.toStringAsFixed(0)} units available in stock',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -179,7 +181,11 @@ class _SellScreenState extends State<SellScreen>
     });
   }
 
-  void _updateCartItemQuantity(int productId, double newQuantity, {bool isWeight = false}) {
+  void _updateCartItemQuantity(
+    int productId,
+    double newQuantity, {
+    bool isWeight = false,
+  }) {
     final item = _cart[productId];
     if (item == null) return;
 
@@ -643,7 +649,7 @@ class _SellScreenState extends State<SellScreen>
 
         // Filter products available in this shop with stock
         final availableProducts = productProvider.products
-            .where((p) => p.receivedBy == currentShopId && p.quantity > 0)
+            .where((p) => p.receivedByShopId == currentShopId && p.quantity > 0)
             .toList();
 
         if (availableProducts.isEmpty) {
@@ -672,10 +678,10 @@ class _SellScreenState extends State<SellScreen>
     // Get or create controllers for this product
     _qtyControllers[product.id!] ??= TextEditingController();
     _weightControllers[product.id!] ??= TextEditingController();
-    
+
     final qtyController = _qtyControllers[product.id!]!;
     final weightController = _weightControllers[product.id!]!;
-    
+
     final hasWeight = product.weight != null && product.weight! > 0;
 
     return CustomCard(
@@ -745,7 +751,7 @@ class _SellScreenState extends State<SellScreen>
             ],
           ),
           const SizedBox(height: AppTheme.space12),
-          
+
           // Stock Info Row
           Row(
             children: [
@@ -794,7 +800,7 @@ class _SellScreenState extends State<SellScreen>
             ],
           ),
           const SizedBox(height: AppTheme.space12),
-          
+
           // Input Row - Quantity and Weight
           Row(
             children: [
@@ -964,7 +970,7 @@ class _SellScreenState extends State<SellScreen>
             ],
           ),
           const SizedBox(height: AppTheme.space12),
-          
+
           // Price Row
           Text(
             'Unit Price: TZS ${item.unitPrice.toStringAsFixed(2)}',
@@ -973,7 +979,7 @@ class _SellScreenState extends State<SellScreen>
             ),
           ),
           const SizedBox(height: AppTheme.space12),
-          
+
           // Quantity and Weight Row
           Row(
             children: [
@@ -1000,7 +1006,11 @@ class _SellScreenState extends State<SellScreen>
                             allowDecimals: false,
                             onChanged: (value) {
                               final newVal = double.tryParse(value) ?? 0;
-                              _updateCartItemQuantity(item.product.id!, newVal, isWeight: false);
+                              _updateCartItemQuantity(
+                                item.product.id!,
+                                newVal,
+                                isWeight: false,
+                              );
                             },
                           ),
                         ),
@@ -1016,7 +1026,7 @@ class _SellScreenState extends State<SellScreen>
                   ],
                 ),
               ),
-              
+
               // Weight Field
               Expanded(
                 child: Column(
@@ -1040,7 +1050,11 @@ class _SellScreenState extends State<SellScreen>
                             allowDecimals: true,
                             onChanged: (value) {
                               final newVal = double.tryParse(value) ?? 0;
-                              _updateCartItemQuantity(item.product.id!, newVal, isWeight: true);
+                              _updateCartItemQuantity(
+                                item.product.id!,
+                                newVal,
+                                isWeight: true,
+                              );
                             },
                           ),
                         ),
@@ -1056,7 +1070,7 @@ class _SellScreenState extends State<SellScreen>
                   ],
                 ),
               ),
-              
+
               // Subtotal
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,

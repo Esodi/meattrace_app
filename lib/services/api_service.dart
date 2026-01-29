@@ -124,9 +124,13 @@ class ApiService {
     }
   }
 
-  Future<ProductionStats> fetchProductionStats() async {
+  Future<ProductionStats> fetchProductionStats({int? unitId}) async {
     try {
-      final response = await _dioClient.dio.get('/production-stats/');
+      final queryParams = unitId != null ? {'unit_id': unitId} : null;
+      final response = await _dioClient.dio.get(
+        '/production-stats/',
+        queryParameters: queryParams,
+      );
       return ProductionStats.fromJson(response.data);
     } on DioException catch (e) {
       throw Exception('Failed to fetch production stats: ${e.message}');

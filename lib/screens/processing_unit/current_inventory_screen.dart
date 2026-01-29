@@ -264,7 +264,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
           Container(height: 40, width: 1, color: Colors.grey.shade300),
           _buildSummaryItem(
             Icons.scale,
-            '${(totalAnimalWeight + totalPartWeight).toStringAsFixed(1)}',
+            (totalAnimalWeight + totalPartWeight).toStringAsFixed(1),
             'Total',
             'kg available',
           ),
@@ -662,7 +662,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    'Qty: ${product.quantity?.toStringAsFixed(0) ?? '1'}',
+                    'Qty: ${product.quantity.toStringAsFixed(0) ?? '1'}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.blue.shade700,
@@ -701,7 +701,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      'TZS ${product.price?.toStringAsFixed(0) ?? '0'}',
+                      'TZS ${product.price.toStringAsFixed(0) ?? '0'}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.green.shade700,
