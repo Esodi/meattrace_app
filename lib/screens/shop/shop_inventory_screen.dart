@@ -322,8 +322,12 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                       children: [
                         Expanded(
                           child: Text(
-                            product.productType,
+                            product.name.isNotEmpty
+                                ? product.name
+                                : product.productType,
                             style: AppTypography.titleMedium(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (product.isExternal)
@@ -359,35 +363,42 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                       ),
                     ),
                     const SizedBox(height: AppTheme.space8),
-                    Row(
+                    Wrap(
+                      spacing: AppTheme.space16,
+                      runSpacing: AppTheme.space8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.spaceBetween,
                       children: [
-                        Icon(
-                          Icons.inventory_2,
-                          size: 16,
-                          color: AppColors.textSecondary,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.inventory_2,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: AppTheme.space4),
+                            Text(
+                              'Qty: ${product.quantity}',
+                              style: AppTypography.bodyMedium(),
+                            ),
+                            const SizedBox(width: AppTheme.space16),
+                            Icon(
+                              Icons.scale,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: AppTheme.space4),
+                            Text(
+                              '${product.weight?.toStringAsFixed(1) ?? '0'} kg',
+                              style: AppTypography.bodyMedium(),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: AppTheme.space4),
-                        Text(
-                          'Qty: ${product.quantity}',
-                          style: AppTypography.bodyMedium(),
-                        ),
-                        const SizedBox(width: AppTheme.space16),
-                        Icon(
-                          Icons.scale,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: AppTheme.space4),
-                        Text(
-                          '${product.weight?.toStringAsFixed(1) ?? '0'} kg',
-                          style: AppTypography.bodyMedium(),
-                        ),
-                        const Spacer(),
-                        // Show "Add Price" button if price is 0, otherwise show price with edit button
                         if (product.price == 0)
                           ElevatedButton.icon(
                             onPressed: () => _showAddPriceDialog(product),
-                            icon: const Icon(Icons.attach_money, size: 22),
+                            icon: const Icon(Icons.attach_money, size: 18),
                             label: Text(
                               'Add Price',
                               style: AppTypography.bodyMedium().copyWith(
@@ -399,11 +410,10 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                               backgroundColor: AppColors.shopPrimary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: AppTheme.space20,
-                                vertical: AppTheme.space16,
+                                horizontal: AppTheme.space12,
+                                vertical: AppTheme.space8,
                               ),
-                              minimumSize: const Size(140, 48),
-                              tapTargetSize: MaterialTapTargetSize.padded,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           )
                         else

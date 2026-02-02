@@ -23,6 +23,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
 
   // Form Controllers
   final _nameController = TextEditingController();
+  final _quantityController = TextEditingController(text: '1');
   final _weightController = TextEditingController();
   final _priceController = TextEditingController();
   final _batchController = TextEditingController();
@@ -54,6 +55,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _quantityController.dispose();
     _weightController.dispose();
     _priceController.dispose();
     _batchController.dispose();
@@ -73,17 +75,23 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
 
       if (currentUser == null) throw Exception('User not logged in');
 
+      if (currentUser.shopId == null) {
+        throw Exception('Shop ID not found for current user');
+      }
+
       final now = DateTime.now();
       final weight = double.tryParse(_weightController.text) ?? 0.0;
+      final quantity = double.tryParse(_quantityController.text) ?? 1.0;
       final price = double.tryParse(_priceController.text) ?? 0.0;
 
       // Register Product for Shop
       final product = Product(
-        processingUnit: 0, // Brought from external/opening
+        processingUnit:
+            null, // Brought from external/opening (Backend supports null now)
         processingUnitName: _selectedVendor?.name ?? 'External Vendor',
-        animal: 0,
+        animal: null,
         productType: _selectedProductType,
-        quantity: 1,
+        quantity: quantity,
         createdAt: now,
         name: _nameController.text.isNotEmpty
             ? _nameController.text.trim()
@@ -135,6 +143,8 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
 
   void _clearForm() {
     _nameController.clear();
+    _nameController.clear();
+    _quantityController.text = '1';
     _weightController.clear();
     _priceController.clear();
     _batchController.clear();
@@ -149,6 +159,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Shop Inventory Entry',
+        backgroundColor: AppColors.shopPrimary,
         leading: const EnhancedBackButton(fallbackRoute: '/shop-home'),
       ),
       body: SingleChildScrollView(
@@ -175,7 +186,14 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
                     const SizedBox(height: AppTheme.space16),
                     _buildBatchField(),
                     const SizedBox(height: AppTheme.space16),
-                    _buildWeightField(),
+                    const SizedBox(height: AppTheme.space16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildQuantityField()),
+                        const SizedBox(width: AppTheme.space16),
+                        Expanded(child: _buildWeightField()),
+                      ],
+                    ),
                     const SizedBox(height: AppTheme.space16),
                     _buildNotesField(),
                     const SizedBox(height: AppTheme.space32),
@@ -194,14 +212,12 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space12),
-      color: AppColors.processorPrimary.withValues(
-        alpha: 0.1,
-      ), // Using processor primary as shop theme is similar
+      color: AppColors.shopPrimary.withValues(alpha: 0.1),
       child: Row(
         children: [
           Icon(
             Icons.inventory_2_outlined,
-            color: AppColors.processorPrimary,
+            color: AppColors.shopPrimary,
             size: 20,
           ),
           const SizedBox(width: AppTheme.space12),
@@ -306,17 +322,30 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
     );
   }
 
+  Widget _buildQuantityField() {
+    return TextFormField(
+      controller: _quantityController,
+      keyboardType: TextInputType.number,
+      decoration: const InputDecoration(
+        labelText: 'Quantity',
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.numbers),
+      ),
+      validator: (v) => v?.isEmpty == true ? 'Required' : null,
+    );
+  }
+
   Widget _buildWeightField() {
     return TextFormField(
       controller: _weightController,
       keyboardType: TextInputType.number,
       decoration: const InputDecoration(
-        labelText: 'Current Weight (kg)',
+        labelText: 'Total Weight',
         border: OutlineInputBorder(),
         suffixText: 'kg',
         prefixIcon: Icon(Icons.scale_outlined),
       ),
-      validator: (v) => v?.isEmpty == true ? 'Weight is required' : null,
+      validator: (v) => v?.isEmpty == true ? 'Required' : null,
     );
   }
 
@@ -338,7 +367,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
       child: ElevatedButton(
         onPressed: _isProcessing ? null : _submitStock,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.processorPrimary,
+          backgroundColor: AppColors.shopPrimary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),

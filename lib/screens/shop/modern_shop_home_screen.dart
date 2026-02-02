@@ -373,6 +373,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                             productId: product.id.toString(),
                             batchNumber: product.batchNumber,
                             productType: product.productType,
+                            productName: product.name,
                             qualityGrade: 'premium',
                             weight: product.weight,
                             price: product.price.toDouble(),
