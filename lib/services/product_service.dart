@@ -14,21 +14,25 @@ class ProductService {
   ProductService._internal();
 
   Future<List<Product>> getProducts({
-      String? productType,
-      int? animal,
-      int? processingUnit,
-      String? search,
-      String? ordering,
-      bool? pendingReceipt,
+    String? productType,
+    int? animal,
+    int? processingUnit,
+    String? search,
+    String? ordering,
+    bool? pendingReceipt,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (productType != null) queryParams['product_type'] = productType;
       if (animal != null) queryParams['animal'] = animal;
-      if (processingUnit != null) queryParams['processing_unit'] = processingUnit;
+      if (processingUnit != null) {
+        queryParams['processing_unit'] = processingUnit;
+      }
       if (search != null) queryParams['search'] = search;
       if (ordering != null) queryParams['ordering'] = ordering;
-      if (pendingReceipt != null && pendingReceipt) queryParams['pending_receipt'] = 'true';
+      if (pendingReceipt != null && pendingReceipt) {
+        queryParams['pending_receipt'] = 'true';
+      }
 
       final response = await _dioClient.dio.get(
         Constants.productsEndpoint,
@@ -37,10 +41,34 @@ class ProductService {
 
       final data = response.data;
       if (data is List) {
-        return data.map((json) => Product.fromMap(json)).toList();
+        return (data)
+            .map((json) {
+              try {
+                return Product.fromMap(json);
+              } catch (e, stack) {
+                print('❌ Error parsing product: $e');
+                print('Stack trace: $stack');
+                print('📄 JSON: $json');
+                rethrow;
+              }
+            })
+            .toList()
+            .cast<Product>();
       } else if (data is Map && data.containsKey('results')) {
         final results = data['results'] as List;
-        return results.map((json) => Product.fromMap(json)).toList();
+        return results
+            .map((json) {
+              try {
+                return Product.fromMap(json);
+              } catch (e, stack) {
+                print('❌ Error parsing product: $e');
+                print('Stack trace: $stack');
+                print('📄 JSON: $json');
+                rethrow;
+              }
+            })
+            .toList()
+            .cast<Product>();
       } else {
         throw Exception('Unexpected response format');
       }
@@ -51,7 +79,9 @@ class ProductService {
 
   Future<Product> getProduct(int id) async {
     try {
-      final response = await _dioClient.dio.get('${Constants.productsEndpoint}$id/');
+      final response = await _dioClient.dio.get(
+        '${Constants.productsEndpoint}$id/',
+      );
       return Product.fromMap(response.data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
@@ -71,7 +101,9 @@ class ProductService {
         data: product.toMapForCreate(),
       );
 
-      print('✅ [ProductService] Product created successfully: ${response.statusCode}');
+      print(
+        '✅ [ProductService] Product created successfully: ${response.statusCode}',
+      );
       print('📄 [ProductService] Response data: ${response.data}');
       return Product.fromMap(response.data);
     } on DioException catch (e) {
@@ -149,15 +181,16 @@ class ProductService {
   }
 
   Future<Map<String, dynamic>> transferProducts(
-    List<int> productIds, 
-    int shopId, 
-    {Map<int, double>? productQuantities}
-  ) async {
+    List<int> productIds,
+    int shopId, {
+    Map<int, double>? productQuantities,
+  }) async {
     try {
       // Prepare transfer data with quantities
       List<Map<String, dynamic>> transfers = productIds.map((productId) {
         final Map<String, dynamic> transfer = {'product_id': productId};
-        if (productQuantities != null && productQuantities.containsKey(productId)) {
+        if (productQuantities != null &&
+            productQuantities.containsKey(productId)) {
           transfer['quantity'] = productQuantities[productId]!;
         }
         return transfer;
@@ -165,10 +198,7 @@ class ProductService {
 
       final response = await _dioClient.dio.post(
         '${Constants.productsEndpoint}transfer/',
-        data: {
-          'transfers': transfers,
-          'shop_id': shopId,
-        },
+        data: {'transfers': transfers, 'shop_id': shopId},
       );
       return response.data;
     } on DioException catch (e) {
@@ -178,7 +208,9 @@ class ProductService {
 
   Future<List<Product>> getTransferredProducts() async {
     try {
-      final response = await _dioClient.dio.get('${Constants.productsEndpoint}transferred_products/');
+      final response = await _dioClient.dio.get(
+        '${Constants.productsEndpoint}transferred_products/',
+      );
       final data = response.data;
       if (data is List) {
         return data.map((json) => Product.fromMap(json)).toList();
@@ -202,7 +234,8 @@ class ProductService {
         '${Constants.productsEndpoint}receive_products/',
         data: {
           if (receives != null && receives.isNotEmpty) 'receives': receives,
-          if (rejections != null && rejections.isNotEmpty) 'rejections': rejections,
+          if (rejections != null && rejections.isNotEmpty)
+            'rejections': rejections,
         },
       );
       return response.data;
@@ -215,10 +248,10 @@ class ProductService {
     try {
       final response = await _dioClient.dio.get(Constants.shopsEndpoint);
       final data = response.data;
-      
+
       print('[PRODUCT_SERVICE] getShops response type: ${data.runtimeType}');
       print('[PRODUCT_SERVICE] getShops response data: $data');
-      
+
       // Handle both List and Map with 'results' key
       if (data is List) {
         print('[PRODUCT_SERVICE] Response is List, converting to List<Map>');
@@ -251,11 +284,3 @@ class ProductService {
     }
   }
 }
-
-
-
-
-
-
-
-

@@ -236,6 +236,30 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> refreshProfile() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _authService.getCurrentUser();
+      if (updatedUser != null) {
+        _user = updatedUser;
+        _userContextProvider.setCurrentUser(_user!);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> withdrawAccount() async {
     _isLoading = true;
     _error = null;

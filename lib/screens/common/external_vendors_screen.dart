@@ -26,7 +26,7 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
     final nameController = TextEditingController();
     final contactController = TextEditingController();
     final locationController = TextEditingController();
-    ExternalVendorCategory selectedCategory = ExternalVendorCategory.farmer;
+    ExternalVendorCategory selectedCategory = ExternalVendorCategory.abbatoir;
 
     showDialog(
       context: context,
@@ -237,8 +237,6 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
 
   IconData _getIconForCategory(ExternalVendorCategory category) {
     switch (category) {
-      case ExternalVendorCategory.farmer:
-        return Icons.agriculture;
       case ExternalVendorCategory.abbatoir:
         return Icons.house_siding; // Approximate for abbatoir
       case ExternalVendorCategory.processor:

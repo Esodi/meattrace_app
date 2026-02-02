@@ -3,6 +3,8 @@ import '../../models/animal.dart';
 import '../../models/product.dart';
 import '../../services/dio_client.dart';
 import '../../utils/app_colors.dart';
+import 'package:provider/provider.dart';
+import '../../providers/product_provider.dart';
 import 'product_detail_screen.dart';
 import '../abbatoir/animal_detail_screen.dart';
 
@@ -19,7 +21,6 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
   late TabController _tabController;
   bool _isLoading = false;
   List<Animal> _receivedAnimals = [];
-  List<Product> _products = [];
   String _searchQuery = '';
 
   @override
@@ -35,66 +36,55 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
     super.dispose();
   }
 
+  String _debugHelper = 'Initializing...';
+
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _debugHelper = 'Loading...';
+    });
+
+    // 1. Fetch products (Independent)
+    try {
+      await Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      ).fetchProducts();
+      setState(() => _debugHelper += '\nProducts loaded.');
+    } catch (e) {
+      print('Error loading products: $e');
+      setState(() => _debugHelper += '\nProduct Error: $e');
+    }
+
+    // 2. Fetch animals (Independent)
     try {
       final dio = DioClient().dio;
+      final animalsResponse = await dio.get(
+        '/animals/',
+        queryParameters: {'ordering': '-created_at', 'page_size': 1000},
+      );
 
-      // Fetch received animals
-      final animalsResponse = await dio.get('/animals/');
-
-      // Handle both paginated and non-paginated responses for animals
-      List<dynamic> animalsList;
+      List<dynamic> animalsList = [];
       if (animalsResponse.data is Map &&
           animalsResponse.data.containsKey('results')) {
-        // Paginated response
         animalsList = animalsResponse.data['results'] as List;
       } else if (animalsResponse.data is List) {
-        // Direct list response
         animalsList = animalsResponse.data as List;
-      } else {
-        // Empty or unexpected format
-        animalsList = [];
       }
 
       final receivedAnimals = animalsList
           .map((json) => Animal.fromMap(json))
-          .where((animal) => animal.receivedBy != null)
-          .toList();
-
-      // Fetch products
-      final productsResponse = await dio.get('/products/');
-
-      // Handle both paginated and non-paginated responses for products
-      List<dynamic> productsList;
-      if (productsResponse.data is Map &&
-          productsResponse.data.containsKey('results')) {
-        // Paginated response
-        productsList = productsResponse.data['results'] as List;
-      } else if (productsResponse.data is List) {
-        // Direct list response
-        productsList = productsResponse.data as List;
-      } else {
-        // Empty or unexpected format
-        productsList = [];
-      }
-
-      final products = productsList
-          .map((json) => Product.fromMap(json))
           .toList();
 
       setState(() {
         _receivedAnimals = receivedAnimals;
-        _products = products;
+        _debugHelper += '\nAnimals loaded: ${receivedAnimals.length}';
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading inventory: $e')));
-      }
+      print('Error loading animals: $e');
+      setState(() => _debugHelper += '\nAnimal Error: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -142,12 +132,36 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
                       constraints.maxHeight -
                       150, // Reserve space for search and app bar
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : TabBarView(
-                          controller: _tabController,
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildReceivedAnimalsTab(),
-                            _buildProductsTab(),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(_debugHelper, textAlign: TextAlign.center),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            // DEBUG INFO
+                            Container(
+                              width: double.infinity,
+                              color: Colors.yellow.shade100,
+                              padding: const EdgeInsets.all(4),
+                              child: Text(
+                                _debugHelper,
+                                style: const TextStyle(fontSize: 10),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _buildReceivedAnimalsTab(),
+                                  _buildProductsTab(),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                 ),
@@ -362,49 +376,66 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
   }
 
   Widget _buildProductsTab() {
-    final filteredProducts = _products.where((product) {
-      if (_searchQuery.isEmpty) return true;
-      return product.name.toLowerCase().contains(_searchQuery) ||
-          product.batchNumber.toLowerCase().contains(_searchQuery) ||
-          product.productType.toLowerCase().contains(_searchQuery);
-    }).toList();
+    return Consumer<ProductProvider>(
+      builder: (context, productProvider, child) {
+        if (productProvider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    if (filteredProducts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inventory_2, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              _searchQuery.isEmpty ? 'No products yet' : 'No products found',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+        if (productProvider.error != null) {
+          // Fallback to offline data if available, otherwise show error
+          if (productProvider.products.isEmpty) {
+            return Center(child: Text('Error: ${productProvider.error}'));
+          }
+        }
+
+        final filteredProducts = productProvider.products.where((product) {
+          if (_searchQuery.isEmpty) return true;
+          return product.name.toLowerCase().contains(_searchQuery) ||
+              product.batchNumber.toLowerCase().contains(_searchQuery) ||
+              product.productType.toLowerCase().contains(_searchQuery);
+        }).toList();
+
+        if (filteredProducts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inventory_2, size: 64, color: Colors.grey.shade400),
+                const SizedBox(height: 16),
+                Text(
+                  _searchQuery.isEmpty
+                      ? 'No products yet'
+                      : 'No products found',
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 8),
+                if (_searchQuery.isEmpty)
+                  TextButton.icon(
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/create-product'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Product'),
+                  ),
+              ],
             ),
-            const SizedBox(height: 8),
-            if (_searchQuery.isEmpty)
-              TextButton.icon(
-                onPressed: () =>
-                    Navigator.pushNamed(context, '/create-product'),
-                icon: const Icon(Icons.add),
-                label: const Text('Create Product'),
-              ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: filteredProducts.length,
-        shrinkWrap: true,
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemBuilder: (context, index) {
-          final product = filteredProducts[index];
-          return _buildProductCard(product);
-        },
-      ),
+        return RefreshIndicator(
+          onRefresh: _loadData,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredProducts.length,
+            shrinkWrap: true,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemBuilder: (context, index) {
+              final product = filteredProducts[index];
+              return _buildProductCard(product);
+            },
+          ),
+        );
+      },
     );
   }
 

@@ -48,7 +48,12 @@ class AbbatoirMainScaffold extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.white,
-      body: child,
+      body: Padding(
+        padding: const EdgeInsets.only(
+          bottom: 90,
+        ), // Buffer for floating nav bar
+        child: child,
+      ),
       bottomNavigationBar: Container(
         color: Colors.transparent,
         child: SafeArea(

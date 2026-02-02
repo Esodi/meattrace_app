@@ -50,7 +50,12 @@ class ProcessorMainScaffold extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.white,
-      body: child,
+      body: Padding(
+        padding: const EdgeInsets.only(
+          bottom: 90,
+        ), // Buffer for floating nav bar
+        child: child,
+      ),
       // We use a Stack-like approach or ensure the bottomNavigationBar is definitely visible
       bottomNavigationBar: Container(
         color: Colors.transparent, // Ensure background matches

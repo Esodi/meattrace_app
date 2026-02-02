@@ -40,8 +40,22 @@ class TraceabilityService {
         queryParameters: queryParams,
       );
 
-      final List<dynamic> data = response.data;
-      return data.map((json) => TraceabilityEntry.fromJson(json)).toList();
+      final data = response.data;
+      List<dynamic> items = [];
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('traceability') &&
+            data['traceability'] is Map &&
+            data['traceability'].containsKey('items')) {
+          items = data['traceability']['items'] as List;
+        } else if (data.containsKey('results')) {
+          items = data['results'] as List;
+        }
+      } else if (data is List) {
+        items = data;
+      }
+
+      return items.map((json) => TraceabilityEntry.fromJson(json)).toList();
     } on DioException catch (e) {
       print('❌ [TraceabilityService] Error fetching report: ${e.message}');
       throw Exception('Failed to fetch traceability report: ${e.message}');

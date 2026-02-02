@@ -87,6 +87,10 @@ import 'screens/abbatoir/notification_list_screen.dart';
 import 'screens/abbatoir/sick_animals_screen.dart';
 import 'screens/common/external_vendors_screen.dart';
 import 'screens/common/initial_inventory_onboarding.dart';
+import 'screens/abbatoir/abbatoir_stock_screen.dart';
+import 'screens/processing_unit/processor_stock_screen.dart';
+import 'screens/shop/shop_stock_screen.dart';
+import 'screens/abbatoir/abbatoir_inventory_screen.dart';
 
 import 'screens/common/user_profile_screen.dart';
 import 'screens/common/settings_screen.dart';
@@ -290,6 +294,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => const ModernAbbatoirHomeScreen(),
             ),
             GoRoute(
+              path: '/abbatoir/inventory',
+              builder: (context, state) => const AbbatoirInventoryScreen(),
+            ),
+            GoRoute(
               path: '/abbatoir/livestock-history',
               builder: (context, state) => const LivestockHistoryScreen(),
             ),
@@ -329,8 +337,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => const TransferAnimalsScreen(),
             ),
             GoRoute(
+              path: '/select-animals-transfer',
+              builder: (context, state) => const TransferAnimalsScreen(),
+            ),
+            GoRoute(
               path: '/slaughter-animal',
               builder: (context, state) => const SlaughterAnimalScreen(),
+            ),
+            GoRoute(
+              path: '/abbatoir/stock',
+              builder: (context, state) => const AbbatoirStockScreen(),
             ),
           ],
         ),
@@ -418,6 +434,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               path: '/processor/notifications',
               builder: (context, state) => const ProcessorNotificationScreen(),
             ),
+            GoRoute(
+              path: '/processor/stock',
+              builder: (context, state) => const ProcessorStockScreen(),
+            ),
           ],
         ),
 
@@ -477,6 +497,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => OrderDetailScreen(
                 orderId: int.parse(state.pathParameters['id']!),
               ),
+            ),
+            GoRoute(
+              path: '/shop/stock',
+              builder: (context, state) => const ShopStockScreen(),
             ),
             GoRoute(
               path: '/products/:id',

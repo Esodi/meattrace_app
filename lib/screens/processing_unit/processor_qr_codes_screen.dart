@@ -30,13 +30,16 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
   Future<void> _loadProducts() async {
     setState(() => _isLoading = true);
     try {
-      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
       await productProvider.fetchProducts();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading products: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading products: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -52,15 +55,21 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/processor-home');
+            }
+          },
         ),
-        title: Text(
-          'QR Codes',
-          style: AppTypography.headlineMedium(),
-        ),
+        title: Text('QR Codes', style: AppTypography.headlineMedium()),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.qr_code_scanner,
+              color: AppColors.textPrimary,
+            ),
             tooltip: 'Scan QR Code',
             onPressed: () => context.push('/qr-scanner?source=processor'),
           ),
@@ -98,10 +107,16 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
                   )
                 : Consumer<ProductProvider>(
                     builder: (context, productProvider, child) {
-                      final products = productProvider.products.where((product) {
+                      final products = productProvider.products.where((
+                        product,
+                      ) {
                         if (_searchQuery.isEmpty) return true;
-                        return product.name.toLowerCase().contains(_searchQuery) ||
-                            product.batchNumber.toLowerCase().contains(_searchQuery);
+                        return product.name.toLowerCase().contains(
+                              _searchQuery,
+                            ) ||
+                            product.batchNumber.toLowerCase().contains(
+                              _searchQuery,
+                            );
                       }).toList();
 
                       if (products.isEmpty) {
@@ -113,12 +128,13 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
                         color: AppColors.processorPrimary,
                         child: GridView.builder(
                           padding: const EdgeInsets.all(AppTheme.space16),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.75,
-                            crossAxisSpacing: AppTheme.space12,
-                            mainAxisSpacing: AppTheme.space12,
-                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.75,
+                                crossAxisSpacing: AppTheme.space12,
+                                mainAxisSpacing: AppTheme.space12,
+                              ),
                           itemCount: products.length,
                           itemBuilder: (context, index) {
                             return _buildQRCodeCard(products[index]);
@@ -318,7 +334,9 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
                       onPressed: () {
                         // TODO: Implement share functionality
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Share feature coming soon')),
+                          const SnackBar(
+                            content: Text('Share feature coming soon'),
+                          ),
                         );
                       },
                       icon: const Icon(Icons.share),
@@ -335,7 +353,9 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
                       onPressed: () {
                         // TODO: Implement download functionality
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Download feature coming soon')),
+                          const SnackBar(
+                            content: Text('Download feature coming soon'),
+                          ),
                         );
                       },
                       icon: const Icon(Icons.download),

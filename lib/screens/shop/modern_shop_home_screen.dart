@@ -11,7 +11,6 @@ import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/custom_icons.dart';
-import '../../widgets/core/custom_card.dart';
 import '../../widgets/core/role_avatar.dart';
 import '../../widgets/livestock/product_card.dart';
 
@@ -596,92 +595,208 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
       : value.toStringAsFixed(0);
 
   Widget _buildQuickActions() {
+    final actions = [
+      _QuickAction(
+        icon: Icons.inbox,
+        label: 'Receive',
+        color: AppColors.shopPrimary,
+        route: '/receive-products',
+        badge: _pendingProductsCount > 0 ? _pendingProductsCount : null,
+      ),
+      _QuickAction(
+        icon: Icons.inventory_2_outlined,
+        label: 'Inventory',
+        color: AppColors.secondaryBlue,
+        route: '/shop/inventory',
+      ),
+      _QuickAction(
+        icon: Icons.add_home_work_outlined,
+        label: 'Add Stock',
+        color: AppColors.processorPrimary,
+        route: '/shop/stock',
+      ),
+      _QuickAction(
+        icon: Icons.point_of_sale_outlined,
+        label: 'New Sale',
+        color: AppColors.success,
+        route: '/shop/sell',
+      ),
+      _QuickAction(
+        icon: Icons.history_rounded,
+        label: 'Sales History',
+        color: AppColors.info,
+        route: '/shop/sales',
+      ),
+      _QuickAction(
+        icon: Icons.qr_code_scanner_rounded,
+        label: 'Scan QR',
+        color: AppColors.warning,
+        route: '/qr-scanner',
+      ),
+      _QuickAction(
+        icon: Icons.business_center_outlined,
+        label: 'Vendors',
+        color: AppColors.secondaryBlue,
+        route: '/external-vendors',
+      ),
+      _QuickAction(
+        icon: Icons.settings_suggest_outlined,
+        label: 'Settings',
+        color: AppColors.textSecondary,
+        route: '/shop/settings',
+      ),
+    ];
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 56, 16, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.space16,
+        AppTheme.space32,
+        AppTheme.space16,
+        0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick Actions', style: AppTypography.headlineMedium()),
-          const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 4,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 0.9,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildQuickBtn(
-                Icons.inbox,
-                'Receive',
-                AppColors.shopPrimary,
-                '/receive-products',
+              Text(
+                'Quick Actions',
+                style: AppTypography.headlineSmall().copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
               ),
-              _buildQuickBtn(
-                Icons.inventory,
-                'Inventory',
-                AppColors.secondaryBlue,
-                '/shop/inventory',
-              ),
-              _buildQuickBtn(
-                Icons.add_shopping_cart,
-                'Add Stock',
-                AppColors.processorPrimary,
-                '/onboarding-inventory',
-              ),
-              _buildQuickBtn(
-                Icons.point_of_sale,
-                'New Sale',
-                AppColors.success,
-                '/shop/sell',
-              ),
-              _buildQuickBtn(
-                Icons.history,
-                'Sales History',
-                AppColors.secondaryBlue,
-                '/shop/sales',
-              ),
-              _buildQuickBtn(
-                Icons.qr_code_scanner,
-                'Scan',
-                AppColors.warning,
-                '/qr-scanner',
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.shopPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Store Ops',
+                  style: AppTypography.labelSmall().copyWith(
+                    color: AppColors.shopPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
+          ),
+          const SizedBox(height: AppTheme.space20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final int crossAxisCount = constraints.maxWidth < 360 ? 3 : 4;
+              return GridView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: actions.length,
+                itemBuilder: (context, index) =>
+                    _buildQuickActionButton(actions[index]),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickBtn(
-    IconData icon,
-    String label,
-    Color color,
-    String route,
-  ) {
+  Widget _buildQuickActionButton(_QuickAction action) {
     return InkWell(
-      onTap: () => context.push(route),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+      onTap: () => context.push(action.route),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: action.color.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-            child: Icon(icon, color: color),
+          ],
+          border: Border.all(
+            color: action.color.withValues(alpha: 0.1),
+            width: 1.5,
           ),
-          Flexible(
-            child: Text(
-              label,
-              style: AppTypography.labelSmall(),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: action.color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(action.icon, color: action.color, size: 24),
+                ),
+                if (action.badge != null)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.error.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${action.badge}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  action.label,
+                  style: AppTypography.labelMedium().copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -737,17 +852,94 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
   }
 
   Widget _buildFeaturedProductCard(Product product) {
-    return CustomCard(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: ListTile(
         onTap: () => context.push('/products/${product.id}'),
-        leading: const Icon(CustomIcons.meatCut, color: AppColors.shopPrimary),
-        title: Text(product.name),
-        subtitle: Text('Batch: ${product.batchNumber}'),
-        trailing: Text('TZS ${product.price.toStringAsFixed(0)}'),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.shopPrimary.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            CustomIcons.meatCut,
+            color: AppColors.shopPrimary,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          product.name,
+          style: AppTypography.titleMedium().copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          'Batch: ${product.batchNumber}',
+          style: AppTypography.bodySmall().copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'TZS ${product.price.toStringAsFixed(0)}',
+              style: AppTypography.titleMedium().copyWith(
+                color: AppColors.shopPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (product.isExternal)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'External',
+                  style: TextStyle(
+                    color: Colors.purple,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildEmptyFeatured() => Center(child: Text('No featured products'));
   Widget _buildEmptyState() => Center(child: Text('Empty inventory'));
+}
+
+/// Quick action button data model
+class _QuickAction {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String route;
+  final int? badge;
+
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.route,
+    this.badge,
+  });
 }

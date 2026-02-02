@@ -15,7 +15,6 @@ import 'package:meattrace_app/widgets/core/enhanced_back_button.dart';
 import 'package:meattrace_app/models/external_vendor.dart';
 import 'package:meattrace_app/providers/external_vendor_provider.dart';
 import 'package:meattrace_app/screens/common/external_vendors_screen.dart';
-import 'package:meattrace_app/screens/common/initial_inventory_onboarding.dart';
 import 'package:meattrace_app/services/bluetooth_printing_service.dart';
 import 'package:meattrace_app/utils/constants.dart';
 import 'package:meattrace_app/utils/app_colors.dart';

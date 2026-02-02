@@ -133,6 +133,33 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 
+  Future<void> fetchAnimalById(int id) async {
+    Future.microtask(() {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    });
+
+    try {
+      final animal = await _animalService.getAnimal(id);
+
+      // Update local list
+      final index = _animals.indexWhere((a) => a.id == id);
+      if (index != -1) {
+        _animals[index] = animal;
+      } else {
+        _animals.add(animal);
+      }
+
+      await _saveToDatabase();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<List<Animal>> fetchSlaughteredAnimals() async {
     try {
       final result = await _animalService.getAnimals(slaughtered: true);

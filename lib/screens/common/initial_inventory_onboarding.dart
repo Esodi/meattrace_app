@@ -286,7 +286,7 @@ class _InitialInventoryOnboardingScreenState
                           const SizedBox(width: 16),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _weightUnit,
+                              initialValue: _weightUnit,
                               decoration: const InputDecoration(
                                 labelText: 'Unit',
                                 border: OutlineInputBorder(),

@@ -164,7 +164,13 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/processor-home');
+            }
+          },
         ),
         title: Text('Receive Animals', style: AppTypography.headlineMedium()),
         actions: [

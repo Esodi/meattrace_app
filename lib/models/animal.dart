@@ -234,6 +234,9 @@ class SlaughterPart {
       'weight_unit': weightUnit,
       'description': description,
       'part_id': partId,
+      'transferred_to': transferredTo,
+      'received_by': receivedBy,
+      'received_at': receivedAt?.toIso8601String(),
     };
   }
 
@@ -683,20 +686,21 @@ class Animal {
     };
   }
 
-  // For creating new animal (exclude id and auto-generated fields)
   Map<String, dynamic> toMapForCreate() {
     return {
-      'species': species
-          .toLowerCase(), // Convert to lowercase to match backend choices
+      'animal_id': animalId,
+      'species': species.toLowerCase(),
       'age': age,
       'live_weight': liveWeight,
       'remaining_weight': remainingWeight,
-      'animal_name': animalName, // Optional user-friendly name
+      'animal_name': animalName,
       'breed': breed,
       'abbatoir_name': abbatoirName,
       'health_status': healthStatus,
       'gender': gender,
       'notes': notes,
+      'slaughtered': slaughtered,
+      'slaughtered_at': slaughteredAt?.toIso8601String(),
       'transferred_to': transferredTo,
       'received_by': receivedBy,
       'received_at': receivedAt?.toIso8601String(),

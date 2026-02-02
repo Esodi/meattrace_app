@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/product_category_provider.dart';
 import '../../models/product.dart';
+import '../../models/product_category.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../widgets/core/custom_card.dart';
@@ -82,10 +83,20 @@ class _ProductsListScreenState extends State<ProductsListScreen>
         if (!matchesSearch) return false;
       }
 
-      // Category filter (product type)
-      if (_selectedCategory != 'All' &&
-          product.productType != _selectedCategory) {
-        return false;
+      // Category filter
+      if (_selectedCategory != 'All') {
+        // Fallback: If product has a category assigned, check its name
+        if (product.category != null) {
+          final categoryProvider = context.read<ProductCategoryProvider>();
+          final cat = categoryProvider.categories.firstWhere(
+            (c) => c.id == product.category,
+            orElse: () => ProductCategory(id: -1, name: '', description: ''),
+          );
+          if (cat.name != _selectedCategory) return false;
+        } else if (product.productType != _selectedCategory) {
+          // Fallback to productType if no category ID exists
+          return false;
+        }
       }
 
       return true;
@@ -279,31 +290,44 @@ class _ProductsListScreenState extends State<ProductsListScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 4,
                     children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 14,
-                        color: AppColors.textSecondary,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${product.weight} ${product.weightUnit}',
+                            style: AppTypography.bodyMedium(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${product.weight ?? 0} kg',
-                        style: AppTypography.bodyMedium(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Icon(
-                        Icons.attach_money,
-                        size: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                      Text(
-                        '\$${product.price.toStringAsFixed(2)}',
-                        style: AppTypography.bodyMedium(
-                          color: AppColors.textSecondary,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.attach_money,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'TZS ${product.price.toStringAsFixed(0)}',
+                            style: AppTypography.bodyMedium(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -432,10 +456,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
               child: const Center(child: Icon(Icons.qr_code, size: 150)),
             ),
             const SizedBox(height: 16),
-            Text(
-              product.batchNumber,
-              style: AppTypography.bodyLarge(),
-            ),
+            Text(product.batchNumber, style: AppTypography.bodyLarge()),
           ],
         ),
         actions: [

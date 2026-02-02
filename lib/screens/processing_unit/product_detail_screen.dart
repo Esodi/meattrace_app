@@ -36,23 +36,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   /// Fetch product data from backend API for real-time updates
   Future<void> _loadProduct() async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
-    
+
     try {
-      final productProvider = Provider.of<ProductProvider>(context, listen: false);
-      
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
+
       // Fetch specific product from API for real-time data
       final int productId = int.parse(widget.productId);
       final product = await productProvider.getProduct(productId);
-      
+
       if (product == null) {
         throw Exception('Product not found');
       }
-      
+
       if (mounted) {
         setState(() {
           _product = product;
@@ -67,7 +70,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           _isLoading = false;
           _error = e.toString();
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading product: $e'),
@@ -93,7 +96,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final userContext = Provider.of<UserContextProvider>(context);
     final userRole = userContext.currentUser?.role;
     final primaryColor = AppColors.getPrimaryColorForRole(userRole);
-    
+
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: _isLoading
@@ -101,28 +104,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(
-                    color: primaryColor,
-                  ),
+                  CircularProgressIndicator(color: primaryColor),
                   const SizedBox(height: 16),
                   const Text('Loading product details...'),
                 ],
               ),
             )
           : _error != null
-              ? _buildErrorState()
-              : _product == null
-                  ? _buildErrorState()
-                  : RefreshIndicator(
-                      onRefresh: _refreshProduct,
-                      color: primaryColor,
-                      child: CustomScrollView(
-                        slivers: [
-                          _buildAppBar(primaryColor),
-                          SliverToBoxAdapter(child: _buildContent(primaryColor)),
-                        ],
-                      ),
-                    ),
+          ? _buildErrorState()
+          : _product == null
+          ? _buildErrorState()
+          : RefreshIndicator(
+              onRefresh: _refreshProduct,
+              color: primaryColor,
+              child: CustomScrollView(
+                slivers: [
+                  _buildAppBar(primaryColor),
+                  SliverToBoxAdapter(child: _buildContent(primaryColor)),
+                ],
+              ),
+            ),
     );
   }
 
@@ -159,9 +160,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildHeaderImage(Color primaryColor) {
     return Container(
-      decoration: BoxDecoration(
-        color: primaryColor,
-      ),
+      decoration: BoxDecoration(color: primaryColor),
       child: Center(
         child: Icon(
           Icons.inventory_2_outlined,
@@ -186,10 +185,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildQRSection() {
     // Use the actual QR code data from the product, fallback to batch number or product ID
-    final String qrData = _product?.qrCode ?? 
-                          _product?.batchNumber ?? 
-                          'PRODUCT-${_product?.id ?? 'UNKNOWN'}';
-    
+    final String qrData =
+        _product?.qrCode ??
+        _product?.batchNumber ??
+        'PRODUCT-${_product?.id ?? 'UNKNOWN'}';
+
     return CustomCard(
       margin: const EdgeInsets.all(16),
       child: Padding(
@@ -253,9 +253,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const SizedBox(height: 4),
               Text(
                 'ID: ${_product?.id ?? 'N/A'}',
-                style: AppTypography.bodySmall(
-                  color: AppColors.textSecondary,
-                ),
+                style: AppTypography.bodySmall(color: AppColors.textSecondary),
               ),
             ],
             const SizedBox(height: 16),
@@ -295,9 +293,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildBasicInfoSection(Color primaryColor) {
-    final bool isAnimalPart = _product?.slaughterPartId != null || 
-                              _product?.animalAnimalId != null;
-    
+    final bool isAnimalPart =
+        _product?.slaughterPartId != null || _product?.animalAnimalId != null;
+
     return CustomCard(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Padding(
@@ -307,7 +305,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           children: [
             Text('Product Details', style: AppTypography.headlineSmall()),
             const SizedBox(height: 16),
-            
+
             // Prominently display Animal Tag if this is an animal part
             if (isAnimalPart && _product?.animalAnimalId != null) ...[
               Container(
@@ -315,10 +313,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 decoration: BoxDecoration(
                   color: primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: primaryColor,
-                    width: 2,
-                  ),
+                  border: Border.all(color: primaryColor, width: 2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,25 +416,55 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const Divider(),
               const SizedBox(height: 16),
             ],
-            
-            _buildInfoRow(Icons.category, 'Product Type', _product?.productType ?? 'N/A'),
+
+            _buildInfoRow(
+              Icons.category,
+              'Product Type',
+              _product?.productType ?? 'N/A',
+            ),
             const Divider(height: 24),
-            _buildInfoRow(CustomIcons.MEATTRACE_ICON, 'Batch Number', _product?.batchNumber ?? 'N/A'),
+            _buildInfoRow(
+              CustomIcons.MEATTRACE_ICON,
+              'Batch Number',
+              _product?.batchNumber ?? 'N/A',
+            ),
             const Divider(height: 24),
-            _buildInfoRow(Icons.monitor_weight, 'Weight', '${_product?.weight ?? 0} kg'),
+            _buildInfoRow(
+              Icons.monitor_weight,
+              'Weight',
+              '${_product?.weight ?? 0} kg',
+            ),
             const Divider(height: 24),
-            _buildInfoRow(Icons.attach_money, 'Price', '\$${_product?.price.toStringAsFixed(2) ?? '0.00'}/kg'),
+            _buildInfoRow(
+              Icons.attach_money,
+              'Price',
+              '\$${_product?.price.toStringAsFixed(2) ?? '0.00'}/kg',
+            ),
             const Divider(height: 24),
-            _buildInfoRow(Icons.calendar_today, 'Production Date', _formatDate(_product?.createdAt)),
+            _buildInfoRow(
+              Icons.calendar_today,
+              'Production Date',
+              _formatDate(_product?.createdAt),
+            ),
             if (_product?.processingUnitName != null) ...[
               const Divider(height: 24),
-              _buildInfoRow(Icons.factory, 'Processing Unit', _product!.processingUnitName!),
+              _buildInfoRow(
+                Icons.factory,
+                'Processing Unit',
+                _product!.processingUnitName!,
+              ),
             ],
-            if (_product?.description != null && _product!.description.isNotEmpty) ...[
+            if (_product?.description != null &&
+                _product!.description.isNotEmpty) ...[
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
-              Text('Description', style: AppTypography.bodyLarge().copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Description',
+                style: AppTypography.bodyLarge().copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
                 _product!.description,
@@ -455,38 +480,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _buildTraceabilitySection(Color primaryColor) {
     // Build traceability timeline based on available product data
     final List<Map<String, dynamic>> traceSteps = [];
-    
+
     // Parse timeline events to build traceability chain
     if (_product?.timeline != null && _product!.timeline.isNotEmpty) {
       // Group timeline events by stage/location
       final sortedTimeline = List<ProductTimelineEvent>.from(_product!.timeline)
         ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-      
+
       for (var event in sortedTimeline) {
         // Avoid duplicate locations
-        final existingStep = traceSteps.where((s) => s['location'] == event.location);
+        final existingStep = traceSteps.where(
+          (s) => s['location'] == event.location,
+        );
         if (existingStep.isEmpty) {
           IconData icon = Icons.location_on;
           String title = event.action;
-          
+
           // Determine icon based on action/location
-          if (event.action.toLowerCase().contains('abbatoir') || 
+          if (event.action.toLowerCase().contains('abbatoir') ||
               event.action.toLowerCase().contains('origin')) {
             icon = Icons.agriculture;
             title = 'Origin Abbatoir';
-          } else if (event.action.toLowerCase().contains('process') || 
-                     event.action.toLowerCase().contains('slaughter')) {
+          } else if (event.action.toLowerCase().contains('process') ||
+              event.action.toLowerCase().contains('slaughter')) {
             icon = Icons.factory;
             title = 'Processing';
-          } else if (event.action.toLowerCase().contains('transfer') || 
-                     event.action.toLowerCase().contains('ship')) {
+          } else if (event.action.toLowerCase().contains('transfer') ||
+              event.action.toLowerCase().contains('ship')) {
             icon = Icons.local_shipping;
             title = 'Transfer';
           } else if (event.action.toLowerCase().contains('receive')) {
             icon = Icons.inventory;
             title = 'Received';
           }
-          
+
           traceSteps.add({
             'title': title,
             'location': event.location,
@@ -496,7 +523,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         }
       }
     }
-    
+
     // If no timeline events, build basic traceability from available data
     if (traceSteps.isEmpty) {
       // Add processing unit
@@ -507,7 +534,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           'icon': Icons.factory,
         });
       }
-      
+
       // Add transfer information if product was transferred
       if (_product?.transferredToName != null) {
         traceSteps.add({
@@ -516,7 +543,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           'icon': Icons.local_shipping,
         });
       }
-      
+
       // Add received information if product was received by shop
       if (_product?.receivedByName != null) {
         traceSteps.add({
@@ -525,7 +552,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           'icon': Icons.store,
         });
       }
-      
+
       // Add current location (default to processing unit)
       if (traceSteps.isEmpty && _product?.processingUnitName != null) {
         traceSteps.add({
@@ -535,7 +562,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         });
       }
     }
-    
+
     return CustomCard(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Padding(
@@ -564,7 +591,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     'No traceability information available',
-                    style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+                    style: AppTypography.bodyMedium(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               )
@@ -604,9 +633,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isFirst
-                    ? primaryColor
-                    : primaryColor.withOpacity(0.5),
+                color: isFirst ? primaryColor : primaryColor.withOpacity(0.5),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 3),
                 boxShadow: [
@@ -617,11 +644,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                 ],
               ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: Colors.white,
-              ),
+              child: Icon(icon, size: 20, color: Colors.white),
             ),
             if (!isLast)
               Container(
@@ -700,7 +723,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       child: Text(
         label,
-        style: AppTypography.bodyMedium(color: color).copyWith(fontWeight: FontWeight.w600),
+        style: AppTypography.bodyMedium(
+          color: color,
+        ).copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -806,7 +831,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 const SizedBox(width: 12),
                 CustomButton(
                   label: 'Go Back',
-                  onPressed: () => context.pop(),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/processor-home');
+                    }
+                  },
                   variant: ButtonVariant.secondary,
                 ),
               ],

@@ -59,7 +59,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         context,
         listen: false,
       );
-      await animalProvider.fetchAnimals(slaughtered: null);
+      await animalProvider.fetchAnimalById(int.parse(widget.animalId));
 
       final animal = animalProvider.animals.firstWhere(
         (a) => a.id.toString() == widget.animalId,

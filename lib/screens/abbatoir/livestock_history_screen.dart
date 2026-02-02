@@ -408,11 +408,47 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            animal.animalName ?? animal.animalId,
-                            style: AppTypography.headlineSmall(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                animal.animalName?.isNotEmpty == true
+                                    ? animal.animalName!
+                                    : (animal.animalId.isNotEmpty
+                                          ? animal.animalId
+                                          : '${animal.species} #${animal.id}'),
+                                style: AppTypography.headlineSmall(),
+                              ),
+                              if (animal.animalName?.isNotEmpty == true ||
+                                  animal.animalId.isNotEmpty)
+                                Text(
+                                  'Tag: ${animal.animalId.isNotEmpty ? animal.animalId : 'Not set'}',
+                                  style: AppTypography.bodySmall(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
+                        if (animal.isExternal)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'External',
+                              style: AppTypography.labelSmall().copyWith(
+                                color: Colors.purple.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         StatusBadge(
                           label: _getStatusLabel(animal),
                           color: _getStatusColor(animal),

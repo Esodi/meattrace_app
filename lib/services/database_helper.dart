@@ -26,7 +26,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'meattrace.db');
     return await openDatabase(
       path,
-      version: 16, // Increment version for external vendor support
+      version: 17, // Increment version for products.animal nullability
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       // onOpen ensures missing compatibility columns are added for existing installs
@@ -65,7 +65,7 @@ class DatabaseHelper {
       CREATE TABLE products (
         id INTEGER PRIMARY KEY,
         processing_unit INTEGER NOT NULL,
-        animal INTEGER NOT NULL,
+        animal INTEGER,
         product_type TEXT NOT NULL,
         quantity REAL NOT NULL,
         created_at TEXT NOT NULL,
@@ -472,6 +472,43 @@ class DatabaseHelper {
         } catch (e) {
           // Column might already exist
         }
+      }
+    }
+    if (oldVersion < 17) {
+      // Make animal column nullable in products table
+      try {
+        await db.execute('ALTER TABLE products RENAME TO products_old');
+        await db.execute('''
+          CREATE TABLE products (
+            id INTEGER PRIMARY KEY,
+            processing_unit INTEGER NOT NULL,
+            animal INTEGER,
+            product_type TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            created_at TEXT NOT NULL,
+            name TEXT NOT NULL,
+            batch_number TEXT NOT NULL,
+            live_weight REAL,
+            weight_unit TEXT NOT NULL,
+            price REAL NOT NULL,
+            description TEXT NOT NULL,
+            manufacturer TEXT NOT NULL,
+            category TEXT,
+            timeline TEXT,
+            is_external_source INTEGER NOT NULL DEFAULT 0,
+            external_vendor_id INTEGER,
+            external_vendor_name TEXT,
+            acquisition_price REAL
+          )
+        ''');
+        // Copy data back
+        await db.execute('''
+          INSERT INTO products (id, processing_unit, animal, product_type, quantity, created_at, name, batch_number, live_weight, weight_unit, price, description, manufacturer, category, timeline, is_external_source, external_vendor_id, external_vendor_name, acquisition_price)
+          SELECT id, processing_unit, animal, product_type, quantity, created_at, name, batch_number, live_weight, weight_unit, price, description, manufacturer, category, timeline, is_external_source, external_vendor_id, external_vendor_name, acquisition_price FROM products_old
+        ''');
+        await db.execute('DROP TABLE products_old');
+      } catch (e) {
+        print('Error migrating products table for version 17: \$e');
       }
     }
   }

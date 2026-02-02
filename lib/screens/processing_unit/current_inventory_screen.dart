@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meattrace_app/providers/animal_provider.dart';
-import 'package:meattrace_app/providers/product_provider.dart';
+// import 'package:meattrace_app/providers/product_provider.dart'; // Removed
 import 'package:meattrace_app/providers/auth_provider.dart';
 import 'package:meattrace_app/models/animal.dart';
-import 'package:meattrace_app/models/product.dart';
+// import 'package:meattrace_app/models/product.dart'; // Removed
 import 'package:meattrace_app/utils/app_colors.dart';
 
-/// Current Inventory Screen showing available raw materials and finished products
+/// Current Inventory Screen showing available raw materials
 /// Tab 1: Raw Materials - Animals/parts received but not yet processed
-/// Tab 2: Finished Products - Products with remaining quantities
 class CurrentInventoryScreen extends StatefulWidget {
   const CurrentInventoryScreen({super.key});
 
@@ -34,7 +33,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
     _loadData();
   }
 
@@ -55,17 +54,13 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
         context,
         listen: false,
       );
-      final productProvider = Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      );
+      // ProductProvider not needed anymore
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      final currentUserId = authProvider.user?.id;
+      final processingUnitId = authProvider.user?.processingUnitId;
 
-      // Load animals and products
+      // Load animals only - products not needed for this screen anymore
       await animalProvider.fetchAnimals();
-      await productProvider.fetchProducts();
 
       // Load slaughter parts separately since they're not cached in provider
       List<SlaughterPart> slaughterParts = [];
@@ -80,7 +75,9 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
       _receivedAnimals = animalProvider.animals
           .where(
             (a) =>
-                a.receivedBy == currentUserId && (a.remainingWeight ?? 0) > 0,
+                a.receivedBy != null &&
+                a.transferredTo == processingUnitId &&
+                (a.remainingWeight ?? 0) > 0,
           )
           .toList();
 
@@ -88,7 +85,8 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
       _receivedParts = slaughterParts
           .where(
             (p) =>
-                p.receivedBy == currentUserId &&
+                p.receivedBy != null &&
+                p.transferredTo == processingUnitId &&
                 (p.remainingWeight ?? p.weight) > 0,
           )
           .toList();
@@ -116,10 +114,6 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
           unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Raw Materials'),
-            Tab(
-              icon: Icon(Icons.shopping_bag_outlined),
-              text: 'Finished Products',
-            ),
           ],
         ),
       ),
@@ -129,15 +123,8 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
           ? _buildErrorState()
           : TabBarView(
               controller: _tabController,
-              children: [_buildRawMaterialsTab(), _buildFinishedProductsTab()],
+              children: [_buildRawMaterialsTab()],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/create-product'),
-        backgroundColor: AppColors.processorPrimary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Create Product'),
-      ),
     );
   }
 
@@ -462,264 +449,6 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
         onTap: () {
           // Could navigate to part detail if available
         },
-      ),
-    );
-  }
-
-  /// Tab 2: Finished Products with remaining quantities
-  Widget _buildFinishedProductsTab() {
-    return Consumer<ProductProvider>(
-      builder: (context, productProvider, _) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final processingUnitId = authProvider.user?.processingUnitId;
-
-        // Get products for this processing unit with remaining quantity
-        final products = productProvider.products
-            .where(
-              (p) =>
-                  p.processingUnit == processingUnitId &&
-                  p.transferredTo == null,
-            ) // Not yet transferred
-            .toList();
-
-        if (products.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.shopping_bag_outlined,
-                  size: 64,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No products in stock',
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Create products to see them here',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => context.push('/create-product'),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Create Product'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          children: [
-            // Products summary
-            _buildProductsSummary(products),
-            // Products list
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _loadData,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    return _buildProductCard(products[index]);
-                  },
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildProductsSummary(List<Product> products) {
-    final totalQuantity = products.fold<double>(
-      0,
-      (sum, p) => sum + (p.quantity ?? 0),
-    );
-    final totalWeight = products.fold<double>(
-      0,
-      (sum, p) => sum + (p.weight ?? 0),
-    );
-    final totalValue = products.fold<double>(
-      0,
-      (sum, p) => sum + ((p.price ?? 0) * (p.quantity ?? 1)),
-    );
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.green.withOpacity(0.1),
-            Colors.green.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildProductSummaryItem(
-            Icons.shopping_bag,
-            '${products.length}',
-            'Products',
-            'in stock',
-          ),
-          Container(height: 40, width: 1, color: Colors.grey.shade300),
-          _buildProductSummaryItem(
-            Icons.numbers,
-            totalQuantity.toStringAsFixed(0),
-            'Units',
-            'total qty',
-          ),
-          Container(height: 40, width: 1, color: Colors.grey.shade300),
-          _buildProductSummaryItem(
-            Icons.scale,
-            totalWeight.toStringAsFixed(1),
-            'Weight',
-            'kg',
-          ),
-          Container(height: 40, width: 1, color: Colors.grey.shade300),
-          _buildProductSummaryItem(
-            Icons.attach_money,
-            _formatCurrency(totalValue),
-            'Value',
-            'TZS',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductSummaryItem(
-    IconData icon,
-    String value,
-    String label,
-    String subtitle,
-  ) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.green, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-        ),
-        Text(
-          subtitle,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-        ),
-      ],
-    );
-  }
-
-  String _formatCurrency(double amount) {
-    if (amount >= 1000000) {
-      return '${(amount / 1000000).toStringAsFixed(1)}M';
-    } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(1)}K';
-    }
-    return amount.toStringAsFixed(0);
-  }
-
-  Widget _buildProductCard(Product product) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green.withOpacity(0.1),
-          child: Icon(Icons.shopping_bag, color: Colors.green.shade700),
-        ),
-        title: Text(
-          product.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Batch: ${product.batchNumber}'),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Qty: ${product.quantity.toStringAsFixed(0) ?? '1'}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blue.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${product.weight?.toStringAsFixed(1) ?? '0'} ${product.weightUnit ?? 'kg'}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.orange.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if ((product.price ?? 0) > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'TZS ${product.price.toStringAsFixed(0) ?? '0'}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green.shade700,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios, size: 16),
-          onPressed: () => context.push('/products/${product.id}'),
-        ),
-        isThreeLine: true,
-        onTap: () => context.push('/products/${product.id}'),
       ),
     );
   }

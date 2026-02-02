@@ -839,6 +839,12 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
         route: '/select-animals-transfer',
       ),
       _QuickAction(
+        icon: Icons.inventory_2_outlined,
+        label: 'Inventory',
+        color: AppColors.success,
+        route: '/abbatoir/inventory',
+      ),
+      _QuickAction(
         icon: Icons.history,
         label: 'History',
         color: AppColors.info,
@@ -854,7 +860,7 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
         icon: Icons.add_home_work,
         label: 'Stock',
         color: AppColors.abbatoirPrimary,
-        route: '/onboarding-inventory',
+        route: '/abbatoir/stock',
       ),
     ];
 
@@ -868,8 +874,33 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick Actions', style: AppTypography.headlineMedium()),
-          const SizedBox(height: AppTheme.space12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Quick Actions',
+                style: AppTypography.headlineSmall().copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Operations',
+                  style: AppTypography.labelSmall().copyWith(
+                    color: AppColors.abbatoirPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space20),
           LayoutBuilder(
             builder: (context, constraints) {
               final int crossAxisCount = constraints.maxWidth < 360 ? 3 : 4;
@@ -881,7 +912,7 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
                   crossAxisCount: crossAxisCount,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.8,
+                  childAspectRatio: 0.85,
                 ),
                 itemCount: actions.length,
                 itemBuilder: (context, index) =>
@@ -895,61 +926,54 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
   }
 
   Widget _buildQuickActionButton(_QuickAction action) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: InkWell(
-        onTap: () => context.push(action.route),
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppTheme.space12,
-            horizontal: 4,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-            border: Border.all(
-              color: AppColors.divider.withValues(alpha: 0.5),
-              width: 1,
+    return InkWell(
+      onTap: () => context.push(action.route),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: action.color.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
+          ],
+          border: Border.all(
+            color: action.color.withValues(alpha: 0.1),
+            width: 1.5,
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppTheme.space8),
-                decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(action.icon, color: action.color, size: 24),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: action.color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: AppTheme.space8),
-              Flexible(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
-                    action.label,
-                    style: AppTypography.labelMedium().copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+              child: Icon(action.icon, color: action.color, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  action.label,
+                  style: AppTypography.labelMedium().copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
                   ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

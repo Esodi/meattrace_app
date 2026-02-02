@@ -1,10 +1,8 @@
-enum ExternalVendorCategory { farmer, abbatoir, processor, distributor, other }
+enum ExternalVendorCategory { abbatoir, processor, distributor, other }
 
 extension ExternalVendorCategoryExtension on ExternalVendorCategory {
   String get value {
     switch (this) {
-      case ExternalVendorCategory.farmer:
-        return 'farmer';
       case ExternalVendorCategory.abbatoir:
         return 'abbatoir';
       case ExternalVendorCategory.processor:
@@ -18,8 +16,6 @@ extension ExternalVendorCategoryExtension on ExternalVendorCategory {
 
   String get displayName {
     switch (this) {
-      case ExternalVendorCategory.farmer:
-        return 'Farmer';
       case ExternalVendorCategory.abbatoir:
         return 'Abattoir';
       case ExternalVendorCategory.processor:
@@ -34,7 +30,6 @@ extension ExternalVendorCategoryExtension on ExternalVendorCategory {
   static ExternalVendorCategory fromString(String value) {
     switch (value.toLowerCase()) {
       case 'farmer':
-        return ExternalVendorCategory.farmer;
       case 'abbatoir':
         return ExternalVendorCategory.abbatoir;
       case 'processor':

@@ -151,7 +151,7 @@ class Product {
                 : null),
       qrCode: json['qr_code'],
       timeline:
-          (json['timeline'] as List<dynamic>?)
+          ((json['timeline'] ?? json['timeline_events']) as List<dynamic>?)
               ?.map(
                 (e) => ProductTimelineEvent.fromMap(e as Map<String, dynamic>),
               )

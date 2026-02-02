@@ -33,7 +33,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
   late List<Animation<double>> _productAnimations;
 
   int _pendingAnimalsCount = 0;
-  bool _isLoadingPending = false;
+  int _rawMaterialCount = 0;
+  bool _isLoadingRawMaterial = false;
   int _selectedIndex = 0;
   ProductionStats? _productionStats;
   Timer? _autoRefreshTimer;
@@ -133,21 +134,41 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       context,
       listen: false,
     );
-    final apiService = ApiService();
 
+    // 1. Fetch animals first (required for counts and list)
+    await animalProvider.fetchAnimals(slaughtered: null);
+
+    // 2. Then perform other independent tasks
     await Future.wait([
-      animalProvider.fetchAnimals(slaughtered: null),
       productProvider.fetchProducts(),
       _loadPendingAnimalsCount(),
+      _loadRawMaterialCount(),
       _loadProductionStats(),
-      apiService.fetchDashboard(), // Fetch dashboard data
-      apiService.fetchActivities(), // Fetch activity data
+      _loadDashboardData(), // Wrapped in try-catch
+      _loadActivitiesData(), // Wrapped in try-catch
     ]);
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final apiService = ApiService();
+      await apiService.fetchDashboard();
+    } catch (e) {
+      debugPrint('Error fetching dashboard: $e');
+    }
+  }
+
+  Future<void> _loadActivitiesData() async {
+    try {
+      final apiService = ApiService();
+      await apiService.fetchActivities();
+    } catch (e) {
+      debugPrint('Error fetching activities: $e');
+    }
   }
 
   Future<void> _loadPendingAnimalsCount() async {
     if (!mounted) return;
-    setState(() => _isLoadingPending = true);
 
     try {
       final animalProvider = Provider.of<AnimalProvider>(
@@ -184,9 +205,53 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       }
     } catch (e) {
       debugPrint('Error loading pending count: $e');
+    }
+  }
+
+  Future<void> _loadRawMaterialCount() async {
+    if (!mounted) return;
+    setState(() => _isLoadingRawMaterial = true);
+
+    try {
+      final animalProvider = Provider.of<AnimalProvider>(
+        context,
+        listen: false,
+      );
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final processingUnitId = authProvider.user?.processingUnitId;
+
+      if (processingUnitId != null) {
+        // Count animals received by this unit but not yet processed
+        final recievedAnimals = animalProvider.animals.where((animal) {
+          return animal.receivedBy != null &&
+              animal.transferredTo == processingUnitId &&
+              (animal.remainingWeight ?? 0) > 0;
+        }).length;
+
+        // Count slaughter parts received by this unit but not yet used
+        int recievedParts = 0;
+        try {
+          final allParts = await animalProvider.getSlaughterPartsList();
+          recievedParts = allParts.where((part) {
+            return part.receivedBy != null &&
+                part.transferredTo == processingUnitId &&
+                (part.remainingWeight ?? part.weight) > 0;
+          }).length;
+        } catch (e) {
+          debugPrint('Error loading raw material parts: $e');
+        }
+
+        final totalRaw = recievedAnimals + recievedParts;
+
+        if (mounted) {
+          setState(() => _rawMaterialCount = totalRaw);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading raw material count: $e');
     } finally {
       if (mounted) {
-        setState(() => _isLoadingPending = false);
+        setState(() => _isLoadingRawMaterial = false);
       }
     }
   }
@@ -443,7 +508,10 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                                 50 * (1 - _productAnimations[index].value),
                               ),
                               child: Opacity(
-                                opacity: _productAnimations[index].value,
+                                opacity: _productAnimations[index].value.clamp(
+                                  0.0,
+                                  1.0,
+                                ),
                                 child: Padding(
                                   padding: const EdgeInsets.only(
                                     bottom: AppTheme.space16,
@@ -489,7 +557,8 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     int receivedAnimals = receivedCount;
 
     // PENDING: Total number of animals/parts not yet received
-    int pendingAnimals = pendingCount;
+    // Note: pendingAnimals removed as it is now replaced by Raw Material in the main header stat,
+    // but pendingCount is still used for badges.
 
     // PRODUCTS: Total number of products created
     int totalProducts = _productionStats?.totalProductsCreated ?? 0;
@@ -620,9 +689,9 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                 ),
                 _buildStatDivider(),
                 _buildModernStatItem(
-                  'Pending',
-                  _isLoadingPending ? '...' : pendingAnimals.toString(),
-                  Icons.schedule,
+                  'Raw Material',
+                  _isLoadingRawMaterial ? '...' : _rawMaterialCount.toString(),
+                  Icons.inventory_2_outlined,
                   AppColors.warning,
                 ),
                 _buildStatDivider(),
@@ -732,7 +801,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
         icon: Icons.add_home_work,
         label: 'Stock',
         color: AppColors.processorPrimary,
-        route: '/onboarding-inventory',
+        route: '/processor/stock',
       ),
       _QuickAction(
         icon: Icons.business_center,
@@ -987,7 +1056,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
     required dynamic product,
     required int index,
   }) {
-    final String productType = product.productType ?? 'Unknown Product';
+    final String productName = product.name ?? 'Unknown Product';
     final String batchNumber = product.batchNumber ?? 'N/A';
     final double weight = product.weight ?? 0.0;
     final String weightUnit = product.weightUnit ?? 'kg';
@@ -1049,7 +1118,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                               children: [
                                 Expanded(
                                   child: Text(
-                                    productType.toUpperCase(),
+                                    productName.toUpperCase(),
                                     style: AppTypography.labelLarge().copyWith(
                                       color: AppColors.textPrimary,
                                       fontWeight: FontWeight.bold,

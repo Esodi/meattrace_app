@@ -45,7 +45,13 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                 ? Colors.white
                 : AppColors.textPrimary,
           ),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/processor-home');
+            }
+          },
         ),
         title: Text(
           'Settings',

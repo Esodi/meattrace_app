@@ -326,6 +326,25 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                             style: AppTypography.titleMedium(),
                           ),
                         ),
+                        if (product.isExternal)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'External',
+                              style: AppTypography.labelSmall().copyWith(
+                                color: Colors.purple.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         StatusBadge(
                           label: _getStockStatusLabel(product),
                           color: _getProductStatusColor(product),
