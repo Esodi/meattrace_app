@@ -20,8 +20,7 @@ class ProcessorMainScaffold extends StatelessWidget {
         location.startsWith('/products/')) {
       return 1;
     }
-    if (location == '/qr-scanner') return 2;
-    if (location == '/processor/settings') return 3;
+    if (location == '/processor/settings') return 2;
 
     return 0;
   }
@@ -35,9 +34,6 @@ class ProcessorMainScaffold extends StatelessWidget {
         context.go('/processor/products');
         break;
       case 2:
-        context.go('/qr-scanner?source=processor');
-        break;
-      case 3:
         context.go('/processor/settings');
         break;
     }
@@ -94,13 +90,6 @@ class ProcessorMainScaffold extends StatelessWidget {
                 _buildNavItem(
                   context,
                   2,
-                  Icons.qr_code_scanner_rounded,
-                  'Scan',
-                  selectedIndex,
-                ),
-                _buildNavItem(
-                  context,
-                  3,
                   Icons.settings_rounded,
                   'Settings',
                   selectedIndex,

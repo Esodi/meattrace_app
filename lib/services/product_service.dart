@@ -150,14 +150,14 @@ class ProductService {
     }
   }
 
-  Future<Product> updateProduct(Product product) async {
+  Future<Product> updateProduct(Product product, {bool partialUpdate = false, Map<String, dynamic>? partialData}) async {
     try {
       Response response;
-      if (product.quantity == 0) {
-        // Partial update for price only (used in inventory management)
+      if (partialUpdate && partialData != null) {
+        // Partial update with specific fields (e.g., price only)
         response = await _dioClient.dio.patch(
           '${Constants.productsEndpoint}${product.id}/',
-          data: {'price': product.price},
+          data: partialData,
         );
       } else {
         // Full update
@@ -183,15 +183,17 @@ class ProductService {
   Future<Map<String, dynamic>> transferProducts(
     List<int> productIds,
     int shopId, {
-    Map<int, double>? productQuantities,
+    Map<int, double>? productWeights,
   }) async {
     try {
-      // Prepare transfer data with quantities
+      // Prepare transfer data with weight-first payload
       List<Map<String, dynamic>> transfers = productIds.map((productId) {
         final Map<String, dynamic> transfer = {'product_id': productId};
-        if (productQuantities != null &&
-            productQuantities.containsKey(productId)) {
-          transfer['quantity'] = productQuantities[productId]!;
+        if (productWeights != null &&
+            productWeights.containsKey(productId)) {
+          transfer['weight'] = productWeights[productId]!;
+          // Keep legacy key for compatibility while backend transitions.
+          transfer['quantity'] = productWeights[productId]!;
         }
         return transfer;
       }).toList();

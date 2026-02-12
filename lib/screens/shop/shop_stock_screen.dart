@@ -23,7 +23,6 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
 
   // Form Controllers
   final _nameController = TextEditingController();
-  final _quantityController = TextEditingController(text: '1');
   final _weightController = TextEditingController();
   final _priceController = TextEditingController();
   final _batchController = TextEditingController();
@@ -55,7 +54,6 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _quantityController.dispose();
     _weightController.dispose();
     _priceController.dispose();
     _batchController.dispose();
@@ -81,7 +79,6 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
 
       final now = DateTime.now();
       final weight = double.tryParse(_weightController.text) ?? 0.0;
-      final quantity = double.tryParse(_quantityController.text) ?? 1.0;
       final price = double.tryParse(_priceController.text) ?? 0.0;
 
       // Register Product for Shop
@@ -91,7 +88,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
         processingUnitName: _selectedVendor?.name ?? 'External Vendor',
         animal: null,
         productType: _selectedProductType,
-        quantity: quantity,
+        quantity: weight,
         createdAt: now,
         name: _nameController.text.isNotEmpty
             ? _nameController.text.trim()
@@ -144,7 +141,6 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
   void _clearForm() {
     _nameController.clear();
     _nameController.clear();
-    _quantityController.text = '1';
     _weightController.clear();
     _priceController.clear();
     _batchController.clear();
@@ -187,13 +183,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
                     _buildBatchField(),
                     const SizedBox(height: AppTheme.space16),
                     const SizedBox(height: AppTheme.space16),
-                    Row(
-                      children: [
-                        Expanded(child: _buildQuantityField()),
-                        const SizedBox(width: AppTheme.space16),
-                        Expanded(child: _buildWeightField()),
-                      ],
-                    ),
+                    _buildWeightField(),
                     const SizedBox(height: AppTheme.space16),
                     _buildNotesField(),
                     const SizedBox(height: AppTheme.space32),
@@ -319,19 +309,6 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
         border: OutlineInputBorder(),
         prefixIcon: Icon(Icons.numbers),
       ),
-    );
-  }
-
-  Widget _buildQuantityField() {
-    return TextFormField(
-      controller: _quantityController,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
-        labelText: 'Quantity',
-        border: OutlineInputBorder(),
-        prefixIcon: Icon(Icons.numbers),
-      ),
-      validator: (v) => v?.isEmpty == true ? 'Required' : null,
     );
   }
 

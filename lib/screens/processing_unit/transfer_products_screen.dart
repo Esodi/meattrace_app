@@ -24,7 +24,7 @@ class TransferProductsScreen extends StatefulWidget {
 class _TransferProductsScreenState extends State<TransferProductsScreen> {
   int _currentStep = 0;
   final List<Product> _selectedProducts = [];
-  final Map<int, double> _productQuantities = {}; // Store custom quantities
+  final Map<int, double> _productWeights = {};
   Map<String, dynamic>? _selectedShop;
   bool _isLoading = false;
   bool _isTransferring = false;
@@ -151,13 +151,13 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
       final shopId = _selectedShop!['id'];
       final productIds = _selectedProducts.map((p) => p.id!).toList();
 
-      // Prepare quantity map - only include products with custom quantities
-      final Map<int, double>? quantities = _productQuantities.isEmpty ? null : _productQuantities;
+      // Prepare weight map - only include products with custom weights
+      final Map<int, double>? weights = _productWeights.isEmpty ? null : _productWeights;
 
       await productProvider.transferProducts(
         productIds, 
         shopId,
-        productQuantities: quantities,
+        productWeights: weights,
       );
       
       if (mounted) {
@@ -188,11 +188,10 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     setState(() {
       if (_selectedProducts.contains(product)) {
         _selectedProducts.remove(product);
-        _productQuantities.remove(product.id); // Remove custom quantity when deselecting
+        _productWeights.remove(product.id);
       } else {
         _selectedProducts.add(product);
-        // Initialize with full quantity
-        _productQuantities[product.id!] = product.quantity;
+        _productWeights[product.id!] = product.weight ?? product.quantity;
       }
     });
   }
@@ -201,9 +200,8 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     setState(() {
       _selectedProducts.clear();
       _selectedProducts.addAll(_filteredProducts);
-      // Initialize quantities for all selected products
       for (var product in _filteredProducts) {
-        _productQuantities[product.id!] = product.quantity;
+        _productWeights[product.id!] = product.weight ?? product.quantity;
       }
     });
   }
@@ -211,7 +209,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
   void _deselectAllProducts() {
     setState(() {
       _selectedProducts.clear();
-      _productQuantities.clear(); // Clear custom quantities
+      _productWeights.clear();
     });
   }
 
@@ -426,7 +424,8 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
 
   Widget _buildProductCard(Product product) {
     final isSelected = _selectedProducts.contains(product);
-    final currentQuantity = _productQuantities[product.id] ?? product.quantity;
+    final availableWeight = product.weight ?? product.quantity;
+    final currentWeight = _productWeights[product.id] ?? availableWeight;
     
     return CustomCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -473,7 +472,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                       style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
                     ),
                     Text(
-                      'Price: \$${product.price.toStringAsFixed(2)} • Available: ${product.quantity}',
+                      'Price: \$${product.price.toStringAsFixed(2)} per ${product.weightUnit} • Available: ${availableWeight.toStringAsFixed(1)} ${product.weightUnit}',
                       style: AppTypography.bodySmall().copyWith(color: AppTheme.primaryGreen),
                     ),
                   ],
@@ -482,7 +481,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
             ],
           ),
           
-          // Quantity adjustment (shown only when selected)
+          // Weight adjustment (shown only when selected)
           if (isSelected) ...[
             const SizedBox(height: 12),
             const Divider(),
@@ -494,7 +493,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Transfer Quantity',
+                        'Transfer Weight',
                         style: AppTypography.bodySmall().copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
@@ -507,15 +506,15 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                           IconButton(
                             onPressed: () {
                               setState(() {
-                                final newQty = (currentQuantity - 1).clamp(1.0, product.quantity);
-                                _productQuantities[product.id!] = newQty;
+                                final newWeight = (currentWeight - 1).clamp(1.0, availableWeight);
+                                _productWeights[product.id!] = newWeight;
                               });
                             },
                             icon: const Icon(Icons.remove_circle_outline),
                             color: AppTheme.secondaryBurgundy,
                           ),
                           
-                          // Quantity input
+                          // Weight input
                           Expanded(
                             child: TextField(
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -525,18 +524,18 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                suffixText: 'of ${product.quantity.toStringAsFixed(0)}',
+                                suffixText: 'of ${availableWeight.toStringAsFixed(1)} ${product.weightUnit}',
                               ),
                               controller: TextEditingController(
-                                text: currentQuantity.toStringAsFixed(0),
+                                text: currentWeight.toStringAsFixed(1),
                               )..selection = TextSelection.fromPosition(
-                                TextPosition(offset: currentQuantity.toStringAsFixed(0).length),
+                                TextPosition(offset: currentWeight.toStringAsFixed(1).length),
                               ),
                               onChanged: (value) {
                                 final parsed = double.tryParse(value);
-                                if (parsed != null && parsed > 0 && parsed <= product.quantity) {
+                                if (parsed != null && parsed > 0 && parsed <= availableWeight) {
                                   setState(() {
-                                    _productQuantities[product.id!] = parsed;
+                                    _productWeights[product.id!] = parsed;
                                   });
                                 }
                               },
@@ -547,8 +546,8 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                           IconButton(
                             onPressed: () {
                               setState(() {
-                                final newQty = (currentQuantity + 1).clamp(1.0, product.quantity);
-                                _productQuantities[product.id!] = newQty;
+                                final newWeight = (currentWeight + 1).clamp(1.0, availableWeight);
+                                _productWeights[product.id!] = newWeight;
                               });
                             },
                             icon: const Icon(Icons.add_circle_outline),
@@ -562,9 +561,9 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                 const SizedBox(width: 8),
                 // Quick set to max button
                 TextButton.icon(
-                  onPressed: () {
+                      onPressed: () {
                     setState(() {
-                      _productQuantities[product.id!] = product.quantity;
+                      _productWeights[product.id!] = availableWeight;
                     });
                   },
                   icon: const Icon(Icons.all_inclusive, size: 16),
@@ -575,7 +574,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                 ),
               ],
             ),
-            if (currentQuantity < product.quantity) ...[
+            if (currentWeight < availableWeight) ...[
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.all(8),
@@ -593,7 +592,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Remaining ${(product.quantity - currentQuantity).toStringAsFixed(0)} will stay in inventory',
+                        'Remaining ${(availableWeight - currentWeight).toStringAsFixed(1)} ${product.weightUnit} will stay in inventory',
                         style: AppTypography.caption().copyWith(
                           color: AppTheme.warningOrange,
                         ),
@@ -764,8 +763,9 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
         const SizedBox(height: 12),
 
         ..._selectedProducts.map((product) {
-          final transferQty = _productQuantities[product.id] ?? product.quantity;
-          final isPartial = transferQty < product.quantity;
+          final transferQty = _productWeights[product.id] ?? (product.weight ?? product.quantity);
+          final baseWeight = (product.weight ?? product.quantity);
+          final isPartial = transferQty < baseWeight;
           
           return CustomCard(
             margin: const EdgeInsets.only(bottom: 8),
@@ -810,7 +810,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            'Partial: ${transferQty.toStringAsFixed(0)} of ${product.quantity.toStringAsFixed(0)}',
+                            'Partial: ${transferQty.toStringAsFixed(1)} of ${baseWeight.toStringAsFixed(1)} ${product.weightUnit}',
                             style: AppTypography.caption().copyWith(
                               color: AppTheme.warningOrange,
                               fontWeight: FontWeight.w600,
@@ -824,14 +824,14 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '\$${(product.price * transferQty / product.quantity).toStringAsFixed(2)}',
+                      '\$${(product.price * transferQty).toStringAsFixed(2)}',
                       style: AppTypography.bodyMedium().copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryGreen,
                       ),
                     ),
                     Text(
-                      '${transferQty.toStringAsFixed(0)} units',
+                      '${transferQty.toStringAsFixed(1)} ${product.weightUnit}',
                       style: AppTypography.bodySmall(),
                     ),
                   ],
@@ -896,8 +896,8 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
 
   double _calculateTotalValue() {
     return _selectedProducts.fold(0.0, (sum, product) {
-      final transferQty = _productQuantities[product.id] ?? product.quantity;
-      return sum + (product.price * transferQty / product.quantity);
+      final transferQty = _productWeights[product.id] ?? (product.weight ?? product.quantity);
+      return sum + (product.price * transferQty);
     });
   }
 

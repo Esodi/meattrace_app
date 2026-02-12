@@ -213,13 +213,13 @@ class ProductProvider with ChangeNotifier {
   Future<Map<String, dynamic>> transferProducts(
     List<int> productIds,
     int shopId, {
-    Map<int, double>? productQuantities,
+    Map<int, double>? productWeights,
   }) async {
     try {
       final response = await _productService.transferProducts(
         productIds,
         shopId,
-        productQuantities: productQuantities,
+        productWeights: productWeights,
       );
       // Refresh products list after transfer
       await fetchProducts();
@@ -258,9 +258,9 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<Product?> updateProduct(Product product) async {
+  Future<Product?> updateProduct(Product product, {bool partialUpdate = false, Map<String, dynamic>? partialData}) async {
     try {
-      final updatedProduct = await _productService.updateProduct(product);
+      final updatedProduct = await _productService.updateProduct(product, partialUpdate: partialUpdate, partialData: partialData);
       // Update the product in the local list
       final index = _products.indexWhere((p) => p.id == product.id);
       if (index != -1) {

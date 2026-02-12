@@ -21,7 +21,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
   List<ProcessingUnit> _processingUnits = [];
   List<Product> _availableProducts = [];
   ProcessingUnit? _selectedUnit;
-  final Map<Product, int> _cart = {};
+  final Map<Product, double> _cart = {};
   final _deliveryAddressController = TextEditingController();
   final _notesController = TextEditingController();
 
@@ -71,7 +71,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
       final products = (response.data['results'] as List)
           .map((json) => Product.fromMap(json))
           .where(
-            (product) => product.quantity > 0 && product.transferredTo == null,
+            (product) => (product.weight ?? 0) > 0 && product.transferredTo == null,
           )
           .toList();
 
@@ -107,6 +107,8 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
         return {
           'product_id': entry.key.id,
           'quantity': entry.value,
+          'weight': entry.value,
+          'weight_unit': entry.key.weightUnit,
           'unit_price': entry.key.price,
           'subtotal': subtotal,
         };
@@ -454,7 +456,8 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
           itemCount: _availableProducts.length,
           itemBuilder: (context, index) {
             final product = _availableProducts[index];
-            final quantity = _cart[product] ?? 0;
+            final selectedWeight = _cart[product] ?? 0.0;
+            final availableWeight = product.weight ?? product.quantity;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
@@ -494,7 +497,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                           ),
                         ),
                         Text(
-                          '${product.quantity.toInt()} available',
+                          '${availableWeight.toStringAsFixed(1)} ${product.weightUnit} available',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -506,13 +509,13 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                     Row(
                       children: [
                         IconButton(
-                          onPressed: quantity > 0
+                          onPressed: selectedWeight > 0
                               ? () {
                                   setState(() {
-                                    if (quantity == 1) {
+                                    if (selectedWeight <= 1) {
                                       _cart.remove(product);
                                     } else {
-                                      _cart[product] = quantity - 1;
+                                      _cart[product] = selectedWeight - 1;
                                     }
                                   });
                                 }
@@ -528,7 +531,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            quantity.toString(),
+                            selectedWeight.toStringAsFixed(1),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
@@ -537,10 +540,10 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                           ),
                         ),
                         IconButton(
-                          onPressed: quantity < product.quantity
+                          onPressed: selectedWeight < availableWeight
                               ? () {
                                   setState(() {
-                                    _cart[product] = quantity + 1;
+                                    _cart[product] = selectedWeight + 1;
                                   });
                                 }
                               : null,
@@ -548,9 +551,9 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                           color: AppColors.shopPrimary,
                         ),
                         const Spacer(),
-                        if (quantity > 0)
+                        if (selectedWeight > 0)
                           Text(
-                            'Subtotal: \$${(product.price * quantity).toStringAsFixed(2)}',
+                            'Subtotal: \$${(product.price * selectedWeight).toStringAsFixed(2)}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                       ],
@@ -616,7 +619,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
             child: ListTile(
               title: Text(entry.key.name),
               subtitle: Text(
-                '${entry.value} × \$${entry.key.price.toStringAsFixed(2)}',
+                '${entry.value.toStringAsFixed(1)} ${entry.key.weightUnit} × \$${entry.key.price.toStringAsFixed(2)}',
               ),
               trailing: Text(
                 '\$${(entry.key.price * entry.value).toStringAsFixed(2)}',

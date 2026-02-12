@@ -111,11 +111,6 @@ class _ProductsListScreenState extends State<ProductsListScreen>
         title: Text('Products', style: AppTypography.headlineMedium()),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: () => context.push('/qr-scanner?source=processor'),
-            tooltip: 'Scan QR',
-          ),
-          IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => context.push('/create-product'),
             tooltip: 'Create Product',

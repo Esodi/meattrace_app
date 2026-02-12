@@ -6,7 +6,7 @@ import '../../models/product.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/custom_icons.dart';
+
 import '../../widgets/core/custom_button.dart';
 import '../../widgets/core/status_badge.dart';
 import '../../widgets/dialogs/product_rejection_dialog.dart';
@@ -26,11 +26,11 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
   // State management for selected products
   final Set<int> _selectedProducts = {};
 
-  // Track products to receive with quantities and weights
+  // Track products to receive with weight (quantity mirrored for compatibility)
   final Map<int, double> _receiveQuantities = {};
   final Map<int, double> _receiveWeights = {};
 
-  // Track products to reject with quantities, weights and reasons
+  // Track products to reject with weight and reasons
   final Map<int, Map<String, dynamic>> _rejections = {};
 
   @override
@@ -97,14 +97,13 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
         if (_rejections.containsKey(productId)) continue;
 
         final product = _pendingProducts.firstWhere((p) => p.id == productId);
-        final quantityToReceive =
-            _receiveQuantities[productId] ?? product.quantity.toDouble();
         final weightToReceive =
-            _receiveWeights[productId] ?? (product.weight ?? 0.0);
+            _receiveWeights[productId] ??
+            (product.weight ?? product.quantity.toDouble());
 
         receives.add({
           'product_id': productId,
-          'quantity_received': quantityToReceive,
+          'quantity_received': weightToReceive,
           'weight_received': weightToReceive,
         });
       }
@@ -114,7 +113,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       for (final entry in _rejections.entries) {
         rejections.add({
           'product_id': entry.key,
-          'quantity_rejected': entry.value['quantity'],
+          'quantity_rejected': entry.value['weight'],
           'weight_rejected': entry.value['weight'],
           'rejection_reason': entry.value['reason'],
         });
@@ -188,28 +187,22 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       setState(() {
         // Add to rejections
         _rejections[product.id!] = {
-          'quantity': result['quantity'],
+          'quantity': result['weight'],
           'weight': result['weight'],
           'reason': result['reason'],
           'reject_all': result['reject_all'],
           'is_weight_based': result['is_weight_based'],
         };
 
-        // If partial rejection, also add to receives for remaining quantity
+        // If partial rejection, also add to receives for remaining weight
         if (!result['reject_all']) {
-          final remainingQuantity =
-              product.quantity.toDouble() - (result['quantity'] as double);
           final remainingWeight =
               (product.weight ?? 0.0) - (result['weight'] as double);
 
-          if (remainingQuantity > 0 || remainingWeight > 0) {
+          if (remainingWeight > 0) {
             _selectedProducts.add(product.id!);
-            _receiveQuantities[product.id!] = remainingQuantity > 0
-                ? remainingQuantity
-                : 0.0;
-            _receiveWeights[product.id!] = remainingWeight > 0
-                ? remainingWeight
-                : 0.0;
+            _receiveQuantities[product.id!] = remainingWeight;
+            _receiveWeights[product.id!] = remainingWeight;
           }
         } else {
           // Full rejection - remove from selected products
@@ -224,7 +217,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
           content: Text(
             result['reject_all']
                 ? 'Product marked for rejection'
-                : 'Partial rejection: ${result['quantity']} units',
+                : 'Partial rejection: ${result['weight']} ${product.weightUnit}',
           ),
           action: SnackBarAction(
             label: 'Undo',
@@ -270,11 +263,6 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
         ),
         title: Text('Receive Products', style: AppTypography.headlineMedium()),
         actions: [
-          IconButton(
-            icon: const Icon(CustomIcons.MEATTRACE_ICON),
-            onPressed: () => _openQRScanner(),
-            tooltip: 'Scan QR Code',
-          ),
           if (hasSelections)
             Padding(
               padding: const EdgeInsets.only(right: AppTheme.space8),
@@ -576,7 +564,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                           ),
                           _buildInfoChip(
                             Icons.inventory,
-                            '${product.quantity} units',
+                            '${product.weight?.toStringAsFixed(1) ?? '0'} ${product.weightUnit}',
                           ),
                         ],
                       ),
@@ -642,7 +630,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                     ),
                     const SizedBox(height: AppTheme.space8),
                     Text(
-                      'Quantity: ${_rejections[product.id]!['quantity']} units${_rejections[product.id]!['weight'] > 0 ? ' / ${_rejections[product.id]!['weight']} ${product.weightUnit}' : ''}',
+                      'Weight: ${_rejections[product.id]!['weight']} ${product.weightUnit}',
                       style: AppTypography.bodySmall(),
                     ),
                     const SizedBox(height: AppTheme.space4),
@@ -653,8 +641,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                     if (isPartialRejection) ...[
                       const SizedBox(height: AppTheme.space4),
                       Text(
-                        'Accepting: ${(product.quantity.toDouble() - (_rejections[product.id]!['quantity'] as double)).toStringAsFixed(1)} units'
-                        ' / ${((product.weight ?? 0.0) - (_rejections[product.id]!['weight'] as double)).toStringAsFixed(1)} ${product.weightUnit}',
+                        'Accepting: ${((product.weight ?? 0.0) - (_rejections[product.id]!['weight'] as double)).toStringAsFixed(1)} ${product.weightUnit}',
                         style: AppTypography.bodySmall().copyWith(
                           color: AppColors.success,
                           fontWeight: FontWeight.w600,
@@ -837,20 +824,6 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       return '${difference.inDays} days ago';
     } else {
       return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-
-  Future<void> _openQRScanner() async {
-    // Navigate to QR scanner
-    final result = await Navigator.pushNamed(
-      context,
-      '/qr-scanner',
-      arguments: {'source': 'shop'},
-    );
-
-    // Refresh the list after scanning
-    if (result != null && mounted) {
-      await _loadPendingProducts();
     }
   }
 }

@@ -645,7 +645,7 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                           .take(2)
                           .map(
                             (item) =>
-                                '${item.productName ?? 'Product'} x${item.quantity.toStringAsFixed(0)}',
+                                '${item.productName ?? 'Product'} ${item.weight.toStringAsFixed(1)} ${item.weightUnit}',
                           )
                           .join(', ') +
                       (sale.items.length > 2 ? '...' : ''),

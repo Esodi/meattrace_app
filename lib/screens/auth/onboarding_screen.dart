@@ -24,7 +24,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Complete Traceability',
       description:
           'Track livestock from abbatoir to table with QR codes and complete chain of custody documentation.',
-      icon: CustomIcons.qrCodeScan,
+      icon: CustomIcons.qrCode,
       color: AppColors.abbatoirPrimary,
       gradient: [
         AppColors.abbatoirPrimary,
@@ -175,11 +175,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ],
             ),
             child: Center(
-              child: Icon(
-                page.icon,
-                size: 80,
-                color: Colors.white,
-              ),
+              child: Icon(page.icon, size: 80, color: Colors.white),
             ),
           ),
 
@@ -188,9 +184,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           // Title
           Text(
             page.title,
-            style: AppTypography.displayLarge().copyWith(
-              color: page.color,
-            ),
+            style: AppTypography.displayLarge().copyWith(color: page.color),
             textAlign: TextAlign.center,
           ),
 

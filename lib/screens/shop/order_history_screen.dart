@@ -379,7 +379,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                           children: [
                             Expanded(
                               child: Text(
-                                '${item.productName ?? 'Product'} (${item.quantity.toStringAsFixed(2)} kg)',
+                                '${item.productName ?? 'Product'} (${item.weight.toStringAsFixed(2)} ${item.weightUnit})',
                                 style: AppTypography.bodySmall(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

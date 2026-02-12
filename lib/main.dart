@@ -26,6 +26,9 @@ import 'providers/processing_unit_management_provider.dart';
 import 'providers/shop_management_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/external_vendor_provider.dart';
+import 'providers/invoice_provider.dart';
+import 'providers/shop_settings_provider.dart';
+import 'providers/sale_provider.dart';
 import 'services/api_service.dart';
 
 // Modern UI screens (actively used)
@@ -62,6 +65,7 @@ import 'screens/shop/receive_products_screen.dart';
 import 'screens/shop/shop_registration_screen.dart';
 import 'screens/shop/shop_user_management_screen.dart';
 import 'screens/shop/shop_settings_screen.dart';
+import 'screens/shop/shop_branding_screen.dart';
 import 'screens/shop/shop_profile_screen.dart';
 import 'screens/shop/shop_inventory_screen.dart';
 import 'screens/shop/order_history_screen.dart';
@@ -71,7 +75,10 @@ import 'screens/shop/sell_screen.dart';
 import 'screens/shop/sales_history_screen.dart';
 import 'screens/shop/sale_detail_screen.dart';
 import 'screens/shop/product_sales_tracking_screen.dart';
-import 'screens/common/enhanced_qr_scanner_screen.dart';
+import 'screens/shop/invoice_list_screen.dart';
+import 'screens/shop/create_invoice_screen.dart';
+import 'screens/shop/invoice_detail_screen.dart';
+import 'screens/shop/sales_dashboard_screen.dart';
 import 'screens/common/camera_screen.dart';
 import 'screens/common/printer_settings_screen.dart';
 import 'screens/abbatoir/modern_abbatoir_home_screen.dart';
@@ -379,12 +386,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => const ProductsListScreen(),
             ),
             GoRoute(
-              path: '/qr-scanner',
-              builder: (context, state) => EnhancedQrScannerScreen(
-                source: state.uri.queryParameters['source'],
-              ),
-            ),
-            GoRoute(
               path: '/processor/settings',
               builder: (context, state) => const ProcessorSettingsScreen(),
             ),
@@ -485,6 +486,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => const ShopSettingsScreen(),
             ),
             GoRoute(
+              path: '/shop/branding',
+              builder: (context, state) => const ShopBrandingScreen(),
+            ),
+            GoRoute(
               path: '/receive-products',
               builder: (context, state) => const ReceiveProductsScreen(),
             ),
@@ -503,7 +508,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => const ShopStockScreen(),
             ),
             GoRoute(
-              path: '/products/:id',
+              path: '/shop/products/:id',
               builder: (context, state) =>
                   ProductDetailScreen(productId: state.pathParameters['id']!),
             ),
@@ -522,6 +527,24 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, state) => ProductSalesTrackingScreen(
                 productName: state.pathParameters['productName']!,
               ),
+            ),
+            GoRoute(
+              path: '/shop/invoices',
+              builder: (context, state) => const InvoiceListScreen(),
+            ),
+            GoRoute(
+              path: '/shop/invoices/create',
+              builder: (context, state) => const CreateInvoiceScreen(),
+            ),
+            GoRoute(
+              path: '/shop/invoices/:id',
+              builder: (context, state) => InvoiceDetailScreen(
+                invoiceId: int.parse(state.pathParameters['id']!),
+              ),
+            ),
+            GoRoute(
+              path: '/shop/sales-dashboard',
+              builder: (context, state) => const SalesDashboardScreen(),
             ),
           ],
         ),
@@ -637,6 +660,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => ShopManagementProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ExternalVendorProvider()),
+        ChangeNotifierProvider(create: (_) => InvoiceProvider()),
+        ChangeNotifierProvider(create: (_) => ShopSettingsProvider()),
+        ChangeNotifierProvider(create: (_) => SaleProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

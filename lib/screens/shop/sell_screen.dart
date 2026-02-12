@@ -28,12 +28,7 @@ class _SellScreenState extends State<SellScreen>
   // Cart items: Map<productId, CartItem>
   final Map<int, CartItem> _cart = {};
 
-  // Track toggle state for weight vs quantity for each product
-  // NOT USED ANYMORE - we now allow both quantity and weight
-  // final Map<int, bool> _useWeight = {};
-
-  // Controllers for quantity and weight per product (by product ID)
-  final Map<int, TextEditingController> _qtyControllers = {};
+  // Controllers for weight per product (by product ID)
   final Map<int, TextEditingController> _weightControllers = {};
 
   // Customer info
@@ -58,9 +53,6 @@ class _SellScreenState extends State<SellScreen>
     _customerNameController.dispose();
     _customerPhoneController.dispose();
     // Dispose all product controllers
-    for (var controller in _qtyControllers.values) {
-      controller.dispose();
-    }
     for (var controller in _weightControllers.values) {
       controller.dispose();
     }
@@ -75,33 +67,19 @@ class _SellScreenState extends State<SellScreen>
     return _cart.length;
   }
 
-  void _addToCart(Product product, double quantity, double weight) {
-    // Validate at least one is specified
-    if (quantity <= 0 && weight <= 0) {
+  void _addToCart(Product product, double weight) {
+    if (weight <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter quantity or weight'),
+          content: Text('Please enter weight'),
           backgroundColor: AppColors.warning,
         ),
       );
       return;
     }
 
-    // Validate quantity against stock
-    if (quantity > 0 && quantity > product.quantity) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Only ${product.quantity.toStringAsFixed(0)} units available in stock',
-          ),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-
     // Validate weight against stock
-    if (weight > 0 && product.weight != null && weight > product.weight!) {
+    if (product.weight != null && weight > product.weight!) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -114,32 +92,15 @@ class _SellScreenState extends State<SellScreen>
     }
 
     setState(() {
-      // Calculate subtotal: qty * price + weight * price
-      // If both are specified, we calculate based on the mode
-      // For simplicity: if qty > 0, use qty * price; if weight > 0, add weight * price
-      double subtotal = 0;
-      if (quantity > 0) {
-        subtotal += quantity * product.price;
-      }
-      if (weight > 0) {
-        subtotal += weight * product.price;
-      }
+      final subtotal = weight * product.price;
 
       if (_cart.containsKey(product.id)) {
         final existingItem = _cart[product.id]!;
-        final newQuantity = existingItem.quantity + quantity;
         final newWeight = existingItem.weight + weight;
-        double newSubtotal = 0;
-        if (newQuantity > 0) {
-          newSubtotal += newQuantity * product.price;
-        }
-        if (newWeight > 0) {
-          newSubtotal += newWeight * product.price;
-        }
+        final newSubtotal = newWeight * product.price;
 
         _cart[product.id!] = CartItem(
           product: product,
-          quantity: newQuantity,
           weight: newWeight,
           weightUnit: product.weightUnit,
           unitPrice: product.price,
@@ -148,7 +109,6 @@ class _SellScreenState extends State<SellScreen>
       } else {
         _cart[product.id!] = CartItem(
           product: product,
-          quantity: quantity,
           weight: weight,
           weightUnit: product.weightUnit,
           unitPrice: product.price,
@@ -158,7 +118,6 @@ class _SellScreenState extends State<SellScreen>
     });
 
     // Clear the input controllers after adding
-    _qtyControllers[product.id]?.text = '';
     _weightControllers[product.id]?.text = '';
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -181,37 +140,23 @@ class _SellScreenState extends State<SellScreen>
     });
   }
 
-  void _updateCartItemQuantity(
-    int productId,
-    double newQuantity, {
-    bool isWeight = false,
-  }) {
+  void _updateCartItemWeight(int productId, double newWeight) {
     final item = _cart[productId];
     if (item == null) return;
 
-    final updatedQty = isWeight ? item.quantity : newQuantity;
-    final updatedWeight = isWeight ? newQuantity : item.weight;
-
-    // Remove if both are zero or less
-    if (updatedQty <= 0 && updatedWeight <= 0) {
+    // Remove if zero or less
+    if (newWeight <= 0) {
       _removeFromCart(productId);
       return;
     }
 
-    // Calculate new subtotal
-    double newSubtotal = 0;
-    if (updatedQty > 0) {
-      newSubtotal += updatedQty * item.unitPrice;
-    }
-    if (updatedWeight > 0) {
-      newSubtotal += updatedWeight * item.unitPrice;
-    }
+    // Weight-first subtotal
+    final newSubtotal = newWeight * item.unitPrice;
 
     setState(() {
       _cart[productId] = CartItem(
         product: item.product,
-        quantity: updatedQty,
-        weight: updatedWeight,
+        weight: newWeight,
         weightUnit: item.weightUnit,
         unitPrice: item.unitPrice,
         subtotal: newSubtotal,
@@ -268,7 +213,7 @@ class _SellScreenState extends State<SellScreen>
             .map(
               (item) => {
                 'product': item.product.id,
-                'quantity': item.quantity,
+                'quantity': item.weight,
                 'weight': item.weight,
                 'weight_unit': item.weightUnit,
                 'unit_price': item.unitPrice,
@@ -292,12 +237,13 @@ class _SellScreenState extends State<SellScreen>
       _customerNameController.clear();
       _customerPhoneController.clear();
 
-      // Force refresh products from backend (not cache)
+      // Deduct sold weight from shop inventory
       if (!mounted) return;
       final productProvider = Provider.of<ProductProvider>(
         context,
         listen: false,
       );
+      await _applySaleStockDeductions(productProvider);
       await productProvider.fetchProducts();
 
       // Add another small delay to ensure UI updates
@@ -324,6 +270,25 @@ class _SellScreenState extends State<SellScreen>
           ),
         );
       }
+    }
+  }
+
+  Future<void> _applySaleStockDeductions(
+    ProductProvider productProvider,
+  ) async {
+    for (final item in _cart.values) {
+      final product = item.product;
+      final currentWeight = product.weight ?? product.quantity;
+      final newWeight = (currentWeight - item.weight).clamp(0.0, currentWeight);
+
+      await productProvider.updateProduct(
+        product,
+        partialUpdate: true,
+        partialData: {
+          'weight': newWeight,
+          'quantity': newWeight,
+        },
+      );
     }
   }
 
@@ -649,7 +614,8 @@ class _SellScreenState extends State<SellScreen>
 
         // Filter products available in this shop with stock
         final availableProducts = productProvider.products
-            .where((p) => p.receivedByShopId == currentShopId && p.quantity > 0)
+            .where((p) => p.receivedByShopId == currentShopId)
+            .where((p) => (p.weight ?? 0) > 0)
             .toList();
 
         if (availableProducts.isEmpty) {
@@ -676,13 +642,8 @@ class _SellScreenState extends State<SellScreen>
 
   Widget _buildProductCard(Product product) {
     // Get or create controllers for this product
-    _qtyControllers[product.id!] ??= TextEditingController();
     _weightControllers[product.id!] ??= TextEditingController();
-
-    final qtyController = _qtyControllers[product.id!]!;
     final weightController = _weightControllers[product.id!]!;
-
-    final hasWeight = product.weight != null && product.weight! > 0;
 
     return CustomCard(
       margin: const EdgeInsets.only(bottom: AppTheme.space12),
@@ -755,74 +716,42 @@ class _SellScreenState extends State<SellScreen>
           // Stock Info Row
           Row(
             children: [
-              // Quantity stock
+              // Weight stock
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppTheme.space8,
                   vertical: AppTheme.space4,
                 ),
                 decoration: BoxDecoration(
-                  color: product.quantity > 5
+                  color: (product.weight ?? 0) > 5
                       ? AppColors.success.withValues(alpha: 0.1)
                       : AppColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 ),
                 child: Text(
-                  '${product.quantity.toStringAsFixed(0)} units',
+                  '${(product.weight ?? 0).toStringAsFixed(1)} ${product.weightUnit}',
                   style: AppTypography.labelSmall().copyWith(
-                    color: product.quantity > 5
+                    color: (product.weight ?? 0) > 5
                         ? AppColors.success
                         : AppColors.warning,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              if (hasWeight) ...[
-                const SizedBox(width: AppTheme.space8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space8,
-                    vertical: AppTheme.space4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  ),
-                  child: Text(
-                    '${product.weight!.toStringAsFixed(1)} ${product.weightUnit}',
-                    style: AppTypography.labelSmall().copyWith(
-                      color: AppColors.info,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: AppTheme.space12),
 
-          // Input Row - Quantity and Weight
+          // Input Row - Weight
           Row(
             children: [
-              // Quantity Input
               Expanded(
                 child: NumberTextField(
-                  controller: qtyController,
-                  label: 'Qty (units)',
-                  allowDecimals: false,
+                  controller: weightController,
+                  label: 'Weight (${product.weightUnit})',
+                  allowDecimals: true,
                 ),
               ),
-              if (hasWeight) ...[
-                const SizedBox(width: AppTheme.space8),
-                // Weight Input
-                Expanded(
-                  child: NumberTextField(
-                    controller: weightController,
-                    label: 'Weight (${product.weightUnit})',
-                    allowDecimals: true,
-                  ),
-                ),
-              ],
               const SizedBox(width: AppTheme.space8),
               // Add to Cart Button
               SizedBox(
@@ -830,9 +759,8 @@ class _SellScreenState extends State<SellScreen>
                 height: 48,
                 child: IconButton.filled(
                   onPressed: () {
-                    final qty = double.tryParse(qtyController.text) ?? 0;
                     final wt = double.tryParse(weightController.text) ?? 0;
-                    _addToCart(product, qty, wt);
+                    _addToCart(product, wt);
                   },
                   icon: const Icon(Icons.add_shopping_cart, size: 22),
                   style: IconButton.styleFrom(
@@ -925,9 +853,6 @@ class _SellScreenState extends State<SellScreen>
   }
 
   Widget _buildCartItemCard(CartItem item) {
-    final qtyController = TextEditingController(
-      text: item.quantity > 0 ? item.quantity.toStringAsFixed(0) : '',
-    );
     final weightController = TextEditingController(
       text: item.weight > 0 ? item.weight.toStringAsFixed(1) : '',
     );
@@ -980,54 +905,9 @@ class _SellScreenState extends State<SellScreen>
           ),
           const SizedBox(height: AppTheme.space12),
 
-          // Quantity and Weight Row
+          // Weight Row
           Row(
             children: [
-              // Quantity Field
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Quantity',
-                      style: AppTypography.labelSmall().copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space4),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 60,
-                          child: NumberTextField(
-                            controller: qtyController,
-                            label: '',
-                            allowDecimals: false,
-                            onChanged: (value) {
-                              final newVal = double.tryParse(value) ?? 0;
-                              _updateCartItemQuantity(
-                                item.product.id!,
-                                newVal,
-                                isWeight: false,
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: AppTheme.space4),
-                        Text(
-                          'units',
-                          style: AppTypography.bodySmall().copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Weight Field
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1050,10 +930,9 @@ class _SellScreenState extends State<SellScreen>
                             allowDecimals: true,
                             onChanged: (value) {
                               final newVal = double.tryParse(value) ?? 0;
-                              _updateCartItemQuantity(
+                              _updateCartItemWeight(
                                 item.product.id!,
                                 newVal,
-                                isWeight: true,
                               );
                             },
                           ),
@@ -1102,7 +981,6 @@ class _SellScreenState extends State<SellScreen>
 
 class CartItem {
   final Product product;
-  final double quantity;
   final double weight;
   final String weightUnit;
   final double unitPrice;
@@ -1110,7 +988,6 @@ class CartItem {
 
   CartItem({
     required this.product,
-    required this.quantity,
     required this.weight,
     required this.weightUnit,
     required this.unitPrice,

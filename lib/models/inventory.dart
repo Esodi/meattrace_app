@@ -144,7 +144,7 @@ class Inventory {
     this.productDetails,
     this.shopUsername,
     bool? isLowStock,
-  }) : isLowStock = isLowStock ?? (quantity <= minStockLevel);
+  }) : isLowStock = isLowStock ?? (weight <= minStockLevel);
 
   factory Inventory.fromMap(Map<String, dynamic> map) {
     return Inventory(
@@ -178,7 +178,7 @@ class Inventory {
       'id': id,
       'shop': shop,
       'product': product,
-      'quantity': quantity,
+      'quantity': weight,
       'weight': weight,
       'weight_unit': weightUnit,
       'min_stock_level': minStockLevel,
@@ -190,7 +190,7 @@ class Inventory {
   Map<String, dynamic> toMapForCreate() {
     return {
       'product_id': product,
-      'quantity': quantity,
+      'quantity': weight,
       'weight': weight,
       'weight_unit': weightUnit,
       'min_stock_level': minStockLevel,
@@ -227,6 +227,6 @@ class Inventory {
 
   @override
   String toString() {
-    return 'Inventory(id: $id, shop: $shop, product: $product, quantity: $quantity, minStockLevel: $minStockLevel, lastUpdated: $lastUpdated, isLowStock: $isLowStock)';
+    return 'Inventory(id: $id, shop: $shop, product: $product, weight: $weight, minStockLevel: $minStockLevel, lastUpdated: $lastUpdated, isLowStock: $isLowStock)';
   }
 }

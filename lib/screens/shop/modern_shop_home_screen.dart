@@ -185,14 +185,6 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(
-              CustomIcons.MEATTRACE_ICON,
-              color: AppColors.textPrimary,
-            ),
-            tooltip: 'Scan QR Code',
-            onPressed: () => context.push('/qr-scanner'),
-          ),
-          IconButton(
             icon: Badge(
               label: _pendingProductsCount > 0
                   ? Text('$_pendingProductsCount')
@@ -286,7 +278,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                           .where(
                             (p) =>
                                 p.receivedByShopId == currentShopId &&
-                                p.quantity > 0,
+                                (p.weight ?? 0) > 0,
                           )
                           .toList()
                         ..sort((a, b) => b.price.compareTo(a.price))
@@ -379,7 +371,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
                             price: product.price.toDouble(),
                             isExternal: product.isExternal,
                             onTap: () =>
-                                context.push('/products/${product.id}'),
+                                context.push('/shop/products/${product.id}'),
                           ),
                         );
                       }, childCount: shopProducts.length),
@@ -404,11 +396,11 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
         .toList();
     final totalProducts = shopProducts.length;
     final lowStock = shopProducts
-        .where((p) => p.quantity > 0 && p.quantity <= 10)
+        .where((p) => (p.weight ?? 0) > 0 && (p.weight ?? 0) <= 10)
         .length;
     double totalValue = 0;
     for (var p in shopProducts) {
-      totalValue += (p.price * p.quantity);
+      totalValue += (p.price * (p.weight ?? 0));
     }
 
     return Stack(
@@ -629,11 +621,18 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
         route: '/shop/sales',
       ),
       _QuickAction(
-        icon: Icons.qr_code_scanner_rounded,
-        label: 'Scan QR',
+        icon: Icons.receipt_long,
+        label: 'Invoices',
         color: AppColors.warning,
-        route: '/qr-scanner',
+        route: '/shop/invoices',
       ),
+      _QuickAction(
+        icon: Icons.dashboard_outlined,
+        label: 'Dashboard',
+        color: AppColors.processorPrimary,
+        route: '/shop/sales-dashboard',
+      ),
+
       _QuickAction(
         icon: Icons.business_center_outlined,
         label: 'Vendors',
@@ -809,11 +808,11 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
         .toList();
     final total = shopProducts.length;
     if (total == 0) return const SizedBox.shrink();
-    final inStock = shopProducts.where((p) => p.quantity > 10).length;
+    final inStock = shopProducts.where((p) => (p.weight ?? 0) > 10).length;
     final low = shopProducts
-        .where((p) => p.quantity > 0 && p.quantity <= 10)
+        .where((p) => (p.weight ?? 0) > 0 && (p.weight ?? 0) <= 10)
         .length;
-    final out = shopProducts.where((p) => p.quantity == 0).length;
+    final out = shopProducts.where((p) => (p.weight ?? 0) == 0).length;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -866,7 +865,7 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
         ],
       ),
       child: ListTile(
-        onTap: () => context.push('/products/${product.id}'),
+        onTap: () => context.push('/shop/products/${product.id}'),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(

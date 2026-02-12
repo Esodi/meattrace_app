@@ -135,7 +135,7 @@ class InventoryService {
 
       for (var item in inventory) {
         if (item.productDetails != null) {
-          totalValue += item.quantity * item.productDetails!.price;
+          totalValue += item.weight * item.productDetails!.price;
         }
       }
 
@@ -151,7 +151,6 @@ class InventoryService {
     }
   }
 }
-
 
 
 

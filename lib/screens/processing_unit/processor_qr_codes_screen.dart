@@ -64,16 +64,6 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
           },
         ),
         title: Text('QR Codes', style: AppTypography.headlineMedium()),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.qr_code_scanner,
-              color: AppColors.textPrimary,
-            ),
-            tooltip: 'Scan QR Code',
-            onPressed: () => context.push('/qr-scanner?source=processor'),
-          ),
-        ],
       ),
       body: Column(
         children: [

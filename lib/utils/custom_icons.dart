@@ -11,7 +11,7 @@ class CustomIcons {
   /// MeatTrace App Icon - Primary branding icon used throughout the application
   /// This icon represents the MeatTrace application identity and should be used
   /// for app logo, splash screens, login screens, and main navigation
-  static const IconData MEATTRACE_ICON = Icons.qr_code_scanner;
+  static const IconData MEATTRACE_ICON = Icons.blur_on;
 
   // ========== LIVESTOCK SPECIES ICONS ==========
 
@@ -137,9 +137,6 @@ class CustomIcons {
   static const IconData box = Icons.inbox;
 
   // ========== ADDITIONAL ICONS (Aliases & Fallbacks) ==========
-
-  /// QR Code Scan (fallback to Material Icons)
-  static const IconData qrCodeScan = Icons.qr_code_scanner;
 
   /// Quality Grade (fallback)
   static const IconData qualityGrade = Icons.grade;

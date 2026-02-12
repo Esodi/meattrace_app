@@ -161,8 +161,10 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
       );
 
       // Dismiss loading notification
-      scaffoldMessenger.hideCurrentSnackBar();
-      debugPrint('🗑️ [LOGIN_SCREEN] Loading notification dismissed');
+      if (mounted) {
+        scaffoldMessenger.hideCurrentSnackBar();
+        debugPrint('🗑️ [LOGIN_SCREEN] Loading notification dismissed');
+      }
 
       if (success && mounted) {
         debugPrint(
@@ -176,6 +178,13 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
         // Small delay to show success message and progress panel
         debugPrint('⏱️ [LOGIN_SCREEN] Waiting 2 seconds before navigating...');
         await Future.delayed(const Duration(seconds: 2));
+
+        if (!mounted) {
+          debugPrint(
+            '⚠️ [LOGIN_SCREEN] Widget unmounted during delay, aborting navigation',
+          );
+          return;
+        }
 
         // Navigate to appropriate screen based on user status
         final user = authProvider.user;
@@ -221,7 +230,9 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
         // Show detailed error notification
         final errorMessage =
             authProvider.error ?? 'Login failed. Please try again.';
-        AuthNotificationService.showAuthError(context, errorMessage);
+        if (mounted) {
+          AuthNotificationService.showAuthError(context, errorMessage);
+        }
 
         // Keep progress panel visible to show error details
         await Future.delayed(const Duration(seconds: 3));
@@ -239,7 +250,9 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
       );
 
       // Dismiss loading notification
-      scaffoldMessenger.hideCurrentSnackBar();
+      if (mounted) {
+        scaffoldMessenger.hideCurrentSnackBar();
+      }
 
       if (mounted) {
         debugPrint('❌ [LOGIN_SCREEN] Showing error notification for exception');

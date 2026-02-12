@@ -75,11 +75,11 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
         case 0: // All
           return true;
         case 1: // In Stock
-          return p.quantity > 10;
+          return (p.weight ?? 0) > 10;
         case 2: // Low Stock
-          return p.quantity > 0 && p.quantity <= 10;
+          return (p.weight ?? 0) > 0 && (p.weight ?? 0) <= 10;
         case 3: // Out of Stock
-          return p.quantity == 0;
+          return (p.weight ?? 0) == 0;
         default:
           return true;
       }
@@ -120,14 +120,16 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
   }
 
   String _getStockStatusLabel(Product product) {
-    if (product.quantity == 0) return 'Out of Stock';
-    if (product.quantity <= 10) return 'Low Stock';
+    final stockWeight = product.weight ?? 0;
+    if (stockWeight == 0) return 'Out of Stock';
+    if (stockWeight <= 10) return 'Low Stock';
     return 'In Stock';
   }
 
   Color _getProductStatusColor(Product product) {
-    if (product.quantity == 0) return AppColors.error;
-    if (product.quantity <= 10) return AppColors.warning;
+    final stockWeight = product.weight ?? 0;
+    if (stockWeight == 0) return AppColors.error;
+    if (stockWeight <= 10) return AppColors.warning;
     return AppColors.success;
   }
 
@@ -292,7 +294,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
     return CustomCard(
       padding: EdgeInsets.zero,
       child: InkWell(
-        onTap: () => context.push('/products/${product.id}'),
+        onTap: () => context.push('/shop/products/${product.id}'),
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.space16),
@@ -369,29 +371,40 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                       crossAxisAlignment: WrapCrossAlignment.center,
                       alignment: WrapAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+                        Wrap(
+                          spacing: AppTheme.space12,
+                          runSpacing: AppTheme.space4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Icon(
-                              Icons.inventory_2,
-                              size: 16,
-                              color: AppColors.textSecondary,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: AppTheme.space4),
+                                Text(
+                                  'Stock: ${product.weight?.toStringAsFixed(1) ?? '0'} ${product.weightUnit}',
+                                  style: AppTypography.bodyMedium(),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: AppTheme.space4),
-                            Text(
-                              'Qty: ${product.quantity}',
-                              style: AppTypography.bodyMedium(),
-                            ),
-                            const SizedBox(width: AppTheme.space16),
-                            Icon(
-                              Icons.scale,
-                              size: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: AppTheme.space4),
-                            Text(
-                              '${product.weight?.toStringAsFixed(1) ?? '0'} kg',
-                              style: AppTypography.bodyMedium(),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.scale,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: AppTheme.space4),
+                                Text(
+                                  '${product.weight?.toStringAsFixed(1) ?? '0'} kg',
+                                  style: AppTypography.bodyMedium(),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -807,14 +820,13 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                           listen: false,
                         );
 
-                        // Update product with new price
-                        final updatedProduct = product.copyWith(
-                          price: price,
-                          quantity:
-                              0, // Set to 0 to trigger partial update in service
+                        // Update product with new price using partial update
+                        // This prevents the bug where setting quantity=0 created phantom sales
+                        await productProvider.updateProduct(
+                          product,
+                          partialUpdate: true,
+                          partialData: {'price': price},
                         );
-
-                        await productProvider.updateProduct(updatedProduct);
 
                         // Refresh the inventory list
                         await _loadInventory();
@@ -955,14 +967,13 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                           listen: false,
                         );
 
-                        // Update product with new price
-                        final updatedProduct = product.copyWith(
-                          price: price,
-                          quantity:
-                              0, // Set to 0 to trigger partial update in service
+                        // Update product with new price using partial update
+                        // This prevents the bug where setting quantity=0 created phantom sales
+                        await productProvider.updateProduct(
+                          product,
+                          partialUpdate: true,
+                          partialData: {'price': price},
                         );
-
-                        await productProvider.updateProduct(updatedProduct);
 
                         // Refresh the inventory list
                         await _loadInventory();

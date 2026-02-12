@@ -60,7 +60,7 @@ class LogoWithBorder extends StatelessWidget {
                     color: AppColors.backgroundGray,
                     child: const Center(
                       child: Icon(
-                        Icons.qr_code_scanner,
+                        Icons.blur_on,
                         color: AppColors.textSecondary,
                         size: 32,
                       ),

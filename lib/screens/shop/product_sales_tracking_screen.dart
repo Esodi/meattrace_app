@@ -210,7 +210,7 @@ class _ProductSalesTrackingScreenState
                     ],
                   ),
                   Text(
-                    '${summary.remainingQuantity.toInt()} units',
+                    '${summary.remainingWeight.toStringAsFixed(1)} kg remaining',
                     style: AppTypography.bodySmall().copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -352,7 +352,7 @@ class _ProductSalesTrackingScreenState
                           ),
                         ),
                         Text(
-                          '${addition.quantity.toInt()} units',
+                          '${addition.weight.toStringAsFixed(1)} ${addition.weightUnit}',
                           style: AppTypography.bodySmall().copyWith(
                             color: AppColors.textSecondary,
                           ),

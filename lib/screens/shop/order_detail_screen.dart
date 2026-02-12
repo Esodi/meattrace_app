@@ -444,7 +444,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                         const SizedBox(height: AppTheme.space4),
                         Text(
-                          '${item.quantity} × \$${item.unitPrice.toStringAsFixed(2)}',
+                          '${item.weight.toStringAsFixed(1)} ${item.weightUnit} × \$${item.unitPrice.toStringAsFixed(2)}',
                           style: AppTypography.bodySmall().copyWith(
                             color: AppColors.textSecondary,
                           ),

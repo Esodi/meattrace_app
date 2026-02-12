@@ -409,8 +409,6 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
           const SizedBox(height: AppTheme.space8),
           Row(
             children: [
-              _buildItemDetail('Qty', item.quantity.toStringAsFixed(0)),
-              const SizedBox(width: AppTheme.space16),
               _buildItemDetail(
                 'Weight',
                 '${item.weight.toStringAsFixed(2)} ${item.weightUnit}',

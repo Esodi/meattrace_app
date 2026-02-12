@@ -171,4 +171,16 @@ class SaleService {
       throw Exception(errorMessage);
     }
   }
+
+  /// Delete a sale
+  Future<void> deleteSale(int id) async {
+    try {
+      await _dioClient.dio.delete('${Constants.baseUrl}/sales/$id/');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception('Sale not found');
+      }
+      throw Exception('Failed to delete sale: ${e.message}');
+    }
+  }
 }

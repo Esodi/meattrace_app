@@ -292,10 +292,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       case 1: // Products
         context.push('/processor/products');
         break;
-      case 2: // Scan
-        context.push('/qr-scanner');
-        break;
-      case 3: // Settings
+      case 2: // Settings
         context.push('/processor/settings');
         break;
     }
@@ -1312,14 +1309,7 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
                     context.push('/processor/products');
                   },
                 ),
-                _buildDrawerItem(
-                  icon: Icons.qr_code_scanner,
-                  title: 'Scan QR',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.push('/qr-scanner');
-                  },
-                ),
+
                 const Divider(),
                 _buildDrawerItem(
                   icon: Icons.settings,

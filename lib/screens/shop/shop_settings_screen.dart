@@ -103,6 +103,19 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
             ),
           ),
 
+          // Business Profile Section
+          _buildSectionHeader('Business Profile', themeProvider),
+          _buildSettingsCard([
+            _buildListTile(
+              title: 'Branding & Contact',
+              subtitle: 'Edit headers, footers, TIN, and address',
+              icon: Icons.store_outlined,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/shop/branding'),
+              themeProvider: themeProvider,
+            ),
+          ], themeProvider),
+
           // Notifications Section
           _buildSectionHeader('Notifications', themeProvider),
           _buildSettingsCard([
