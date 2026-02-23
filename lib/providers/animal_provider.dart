@@ -3,13 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import '../models/animal.dart';
-import '../services/animal_service.dart';
 import '../services/database_helper.dart';
-import '../services/dio_client.dart';
 import '../utils/initialization_helper.dart';
 
+import '../repositories/animal_repository.dart';
+
 class AnimalProvider with ChangeNotifier {
-  final AnimalService _animalService = AnimalService();
+  final AnimalRepository _animalRepository = AnimalRepository();
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Animal> _animals = [];
   List<Animal> _transferredAnimals = [];
@@ -88,10 +88,6 @@ class AnimalProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _saveToDatabase() async {
-    await _dbHelper.insertAnimals(_animals);
-  }
-
   /// Clear local animal cache - useful before forcing a fresh fetch from server
   Future<void> clearAnimals() async {
     _animals = [];
@@ -112,21 +108,14 @@ class AnimalProvider with ChangeNotifier {
     });
 
     try {
-      final result = await _animalService.getAnimals(
+      _animals = await _animalRepository.getAnimals(
         species: species,
         slaughtered: slaughtered,
         search: search,
         page: page,
-        ordering: '-created_at', // Order by newest first
       );
-
-      _animals = result['results'] as List<Animal>;
-
-      await _saveToDatabase();
     } catch (e) {
       _error = e.toString();
-      // Load offline data if API fails
-      await _loadOfflineData();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -141,8 +130,8 @@ class AnimalProvider with ChangeNotifier {
     });
 
     try {
-      final animal = await _animalService.getAnimal(id);
-
+      final animal = await _animalRepository.getAnimal(id);
+      if (animal == null) return;
       // Update local list
       final index = _animals.indexWhere((a) => a.id == id);
       if (index != -1) {
@@ -150,8 +139,6 @@ class AnimalProvider with ChangeNotifier {
       } else {
         _animals.add(animal);
       }
-
-      await _saveToDatabase();
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -162,8 +149,8 @@ class AnimalProvider with ChangeNotifier {
 
   Future<List<Animal>> fetchSlaughteredAnimals() async {
     try {
-      final result = await _animalService.getAnimals(slaughtered: true);
-      return result['results'] as List<Animal>;
+      final result = await _animalRepository.getAnimals(slaughtered: true);
+      return result;
     } catch (e) {
       // Try offline data
       return _animals.where((animal) => animal.slaughtered).toList();
@@ -182,62 +169,15 @@ class AnimalProvider with ChangeNotifier {
     });
 
     try {
-      Animal? createdAnimal;
-      if (isOnline) {
-        createdAnimal = await _animalService.createAnimal(animal, photo: photo);
-        _animals.add(createdAnimal);
-        await _saveToDatabase();
-        notifyListeners(); // Notify listeners immediately after adding
-      } else {
-        // Save offline with synced = false
-        final offlineAnimal = Animal(
-          id: DateTime.now().millisecondsSinceEpoch, // Temporary ID
-          abbatoir: animal.abbatoir,
-          species: animal.species,
-          age: animal.age,
-          liveWeight: animal.liveWeight,
-          createdAt: animal.createdAt,
-          slaughtered: animal.slaughtered,
-          slaughteredAt: animal.slaughteredAt,
-          animalId: animal.animalId,
-          animalName: animal.animalName,
-          breed: animal.breed,
-          abbatoirName: animal.abbatoirName,
-          healthStatus: animal.healthStatus,
-          synced: false,
-        );
-        _animals.add(offlineAnimal);
-        await _dbHelper.insertAnimals([offlineAnimal], synced: false);
-        createdAnimal = offlineAnimal;
-      }
+      final createdAnimal = await _animalRepository.createAnimal(
+        animal,
+        photo: photo,
+      );
+      _animals.add(createdAnimal);
       notifyListeners();
       return createdAnimal;
     } catch (e) {
       _error = e.toString();
-      // If API fails, try saving offline
-      if (e is NetworkException || e is NoInternetException) {
-        final offlineAnimal = Animal(
-          id: DateTime.now().millisecondsSinceEpoch,
-          abbatoir: animal.abbatoir,
-          species: animal.species,
-          age: animal.age,
-          liveWeight: animal.liveWeight,
-          createdAt: animal.createdAt,
-          slaughtered: animal.slaughtered,
-          slaughteredAt: animal.slaughteredAt,
-          animalId: animal.animalId,
-          animalName: animal.animalName,
-          breed: animal.breed,
-          abbatoirName: animal.abbatoirName,
-          healthStatus: animal.healthStatus,
-          synced: false,
-        );
-        _animals.add(offlineAnimal);
-        await _dbHelper.insertAnimals([offlineAnimal], synced: false);
-        _error = 'Saved offline. Will sync when online.';
-        notifyListeners();
-        return offlineAnimal;
-      }
       notifyListeners();
       return null;
     } finally {
@@ -248,14 +188,13 @@ class AnimalProvider with ChangeNotifier {
 
   Future<void> slaughterAnimal(int animalId) async {
     try {
-      // Call the service to slaughter the animal
-      final updatedAnimal = await _animalService.slaughterAnimal(animalId);
-
-      // Find the animal in the local list and update it
+      await _animalRepository.slaughterAnimal(animalId);
       final index = _animals.indexWhere((a) => a.id == animalId);
       if (index != -1) {
-        _animals[index] = updatedAnimal;
-        await _saveToDatabase();
+        _animals[index] = _animals[index].copyWith(
+          slaughtered: true,
+          slaughteredAt: DateTime.now(),
+        );
         notifyListeners();
       }
     } catch (e) {
@@ -303,7 +242,7 @@ class AnimalProvider with ChangeNotifier {
       notifyListeners(); // Update UI immediately
 
       // Make API call in background
-      final response = await _animalService.transferAnimals(
+      final response = await _animalRepository.transferAnimals(
         animalIds,
         processingUnitId,
         partTransfers: partTransfers,
@@ -326,9 +265,9 @@ class AnimalProvider with ChangeNotifier {
     debugPrint('🔍 [AnimalProvider] fetchTransferredAnimals called');
     try {
       debugPrint(
-        '🔍 [AnimalProvider] Calling _animalService.getTransferredAnimals()',
+        '🔍 [AnimalProvider] Calling _animalRepository.getTransferredAnimals()',
       );
-      final result = await _animalService.getTransferredAnimals();
+      final result = await _animalRepository.getTransferredAnimals();
       debugPrint(
         '🔍 [AnimalProvider] Fetched ${result.length} transferred animals',
       );
@@ -348,7 +287,7 @@ class AnimalProvider with ChangeNotifier {
     List<Map<String, dynamic>>? partRejections,
   }) async {
     try {
-      final response = await _animalService.receiveAnimals(
+      final response = await _animalRepository.receiveAnimals(
         animalIds,
         partReceives: partReceives,
         animalRejections: animalRejections,
@@ -367,14 +306,13 @@ class AnimalProvider with ChangeNotifier {
     final unsynced = await _dbHelper.getUnsyncedAnimals();
     for (final animal in unsynced) {
       try {
-        final syncedAnimal = await _animalService.createAnimal(animal);
+        final syncedAnimal = await _animalRepository.createAnimal(animal);
         // Update local with server ID and mark as synced
         final index = _animals.indexWhere((a) => a.id == animal.id);
         if (index != -1) {
           _animals[index] = syncedAnimal;
         }
         await _dbHelper.markAnimalAsSynced(syncedAnimal.id!);
-        await _saveToDatabase();
       } catch (e) {
         // If still fails, keep as unsynced
         _error = 'Failed to sync some animals: $e';
@@ -389,7 +327,7 @@ class AnimalProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      _transferredAnimals = await _animalService
+      _transferredAnimals = await _animalRepository
           .getTransferredAnimalsForAbbatoir();
       return _transferredAnimals;
     } catch (e) {
@@ -404,7 +342,7 @@ class AnimalProvider with ChangeNotifier {
 
   Future<int> getTransferredAnimalsCount() async {
     try {
-      final transferredAnimals = await _animalService
+      final transferredAnimals = await _animalRepository
           .getTransferredAnimalsForAbbatoir();
       return transferredAnimals.length;
     } catch (e) {
@@ -415,9 +353,8 @@ class AnimalProvider with ChangeNotifier {
 
   Future<void> deleteAnimal(int animalId) async {
     try {
-      await _animalService.deleteAnimal(animalId);
+      await _animalRepository.deleteAnimal(animalId);
       _animals.removeWhere((animal) => animal.id == animalId);
-      await _saveToDatabase();
       notifyListeners();
     } catch (e) {
       _error = e.toString();
@@ -428,7 +365,7 @@ class AnimalProvider with ChangeNotifier {
 
   Future<List<Map<String, dynamic>>> getProcessingUnits() async {
     try {
-      return await _animalService.getProcessingUnits();
+      return await _animalRepository.getProcessingUnits();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -444,18 +381,19 @@ class AnimalProvider with ChangeNotifier {
       _wholeCarcassWeight =
           measurement.measurements['whole_carcass_weight']?['value'];
 
-      await _animalService.createCarcassMeasurement(measurement);
+      await _animalRepository.createCarcassMeasurement(measurement);
 
       // Find the animal in the local list and update it
       final index = _animals.indexWhere((a) => a.id == measurement.animalId);
       if (index != -1) {
         // Since the slaughter action happens on the backend, we need to refetch the animal
         // to get the updated `slaughtered` status and slaughter parts.
-        final updatedAnimal = await _animalService.getAnimal(
+        final updatedAnimal = await _animalRepository.getAnimal(
           measurement.animalId,
         );
-        _animals[index] = updatedAnimal;
-        await _saveToDatabase();
+        if (updatedAnimal != null) {
+          _animals[index] = updatedAnimal;
+        }
         notifyListeners();
       }
     } catch (e) {
@@ -475,7 +413,7 @@ class AnimalProvider with ChangeNotifier {
     int? pageSize,
   }) async {
     try {
-      return await _animalService.getSlaughterParts(
+      return await _animalRepository.getSlaughterParts(
         animalId: animalId,
         partType: partType,
         search: search,
@@ -497,7 +435,7 @@ class AnimalProvider with ChangeNotifier {
     String? ordering,
   }) async {
     try {
-      return await _animalService.getSlaughterPartsList(
+      return await _animalRepository.getSlaughterPartsList(
         animalId: animalId,
         partType: partType,
         search: search,
@@ -512,7 +450,7 @@ class AnimalProvider with ChangeNotifier {
 
   Future<SlaughterPart> createSlaughterPart(SlaughterPart part) async {
     try {
-      return await _animalService.createSlaughterPart(part);
+      return await _animalRepository.createSlaughterPart(part);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -522,7 +460,7 @@ class AnimalProvider with ChangeNotifier {
 
   Future<SlaughterPart> updateSlaughterPart(SlaughterPart part) async {
     try {
-      return await _animalService.updateSlaughterPart(part);
+      return await _animalRepository.updateSlaughterPart(part);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -532,7 +470,7 @@ class AnimalProvider with ChangeNotifier {
 
   Future<void> deleteSlaughterPart(int id) async {
     try {
-      await _animalService.deleteSlaughterPart(id);
+      await _animalRepository.deleteSlaughterPart(id);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -545,7 +483,7 @@ class AnimalProvider with ChangeNotifier {
     int processingUnitId,
   ) async {
     try {
-      return await _animalService.transferSlaughterParts(
+      return await _animalRepository.transferSlaughterParts(
         partIds,
         processingUnitId,
       );
@@ -558,7 +496,8 @@ class AnimalProvider with ChangeNotifier {
 
   Future<Map<String, dynamic>> receiveSlaughterParts(List<int?> partIds) async {
     try {
-      return await _animalService.receiveSlaughterParts(partIds);
+      final response = await _animalRepository.receiveSlaughterParts(partIds);
+      return response;
     } catch (e) {
       _error = e.toString();
       notifyListeners();

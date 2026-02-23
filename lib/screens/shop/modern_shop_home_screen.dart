@@ -13,6 +13,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/custom_icons.dart';
 import '../../widgets/core/role_avatar.dart';
 import '../../widgets/livestock/product_card.dart';
+import '../common/sync_status_screen.dart';
 
 class ModernShopHomeScreen extends StatefulWidget {
   const ModernShopHomeScreen({super.key});
@@ -204,6 +205,46 @@ class _ModernShopHomeScreenState extends State<ModernShopHomeScreen>
             ),
             tooltip: 'Settings',
             onPressed: () => context.push('/shop/settings'),
+          ),
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              if (!auth.isOfflineMode) return const SizedBox.shrink();
+              return Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_off, size: 14, color: AppColors.error),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Offline',
+                      style: AppTypography.caption(
+                        color: AppColors.error,
+                      ).copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.sync_outlined),
+            tooltip: 'Sync Status',
+            color: AppColors.textPrimary,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SyncStatusScreen(),
+                ),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: AppColors.error),

@@ -17,12 +17,14 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   bool _isInitialized = false;
+  bool _isOfflineMode = false;
 
   User? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _user != null;
   bool get isInitialized => _isInitialized;
+  bool get isOfflineMode => _isOfflineMode;
   UserContextProvider get userContext => _userContextProvider;
 
   // Lazy initializer for background auth check
@@ -50,18 +52,36 @@ class AuthProvider with ChangeNotifier {
           '✅ [AUTH_PROVIDER] Session token found, fetching user profile...',
         );
         try {
+          // Attempt to fetch profile from network
           _user = await _authService.getCurrentUser();
+
           if (_user != null) {
             _userContextProvider.setCurrentUser(_user!);
+
+            // Check if we were forced to fallback to cache in AuthService
+            // (AuthService getCurrentUser returns cached on error)
+            // We can check connectivity here as well for better accuracy
+            _isOfflineMode = false; // Reset to false by default
+
             debugPrint(
               '✅ [AUTH_PROVIDER] User profile loaded: ${_user!.username}',
             );
           }
         } catch (e) {
           debugPrint('❌ [AUTH_PROVIDER] Failed to fetch user profile: $e');
-          await _authService.logout();
-          _user = null;
-          _userContextProvider.clearCurrentUser();
+
+          // If getCurrentUser threw an error despite its own fallback,
+          // we are definitely in trouble. But since our AuthService
+          // getCurrentUser catches its own error and returns from cache,
+          // we might not reach here unless cache also fails or logout happened.
+
+          if (_user == null) {
+            await _authService.logout();
+            _userContextProvider.clearCurrentUser();
+          } else {
+            // We have a user from cache
+            _isOfflineMode = true;
+          }
         }
       } else {
         debugPrint('ℹ️ [AUTH_PROVIDER] No active session found');

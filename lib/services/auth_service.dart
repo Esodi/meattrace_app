@@ -10,6 +10,7 @@ import '../utils/constants.dart';
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   final DioClient _dioClient = DioClient();
+  static const String _userProfileKey = 'cached_user_profile';
 
   factory AuthService() {
     return _instance;
@@ -113,6 +114,9 @@ class AuthService {
         debugPrint(
           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
         );
+        // Cache user profile for offline access
+        await _cacheUserProfile(user);
+
         return user;
       }
 
@@ -133,6 +137,9 @@ class AuthService {
       debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
+
+      // Cache user profile for offline access
+      await _cacheUserProfile(user);
 
       return user;
     } on DioException catch (e) {
@@ -281,6 +288,9 @@ class AuthService {
         '✅ [FLUTTER_AUTH] User registered successfully: ${user.username} (role: ${user.role})',
       );
 
+      // Cache user profile for offline access
+      await _cacheUserProfile(user);
+
       return user;
     } on DioException catch (e) {
       debugPrint(
@@ -335,6 +345,11 @@ class AuthService {
       final storageService = StorageService();
       await storageService.clearAllLocalData();
       debugPrint('   ✓ Local data cleared');
+
+      // 3. Clear cached user profile
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userProfileKey);
+      debugPrint('   ✓ Cached profile cleared');
 
       debugPrint('✅ [AUTH_SERVICE] Logout completed successfully');
     } catch (e) {
@@ -467,8 +482,34 @@ class AuthService {
       return await _getUserProfile(token);
     } catch (e) {
       debugPrint('❌ Error getting current user: $e');
-      return null;
+      // Fallback to cached profile if network fails
+      return await _getCachedUserProfile();
     }
+  }
+
+  Future<void> _cacheUserProfile(User user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = json.encode(user.toJson());
+      await prefs.setString(_userProfileKey, userJson);
+      debugPrint('💾 [AUTH_SERVICE] User profile cached locally');
+    } catch (e) {
+      debugPrint('❌ [AUTH_SERVICE] Failed to cache user profile: $e');
+    }
+  }
+
+  Future<User?> _getCachedUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString(_userProfileKey);
+      if (userJson != null) {
+        debugPrint('👤 [AUTH_SERVICE] Loading cached user profile');
+        return User.fromJson(json.decode(userJson));
+      }
+    } catch (e) {
+      debugPrint('❌ [AUTH_SERVICE] Failed to load cached profile: $e');
+    }
+    return null;
   }
 
   Future<User> _getUserProfile(String accessToken) async {

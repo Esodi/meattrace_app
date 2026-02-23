@@ -28,6 +28,8 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
   late TextEditingController _taxRateController;
   late TextEditingController _invoicePrefixController;
   late TextEditingController _taxIdController;
+  late TextEditingController _bankBranchController;
+  late TextEditingController _swiftCodeController;
 
   bool _isInit = true;
 
@@ -46,6 +48,8 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
     _taxRateController = TextEditingController();
     _invoicePrefixController = TextEditingController();
     _taxIdController = TextEditingController();
+    _bankBranchController = TextEditingController();
+    _swiftCodeController = TextEditingController();
   }
 
   @override
@@ -89,6 +93,8 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
       _taxRateController.text = settings.taxRate.toString();
       _invoicePrefixController.text = settings.invoicePrefix;
       _taxIdController.text = settings.taxId ?? '';
+      _bankBranchController.text = settings.bankBranch ?? '';
+      _swiftCodeController.text = settings.swiftCode ?? '';
     }
   }
 
@@ -106,6 +112,8 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
     _taxRateController.dispose();
     _invoicePrefixController.dispose();
     _taxIdController.dispose();
+    _bankBranchController.dispose();
+    _swiftCodeController.dispose();
     super.dispose();
   }
 
@@ -150,6 +158,8 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
         'tax_rate': double.tryParse(_taxRateController.text) ?? 0.0,
         'invoice_prefix': _invoicePrefixController.text.trim().toUpperCase(),
         'tax_id': _taxIdController.text.trim(),
+        'bank_branch': _bankBranchController.text.trim(),
+        'swift_code': _swiftCodeController.text.trim(),
       };
 
       final taxLabel = _taxLabelController.text.trim();
@@ -263,6 +273,20 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
                       label: 'Invoice Prefix',
                       hint: 'INV',
                       icon: Icons.numbers,
+                      primaryColor: primaryColor,
+                    ),
+                    _buildTextField(
+                      controller: _bankBranchController,
+                      label: 'Bank Branch',
+                      hint: 'e.g. Mwanza City',
+                      icon: Icons.location_city,
+                      primaryColor: primaryColor,
+                    ),
+                    _buildTextField(
+                      controller: _swiftCodeController,
+                      label: 'SWIFT/BIC Code',
+                      hint: 'e.g. CRDBTZTZ',
+                      icon: Icons.account_balance,
                       primaryColor: primaryColor,
                     ),
 

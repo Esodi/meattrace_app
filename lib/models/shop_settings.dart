@@ -32,6 +32,8 @@ class ShopSettings {
   final String? bankName;
   final String? bankAccountName;
   final String? bankAccountNumber;
+  final String? bankBranch;
+  final String? swiftCode;
   final String? mobileMoneyNumber;
   final String? mobileMoneyProvider;
 
@@ -62,6 +64,8 @@ class ShopSettings {
     this.bankName,
     this.bankAccountName,
     this.bankAccountNumber,
+    this.bankBranch,
+    this.swiftCode,
     this.mobileMoneyNumber,
     this.mobileMoneyProvider,
     this.createdAt,
@@ -101,6 +105,8 @@ class ShopSettings {
       bankName: json['bank_name'],
       bankAccountName: json['bank_account_name'],
       bankAccountNumber: json['bank_account_number'],
+      bankBranch: json['bank_branch'],
+      swiftCode: json['swift_code'],
       mobileMoneyNumber: json['mobile_money_number'],
       mobileMoneyProvider: json['mobile_money_provider'],
       createdAt: json['created_at'] != null
@@ -137,6 +143,8 @@ class ShopSettings {
       'bank_name': bankName,
       'bank_account_name': bankAccountName,
       'bank_account_number': bankAccountNumber,
+      'bank_branch': bankBranch,
+      'swift_code': swiftCode,
       'mobile_money_number': mobileMoneyNumber,
       'mobile_money_provider': mobileMoneyProvider,
     };
@@ -166,6 +174,8 @@ class ShopSettings {
     String? bankName,
     String? bankAccountName,
     String? bankAccountNumber,
+    String? bankBranch,
+    String? swiftCode,
     String? mobileMoneyNumber,
     String? mobileMoneyProvider,
   }) {
@@ -193,6 +203,8 @@ class ShopSettings {
       bankName: bankName ?? this.bankName,
       bankAccountName: bankAccountName ?? this.bankAccountName,
       bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
+      bankBranch: bankBranch ?? this.bankBranch,
+      swiftCode: swiftCode ?? this.swiftCode,
       mobileMoneyNumber: mobileMoneyNumber ?? this.mobileMoneyNumber,
       mobileMoneyProvider: mobileMoneyProvider ?? this.mobileMoneyProvider,
       createdAt: createdAt,

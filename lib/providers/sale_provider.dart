@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../models/sale.dart';
-import '../services/sale_service.dart';
+import '../repositories/sale_repository.dart';
 
 class SaleProvider with ChangeNotifier {
-  final SaleService _saleService = SaleService();
+  final SaleRepository _saleRepository = SaleRepository();
 
   List<Sale> _sales = [];
   Sale? _currentSale;
@@ -22,7 +22,7 @@ class SaleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _sales = await _saleService.getSales();
+      _sales = await _saleRepository.getSales();
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -40,7 +40,7 @@ class SaleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _currentSale = await _saleService.getSale(id);
+      _currentSale = await _saleRepository.getSale(id);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -58,7 +58,7 @@ class SaleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final newSale = await _saleService.createSale(sale.toJson());
+      final newSale = await _saleRepository.createSale(sale);
       _sales.insert(0, newSale);
       _isLoading = false;
       notifyListeners();
@@ -78,7 +78,7 @@ class SaleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _saleService.deleteSale(id);
+      await _saleRepository.deleteSale(id);
       _sales.removeWhere((sale) => sale.id == id);
       if (_currentSale?.id == id) {
         _currentSale = null;

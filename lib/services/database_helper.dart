@@ -7,6 +7,8 @@ import '../models/shop_receipt.dart';
 import '../models/inventory.dart';
 import '../models/order.dart';
 import '../models/external_vendor.dart';
+import '../models/sync_queue_item.dart';
+import '../models/sale.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -26,7 +28,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'meattrace.db');
     return await openDatabase(
       path,
-      version: 17, // Increment version for products.animal nullability
+      version: 20, // Added file_paths to sync_queue
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       // onOpen ensures missing compatibility columns are added for existing installs
@@ -156,6 +158,51 @@ class DatabaseHelper {
         received_by_username TEXT,
         used_in_product INTEGER NOT NULL DEFAULT 0,
         is_selected_for_transfer INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sync_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        endpoint TEXT NOT NULL,
+        method TEXT NOT NULL,
+        body TEXT NOT NULL,
+        file_paths TEXT,
+        created_at TEXT NOT NULL,
+        retry_count INTEGER DEFAULT 0,
+        last_error TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sales (
+        id INTEGER PRIMARY KEY,
+        shop INTEGER NOT NULL,
+        sold_by INTEGER NOT NULL,
+        customer_name TEXT,
+        customer_phone TEXT,
+        total_amount REAL NOT NULL,
+        payment_method TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        qr_code TEXT,
+        receipt_uuid TEXT,
+        synced INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sale_items (
+        id INTEGER PRIMARY KEY,
+        sale_id INTEGER NOT NULL,
+        product INTEGER NOT NULL,
+        product_name TEXT,
+        batch_number TEXT,
+        quantity REAL NOT NULL,
+        weight REAL NOT NULL,
+        weight_unit TEXT NOT NULL,
+        unit_price REAL NOT NULL,
+        subtotal REAL NOT NULL,
+        FOREIGN KEY (sale_id) REFERENCES sales (id) ON DELETE CASCADE
       )
     ''');
   }
@@ -511,6 +558,44 @@ class DatabaseHelper {
         print('Error migrating products table for version 17: \$e');
       }
     }
+    if (oldVersion < 18) {
+      // Create sync_queue table
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS sync_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            endpoint TEXT NOT NULL,
+            method TEXT NOT NULL,
+            body TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            retry_count INTEGER DEFAULT 0,
+            last_error TEXT
+          )
+        ''');
+      } catch (e) {
+        print('Error creating sync_queue table: \$e');
+      }
+
+      // Add synced column to existing tables
+      final tablesToUpdate = [
+        'products',
+        'shop_receipts',
+        'inventory',
+        'orders',
+        'slaughter_parts',
+        'external_vendors',
+      ];
+
+      for (final table in tablesToUpdate) {
+        try {
+          await db.execute(
+            'ALTER TABLE $table ADD COLUMN synced INTEGER NOT NULL DEFAULT 1',
+          );
+        } catch (e) {
+          // Column might already exist
+        }
+      }
+    }
   }
 
   // Ensure a column exists on a table; add it if missing (best-effort compatibility)
@@ -777,5 +862,134 @@ class DatabaseHelper {
     final db = await database;
     final maps = await db.query('external_vendors', orderBy: 'name ASC');
     return maps.map((map) => ExternalVendor.fromMap(map)).toList();
+  }
+
+  // Sync Queue operations
+  Future<int> addToSyncQueue(SyncQueueItem item) async {
+    final db = await database;
+    return await db.insert('sync_queue', item.toMap()..remove('id'));
+  }
+
+  Future<List<SyncQueueItem>> getSyncQueue() async {
+    final db = await database;
+    final maps = await db.query('sync_queue', orderBy: 'created_at ASC');
+    return maps.map((map) => SyncQueueItem.fromMap(map)).toList();
+  }
+
+  Future<void> removeFromSyncQueue(int id) async {
+    final db = await database;
+    await db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateSyncQueueItem(SyncQueueItem item) async {
+    final db = await database;
+    await db.update(
+      'sync_queue',
+      item.toMap(),
+      where: 'id = ?',
+      whereArgs: [item.id],
+    );
+  }
+
+  Future<int> getUnsyncedCount() async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM sync_queue',
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  // Sale operations
+  Future<void> insertSale(Sale sale, {int synced = 1}) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.insert('sales', {
+        'id': sale.id,
+        'shop': sale.shop,
+        'sold_by': sale.soldBy,
+        'customer_name': sale.customerName,
+        'customer_phone': sale.customerPhone,
+        'total_amount': sale.totalAmount,
+        'payment_method': sale.paymentMethod,
+        'created_at': sale.createdAt.toIso8601String(),
+        'qr_code': sale.qrCode,
+        'receipt_uuid': sale.receiptUuid,
+        'synced': synced,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+      await txn.delete(
+        'sale_items',
+        where: 'sale_id = ?',
+        whereArgs: [sale.id],
+      );
+
+      for (final item in sale.items) {
+        await txn.insert('sale_items', {
+          'id': item.id,
+          'sale_id': sale.id,
+          'product': item.product,
+          'product_name': item.productName,
+          'batch_number': item.batchNumber,
+          'quantity': item.quantity,
+          'weight': item.weight,
+          'weight_unit': item.weightUnit,
+          'unit_price': item.unitPrice,
+          'subtotal': item.subtotal,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
+  Future<List<Sale>> getSales() async {
+    final db = await database;
+    final saleMaps = await db.query('sales', orderBy: 'created_at DESC');
+
+    List<Sale> sales = [];
+    for (final saleMap in saleMaps) {
+      final itemMaps = await db.query(
+        'sale_items',
+        where: 'sale_id = ?',
+        whereArgs: [saleMap['id']],
+      );
+
+      Map<String, dynamic> saleJson = Map<String, dynamic>.from(saleMap);
+      saleJson['items'] = itemMaps.map((m) {
+        Map<String, dynamic> item = Map<String, dynamic>.from(m);
+        item['sale'] = item['sale_id']; // Map back to model expected key
+        return item;
+      }).toList();
+
+      sales.add(Sale.fromJson(saleJson));
+    }
+    return sales;
+  }
+
+  Future<Sale?> getSale(int id) async {
+    final db = await database;
+    final maps = await db.query('sales', where: 'id = ?', whereArgs: [id]);
+    if (maps.isEmpty) return null;
+
+    final itemMaps = await db.query(
+      'sale_items',
+      where: 'sale_id = ?',
+      whereArgs: [id],
+    );
+
+    Map<String, dynamic> saleJson = Map<String, dynamic>.from(maps.first);
+    saleJson['items'] = itemMaps.map((m) {
+      Map<String, dynamic> item = Map<String, dynamic>.from(m);
+      item['sale'] = item['sale_id'];
+      return item;
+    }).toList();
+
+    return Sale.fromJson(saleJson);
+  }
+
+  Future<void> deleteSale(int id) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('sale_items', where: 'sale_id = ?', whereArgs: [id]);
+      await txn.delete('sales', where: 'id = ?', whereArgs: [id]);
+    });
   }
 }
