@@ -52,7 +52,7 @@ class ApiService {
       if (status != null) queryParams['status'] = status;
 
       final response = await _dioClient.dio.get(
-        '/meattrace/',
+        'meattrace/',
         queryParameters: queryParams,
       );
 
@@ -73,7 +73,7 @@ class ApiService {
   Future<MeatTrace> createMeatTrace(MeatTrace meatTrace) async {
     try {
       final response = await _dioClient.dio.post(
-        '/meattrace/',
+        'meattrace/',
         data: meatTrace.toJson()..remove('id'),
       );
       return MeatTrace.fromJson(response.data);
@@ -85,7 +85,7 @@ class ApiService {
   Future<MeatTrace> updateMeatTrace(MeatTrace meatTrace) async {
     try {
       final response = await _dioClient.dio.put(
-        '/meattrace/${meatTrace.id}/',
+        'meattrace/${meatTrace.id}/',
         data: meatTrace.toJson(),
       );
       return MeatTrace.fromJson(response.data);
@@ -96,7 +96,7 @@ class ApiService {
 
   Future<void> deleteMeatTrace(int id) async {
     try {
-      await _dioClient.dio.delete('/meattrace/$id/');
+      await _dioClient.dio.delete('meattrace/$id/');
     } on DioException catch (e) {
       throw Exception('Failed to delete meat trace: ${e.message}');
     }
@@ -105,7 +105,7 @@ class ApiService {
   Future<String> regenerateProductQrCode(String productId) async {
     try {
       final response = await _dioClient.dio.post(
-        '/products/$productId/regenerate_qr/',
+        'products/$productId/regenerate_qr/',
       );
       return response.data['qr_code_url'];
     } on DioException catch (e) {
@@ -115,7 +115,7 @@ class ApiService {
 
   Future<Product> fetchProduct(String productId) async {
     try {
-      final response = await _dioClient.dio.get('/products/$productId/');
+      final response = await _dioClient.dio.get('products/$productId/');
       return Product.fromMap(response.data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
@@ -129,7 +129,7 @@ class ApiService {
     try {
       final queryParams = unitId != null ? {'unit_id': unitId} : null;
       final response = await _dioClient.dio.get(
-        '/production-stats/',
+        'production-stats/',
         queryParameters: queryParams,
       );
       return ProductionStats.fromJson(response.data);
@@ -140,7 +140,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> fetchProcessingPipeline() async {
     try {
-      final response = await _dioClient.dio.get('/processing-pipeline/');
+      final response = await _dioClient.dio.get('processing-pipeline/');
       return response.data;
     } on DioException catch (e) {
       throw Exception('Failed to fetch processing pipeline: ${e.message}');
@@ -149,7 +149,7 @@ class ApiService {
 
   Future<List<Order>> fetchOrders() async {
     try {
-      final response = await _dioClient.dio.get('/orders/');
+      final response = await _dioClient.dio.get('orders/');
       final data = response.data;
       if (data is Map && data.containsKey('results')) {
         final results = data['results'] as List;
@@ -174,7 +174,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> fetchDashboard() async {
     try {
-      final response = await _dioClient.dio.get('/dashboard/');
+      final response = await _dioClient.dio.get('dashboard/');
       return response.data;
     } on DioException catch (e) {
       throw Exception('Failed to fetch dashboard: ${e.message}');
@@ -192,7 +192,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> fetchProfile() async {
     try {
-      final response = await _dioClient.dio.get('/profile/me/');
+      final response = await _dioClient.dio.get('profile/me/');
       return response.data;
     } on DioException catch (e) {
       throw Exception('Failed to fetch profile: ${e.message}');
@@ -201,7 +201,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
     try {
-      final response = await _dioClient.dio.patch('/profile/me/', data: data);
+      final response = await _dioClient.dio.patch('profile/me/', data: data);
       return response.data;
     } on DioException catch (e) {
       throw Exception('Failed to update profile: ${e.message}');
@@ -211,7 +211,7 @@ class ApiService {
   Future<ProductCategory> addProductCategory(ProductCategory category) async {
     try {
       final response = await post(
-        '/product-categories/',
+        'product-categories/',
         data: category.toJson(),
       );
       return ProductCategory.fromJson(response.data);
@@ -228,7 +228,7 @@ class ApiService {
         throw Exception('Category id is required for update');
       }
       final response = await put(
-        '/product-categories/${category.id}/',
+        'product-categories/${category.id}/',
         data: category.toJson(),
       );
       return ProductCategory.fromJson(response.data);
@@ -239,7 +239,7 @@ class ApiService {
 
   Future<void> deleteProductCategory(int id) async {
     try {
-      await delete('/product-categories/$id/');
+      await delete('product-categories/$id/');
     } on DioException catch (e) {
       throw Exception('Failed to delete product category: ${e.message}');
     }
@@ -247,7 +247,7 @@ class ApiService {
 
   Future<List<ProductCategory>> fetchProductCategories() async {
     try {
-      final response = await get('/product-categories/');
+      final response = await get('product-categories/');
       final data = response.data as List;
       return data.map((json) => ProductCategory.fromJson(json)).toList();
     } on DioException catch (e) {

@@ -17,7 +17,7 @@ class NotificationApiService {
       if (unreadOnly != null) queryParams['unread_only'] = unreadOnly;
 
       final response = await _dioClient.dio.get(
-        '/notifications/',
+        'notifications/',
         queryParameters: queryParams,
       );
 
@@ -37,7 +37,7 @@ class NotificationApiService {
   /// Get unread notification count
   Future<int> getUnreadCount() async {
     try {
-      final response = await _dioClient.dio.get('/notifications/unread-count/');
+      final response = await _dioClient.dio.get('notifications/unread-count/');
       return response.data['count'] ?? 0;
     } catch (e) {
       throw ApiException(
@@ -50,7 +50,7 @@ class NotificationApiService {
   Future<NotificationModel> markAsRead(int notificationId) async {
     try {
       final response = await _dioClient.dio.patch(
-        '/notifications/$notificationId/mark-read/',
+        'notifications/$notificationId/mark-read/',
       );
       return NotificationModel.fromJson(response.data);
     } catch (e) {
@@ -63,7 +63,7 @@ class NotificationApiService {
   /// Mark all notifications as read
   Future<void> markAllAsRead() async {
     try {
-      await _dioClient.dio.post('/notifications/mark-all-read/');
+      await _dioClient.dio.post('notifications/mark-all-read/');
     } catch (e) {
       throw ApiException(
         message: 'Failed to mark all notifications as read: $e',
@@ -74,7 +74,7 @@ class NotificationApiService {
   /// Delete a notification
   Future<void> deleteNotification(int notificationId) async {
     try {
-      await _dioClient.dio.delete('/notifications/$notificationId/');
+      await _dioClient.dio.delete('notifications/$notificationId/');
     } catch (e) {
       throw ApiException(
         message: 'Failed to delete notification: $e',
@@ -85,7 +85,7 @@ class NotificationApiService {
   /// Get notification preferences
   Future<Map<String, dynamic>> getNotificationPreferences() async {
     try {
-      final response = await _dioClient.dio.get('/notifications/preferences/');
+      final response = await _dioClient.dio.get('notifications/preferences/');
       return response.data as Map<String, dynamic>;
     } catch (e) {
       throw ApiException(
@@ -99,7 +99,7 @@ class NotificationApiService {
       Map<String, dynamic> preferences) async {
     try {
       await _dioClient.dio.patch(
-        '/notifications/preferences/',
+        'notifications/preferences/',
         data: preferences,
       );
     } catch (e) {
@@ -112,7 +112,7 @@ class NotificationApiService {
   /// Delete all read notifications
   Future<void> deleteAllRead() async {
     try {
-      await _dioClient.dio.delete('/notifications/delete-all-read/');
+      await _dioClient.dio.delete('notifications/delete-all-read/');
     } catch (e) {
       throw ApiException(
         message: 'Failed to delete read notifications: $e',

@@ -20,7 +20,7 @@ class OrderService {
       if (status != null) queryParams['status'] = status;
 
       final response = await _dioClient.dio.get(
-        '/orders/',
+        'orders/',
         queryParameters: queryParams,
       );
 
@@ -56,7 +56,7 @@ class OrderService {
       debugPrint('🔍 [OrderService] Sending order data: $orderData');
 
       final response = await _dioClient.dio.post(
-        '/orders/',
+        'orders/',
         data: orderData,
       );
 
@@ -76,7 +76,7 @@ class OrderService {
 
   Future<Order> getOrder(int orderId) async {
     try {
-      final response = await _dioClient.dio.get('/orders/$orderId/');
+      final response = await _dioClient.dio.get('orders/$orderId/');
       return Order.fromJson(response.data);
     } on DioException catch (e) {
       throw Exception('Failed to get order: ${e.message}');
@@ -86,7 +86,7 @@ class OrderService {
   Future<Order> updateOrderStatus(int orderId, String status) async {
     try {
       final response = await _dioClient.dio.patch(
-        '/orders/$orderId/',
+        'orders/$orderId/',
         data: {'status': status},
       );
 
@@ -99,7 +99,7 @@ class OrderService {
   Future<List<Order>> fetchCustomerOrders(int customerId) async {
     try {
       final response = await _dioClient.dio.get(
-        '/orders/',
+        'orders/',
         queryParameters: {'customer': customerId.toString()},
       );
 

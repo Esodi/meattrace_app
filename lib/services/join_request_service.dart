@@ -14,7 +14,7 @@ class JoinRequestService {
 
   Future<List<JoinRequest>> fetchUserJoinRequests() async {
     try {
-      final response = await _dioClient.dio.get('/join-requests/');
+      final response = await _dioClient.dio.get('join-requests/');
       final data = response.data;
       if (data is Map && data.containsKey('results')) {
         final results = data['results'] as List;
@@ -31,7 +31,7 @@ class JoinRequestService {
 
   Future<List<JoinRequest>> fetchUnitJoinRequests(String unitType, int unitId) async {
     try {
-      final response = await _dioClient.dio.get('/$unitType/$unitId/join-requests/');
+      final response = await _dioClient.dio.get('$unitType/$unitId/join-requests/');
       final data = response.data;
       if (data is Map && data.containsKey('results')) {
         final results = data['results'] as List;
@@ -52,7 +52,7 @@ class JoinRequestService {
   }) async {
     try {
       final response = await _dioClient.dio.post(
-        '/$unitType/$unitId/join-request/',
+        '$unitType/$unitId/join-request/',
         data: {
           'requested_role': requestedRole,
           'message': message,
@@ -68,7 +68,7 @@ class JoinRequestService {
   Future<JoinRequest> reviewJoinRequest(int requestId, String status, String? responseMessage) async {
     try {
       final response = await _dioClient.dio.patch(
-        '/join-requests/$requestId/',
+        'join-requests/$requestId/',
         data: {
           'status': status,
           'response_message': responseMessage,
@@ -82,7 +82,7 @@ class JoinRequestService {
 
   Future<JoinRequest> getJoinRequest(int requestId) async {
     try {
-      final response = await _dioClient.dio.get('/join-requests/$requestId/');
+      final response = await _dioClient.dio.get('join-requests/$requestId/');
       return JoinRequest.fromJson(response.data);
     } on DioException catch (e) {
       throw Exception('Failed to get join request: ${e.message}');
@@ -109,7 +109,7 @@ class JoinRequestService {
 
   Future<void> cancelJoinRequest(int requestId) async {
     try {
-      await _dioClient.dio.delete('/join-requests/$requestId/');
+      await _dioClient.dio.delete('join-requests/$requestId/');
     } on DioException catch (e) {
       throw Exception('Failed to cancel join request: ${e.message}');
     }

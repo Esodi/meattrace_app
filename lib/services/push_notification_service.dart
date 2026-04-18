@@ -209,7 +209,7 @@ class PushNotificationService {
   Future<void> _sendTokenToServer(String token) async {
     try {
       await _dioClient.dio.post(
-        '/notifications/register-device/',
+        'notifications/register-device/',
         data: {
           'fcm_token': token,
           'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',

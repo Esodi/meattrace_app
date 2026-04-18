@@ -38,7 +38,7 @@ class SaleService {
       if (productId != null) queryParams['product_id'] = productId;
 
       final response = await _dioClient.dio.get(
-        '${Constants.baseUrl}/sales/',
+        'sales/',
         queryParameters: queryParams,
       );
 
@@ -60,7 +60,7 @@ class SaleService {
   Future<Sale> getSale(int id) async {
     try {
       final response = await _dioClient.dio.get(
-        '${Constants.baseUrl}/sales/$id/',
+        'sales/$id/',
       );
       return Sale.fromJson(response.data);
     } on DioException catch (e) {
@@ -78,7 +78,7 @@ class SaleService {
     try {
       final encodedName = Uri.encodeComponent(productName);
       final response = await _dioClient.dio.get(
-        '${Constants.baseUrl}/sales/category-summary/$encodedName/',
+        'sales/category-summary/$encodedName/',
       );
       return CategorySalesSummary.fromJson(response.data);
     } on DioException catch (e) {
@@ -102,7 +102,7 @@ class SaleService {
       );
 
       final response = await publicDio.get(
-        '/api/v2/public/sale-receipt/$receiptUuid/',
+        'api/v2/public/sale-receipt/$receiptUuid/',
       );
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
@@ -120,7 +120,7 @@ class SaleService {
       debugPrint('📤 [SaleService] Sending data: $saleData');
 
       final response = await _dioClient.dio.post(
-        '${Constants.baseUrl}/sales/',
+        'sales/',
         data: saleData,
       );
 
