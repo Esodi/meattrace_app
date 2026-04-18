@@ -83,7 +83,7 @@ class StatusBadge extends StatelessWidget {
         borderColor = color;
         break;
       case BadgeVariant.soft:
-        backgroundColor = color.withOpacity(isDark ? 0.2 : 0.1);
+        backgroundColor = color.withValues(alpha: isDark ? 0.2 : 0.1);
         textColor = color;
         borderColor = null;
         break;

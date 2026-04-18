@@ -66,7 +66,7 @@ class Sale {
   /// Get the public receipt URL for QR code sharing
   String? get publicReceiptUrl {
     if (receiptUuid == null) return null;
-    return '/sale-receipt/$receiptUuid/';
+    return '/api/v2/product-info/view/receipt/$receiptUuid/';
   }
 
   Sale copyWith({

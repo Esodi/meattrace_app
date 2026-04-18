@@ -51,7 +51,7 @@ class SaleRepository {
     await _db.addToSyncQueue(
       SyncQueueItem(
         endpoint: Constants.salesEndpoint,
-        method: SyncMethod.POST,
+        method: SyncMethod.post,
         body: tempSale.toJson()..remove('id'), // Server generates ID
         createdAt: DateTime.now(),
       ),
@@ -72,7 +72,7 @@ class SaleRepository {
       await _db.addToSyncQueue(
         SyncQueueItem(
           endpoint: '${Constants.salesEndpoint}$id/',
-          method: SyncMethod.DELETE,
+          method: SyncMethod.delete,
           body: {},
           createdAt: DateTime.now(),
         ),

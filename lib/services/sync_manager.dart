@@ -97,16 +97,16 @@ class SyncManager {
       }
 
       switch (item.method) {
-        case SyncMethod.POST:
+        case SyncMethod.post:
           response = await _dioClient.dio.post(item.endpoint, data: data);
           break;
-        case SyncMethod.PUT:
+        case SyncMethod.put:
           response = await _dioClient.dio.put(item.endpoint, data: data);
           break;
-        case SyncMethod.PATCH:
+        case SyncMethod.patch:
           response = await _dioClient.dio.patch(item.endpoint, data: data);
           break;
-        case SyncMethod.DELETE:
+        case SyncMethod.delete:
           response = await _dioClient.dio.delete(item.endpoint, data: data);
           break;
       }

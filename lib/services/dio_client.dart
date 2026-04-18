@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
-import 'dart:ui';
 import '../utils/constants.dart';
 import 'api_exception.dart';
 
@@ -17,9 +17,9 @@ class DioClient {
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 60),
-        receiveTimeout: const Duration(seconds: 60),
-        sendTimeout: const Duration(seconds: 60),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -27,11 +27,11 @@ class DioClient {
       ),
     );
 
-    _dio.interceptors.addAll([
-      _AuthInterceptor(),
-      _LoggingInterceptor(),
-      _ErrorInterceptor(this),
-    ]);
+    _dio.interceptors.add(_AuthInterceptor());
+    if (kDebugMode) {
+      _dio.interceptors.add(_LoggingInterceptor());
+    }
+    _dio.interceptors.add(_ErrorInterceptor(this));
   }
 
   Dio get dio => _dio;
@@ -69,12 +69,8 @@ class _AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    // Skip adding authorization header for authentication endpoints
     if (options.path.contains('/register/') ||
         options.path.contains('/token/')) {
-      developer.log(
-        'AuthInterceptor: Skipping Authorization header for auth endpoint ${options.path}',
-      );
       super.onRequest(options, handler);
       return;
     }
@@ -83,11 +79,6 @@ class _AuthInterceptor extends Interceptor {
     final token = prefs.getString(DioClient.accessTokenKey);
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
-      developer.log(
-        'AuthInterceptor: Added Authorization header for ${options.path}',
-      );
-    } else {
-      developer.log('AuthInterceptor: No token found for ${options.path}');
     }
     super.onRequest(options, handler);
   }
@@ -96,19 +87,19 @@ class _AuthInterceptor extends Interceptor {
 class _LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    print(
+    debugPrint(
       '╔════════════════════════════════════════════════════════════════════════════',
     );
-    print('║ 📤 HTTP REQUEST');
-    print(
+    debugPrint('║ 📤 HTTP REQUEST');
+    debugPrint(
       '╠════════════════════════════════════════════════════════════════════════════',
     );
-    print('║ Method: ${options.method}');
-    print('║ URL: ${options.uri}');
-    print('║ Headers: ${options.headers}');
-    print('║ Data Type: ${options.data.runtimeType}');
-    print('║ Data: ${options.data}');
-    print(
+    debugPrint('║ Method: ${options.method}');
+    debugPrint('║ URL: ${options.uri}');
+    debugPrint('║ Headers: ${options.headers}');
+    debugPrint('║ Data Type: ${options.data.runtimeType}');
+    debugPrint('║ Data: ${options.data}');
+    debugPrint(
       '╚════════════════════════════════════════════════════════════════════════════',
     );
 
@@ -119,18 +110,18 @@ class _LoggingInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print(
+    debugPrint(
       '╔════════════════════════════════════════════════════════════════════════════',
     );
-    print('║ 📥 HTTP RESPONSE');
-    print(
+    debugPrint('║ 📥 HTTP RESPONSE');
+    debugPrint(
       '╠════════════════════════════════════════════════════════════════════════════',
     );
-    print('║ Status: ${response.statusCode}');
-    print('║ URL: ${response.requestOptions.uri}');
-    print('║ Data Type: ${response.data.runtimeType}');
-    print('║ Data: ${response.data}');
-    print(
+    debugPrint('║ Status: ${response.statusCode}');
+    debugPrint('║ URL: ${response.requestOptions.uri}');
+    debugPrint('║ Data Type: ${response.data.runtimeType}');
+    debugPrint('║ Data: ${response.data}');
+    debugPrint(
       '╚════════════════════════════════════════════════════════════════════════════',
     );
 
@@ -157,58 +148,18 @@ class _ErrorInterceptor extends Interceptor {
   _ErrorInterceptor(this._dioClient);
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    // Enhanced logging for debugging
-    developer.log('=== ERROR INTERCEPTOR DEBUG ===');
-    developer.log('Request URL: ${err.requestOptions.uri}');
-    developer.log('Request Method: ${err.requestOptions.method}');
-    developer.log('Request Headers: ${err.requestOptions.headers}');
-    developer.log('Request Data: ${err.requestOptions.data}');
-    developer.log('Response Status Code: ${err.response?.statusCode}');
-    developer.log('Response Headers: ${err.response?.headers}');
-    developer.log('Response Data: ${err.response?.data}');
-    developer.log('Response Data Type: ${err.response?.data?.runtimeType}');
-    developer.log('Error Type: ${err.type}');
-    developer.log('Error Message: ${err.message}');
-
-    // Additional debug for connection errors
-    if (err.type == DioExceptionType.unknown ||
-        err.type == DioExceptionType.connectionError ||
-        err.type == DioExceptionType.badResponse) {
-      developer.log('🔴 CONNECTION ERROR DETAILS:');
-      developer.log('   - Base URL: ${err.requestOptions.baseUrl}');
-      developer.log('   - Full URL: ${err.requestOptions.uri}');
-      developer.log('   - Error: ${err.error}');
-      developer.log('   - Stack Trace: ${err.stackTrace}');
+    if (kDebugMode) {
+      developer.log(
+        'ERROR[${err.response?.statusCode}] ${err.requestOptions.method} '
+        '${err.requestOptions.uri} — ${err.type}: ${err.message}',
+      );
     }
 
-    if (err.response?.data is List) {
-      developer.log(
-        'Data is List with length: ${(err.response?.data as List).length}',
-      );
-      developer.log('List contents: ${err.response?.data}');
-    } else if (err.response?.data is Map) {
-      developer.log(
-        'Data is Map with keys: ${(err.response?.data as Map).keys}',
-      );
-      developer.log('Map contents: ${err.response?.data}');
-    } else {
-      developer.log('Data is neither List nor Map: ${err.response?.data}');
-    }
-    developer.log('================================');
-
-    // Handle 401 Unauthorized responses by triggering logout
     if (err.response?.statusCode == 401) {
-      developer.log(
-        '🚪 401 Unauthorized detected - triggering automatic logout',
-      );
       _clearTokensAsync();
-      if (_dioClient._onUnauthorized != null) {
-        _dioClient._onUnauthorized!();
-      }
+      _dioClient._onUnauthorized?.call();
     }
 
-    // Instead of switching on status code, just throw a unified ApiException
-    // and let the consumer of the service handle the different status codes.
     throw ApiException.fromDioException(err);
   }
 
@@ -219,9 +170,10 @@ class _ErrorInterceptor extends Interceptor {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove(DioClient.accessTokenKey);
         await prefs.remove(DioClient.refreshTokenKey);
-        developer.log('🗑️ Tokens cleared due to 401 error');
       } catch (e) {
-        developer.log('❌ Error clearing tokens: $e');
+        if (kDebugMode) {
+          developer.log('Error clearing tokens: $e');
+        }
       }
     });
   }

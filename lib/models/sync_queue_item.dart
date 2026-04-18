@@ -1,6 +1,34 @@
 import 'dart:convert';
 
-enum SyncMethod { POST, PUT, DELETE, PATCH }
+enum SyncMethod { post, put, delete, patch }
+
+String _syncMethodToHttpVerb(SyncMethod method) {
+  switch (method) {
+    case SyncMethod.post:
+      return 'POST';
+    case SyncMethod.put:
+      return 'PUT';
+    case SyncMethod.delete:
+      return 'DELETE';
+    case SyncMethod.patch:
+      return 'PATCH';
+  }
+}
+
+SyncMethod _syncMethodFromHttpVerb(String value) {
+  switch (value.toUpperCase()) {
+    case 'POST':
+      return SyncMethod.post;
+    case 'PUT':
+      return SyncMethod.put;
+    case 'DELETE':
+      return SyncMethod.delete;
+    case 'PATCH':
+      return SyncMethod.patch;
+    default:
+      return SyncMethod.post;
+  }
+}
 
 class SyncQueueItem {
   final int? id;
@@ -27,7 +55,7 @@ class SyncQueueItem {
     return {
       'id': id,
       'endpoint': endpoint,
-      'method': method.name,
+      'method': _syncMethodToHttpVerb(method),
       'body': json.encode(body),
       'file_paths': filePaths != null ? json.encode(filePaths) : null,
       'created_at': createdAt.toIso8601String(),
@@ -40,10 +68,7 @@ class SyncQueueItem {
     return SyncQueueItem(
       id: map['id'],
       endpoint: map['endpoint'],
-      method: SyncMethod.values.firstWhere(
-        (e) => e.name == map['method'],
-        orElse: () => SyncMethod.POST,
-      ),
+      method: _syncMethodFromHttpVerb(map['method']?.toString() ?? 'POST'),
       body: json.decode(map['body']),
       filePaths: map['file_paths'] != null
           ? Map<String, String>.from(json.decode(map['file_paths']))

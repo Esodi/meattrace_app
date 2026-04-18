@@ -54,13 +54,13 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
       // Get current user's processing unit ID
       final currentProcessingUnitId = authProvider.user?.processingUnitId;
       
-      print('[TRANSFER_PRODUCTS] Starting data load...');
-      print('[TRANSFER_PRODUCTS] Current processing unit ID: $currentProcessingUnitId');
+      debugPrint('[TRANSFER_PRODUCTS] Starting data load...');
+      debugPrint('[TRANSFER_PRODUCTS] Current processing unit ID: $currentProcessingUnitId');
       
       // Fetch products
       try {
         await productProvider.fetchProducts();
-        print('[TRANSFER_PRODUCTS] Total products fetched: ${productProvider.products.length}');
+        debugPrint('[TRANSFER_PRODUCTS] Total products fetched: ${productProvider.products.length}');
         
         // Filter available products (not already transferred AND belongs to current processing unit)
         final availableProducts = productProvider.products
@@ -79,61 +79,65 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                   productPuId == currentProcessingUnitId;
               
               if (!belongsToCurrentUnit) {
-                print('[TRANSFER_PRODUCTS] ⚠️  Filtering out ${product.name} - belongs to PU $productPuId, not $currentProcessingUnitId');
+                debugPrint('[TRANSFER_PRODUCTS] ⚠️  Filtering out ${product.name} - belongs to PU $productPuId, not $currentProcessingUnitId');
               }
               
               return notTransferred && belongsToCurrentUnit;
             })
             .toList();
         
-        print('[TRANSFER_PRODUCTS] Available products (not transferred, current PU only): ${availableProducts.length}');
+        debugPrint('[TRANSFER_PRODUCTS] Available products (not transferred, current PU only): ${availableProducts.length}');
         for (var product in availableProducts) {
-          print('[TRANSFER_PRODUCTS] - ${product.name} (ID: ${product.id}, Batch: ${product.batchNumber}, PU: ${product.processingUnit})');
+          debugPrint('[TRANSFER_PRODUCTS] - ${product.name} (ID: ${product.id}, Batch: ${product.batchNumber}, PU: ${product.processingUnit})');
         }
         
         setState(() {
           _availableProducts = availableProducts;
         });
       } catch (e) {
-        print('[TRANSFER_PRODUCTS] Error fetching products: $e');
+        debugPrint('[TRANSFER_PRODUCTS] Error fetching products: $e');
         rethrow;
       }
       
       // Fetch shops
       try {
         final shopsList = await productProvider.getShops();
-        print('[TRANSFER_PRODUCTS] Shops fetched: ${shopsList.length}');
+        debugPrint('[TRANSFER_PRODUCTS] Shops fetched: ${shopsList.length}');
         for (var shop in shopsList) {
-          print('[TRANSFER_PRODUCTS] - ${shop['name'] ?? 'No name'} (ID: ${shop['id']})');
+          debugPrint('[TRANSFER_PRODUCTS] - ${shop['name'] ?? 'No name'} (ID: ${shop['id']})');
         }
         
         setState(() {
           _shops = shopsList;
         });
       } catch (e) {
-        print('[TRANSFER_PRODUCTS] Error fetching shops: $e');
+        debugPrint('[TRANSFER_PRODUCTS] Error fetching shops: $e');
         // Don't rethrow - allow products to still be shown even if shops fail
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Warning: Could not load shops. $e'),
               backgroundColor: AppColors.warning,
             ),
           );
+          }
         }
       }
       
-      print('[TRANSFER_PRODUCTS] State updated - Available: ${_availableProducts.length}, Shops: ${_shops.length}');
+      debugPrint('[TRANSFER_PRODUCTS] State updated - Available: ${_availableProducts.length}, Shops: ${_shops.length}');
     } catch (e) {
-      print('[TRANSFER_PRODUCTS] Error loading data: $e');
-      print('[TRANSFER_PRODUCTS] Error stack trace: ${StackTrace.current}');
+      debugPrint('[TRANSFER_PRODUCTS] Error loading data: $e');
+      debugPrint('[TRANSFER_PRODUCTS] Error stack trace: ${StackTrace.current}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading data: $e'),
             backgroundColor: Colors.red,
           ),
         );
+        }
       }
     } finally {
       setState(() => _isLoading = false);
@@ -161,23 +165,27 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
       );
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Successfully transferred ${_selectedProducts.length} product(s)'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
+        }
         context.go('/processor-home');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error transferring products: $e'),
             backgroundColor: Colors.red,
           ),
         );
+        }
       }
     } finally {
       setState(() => _isTransferring = false);
@@ -316,16 +324,20 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
 
   void _onStepContinue() {
     if (_currentStep == 0 && _selectedProducts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one product')),
       );
+      }
       return;
     }
     
     if (_currentStep == 1 && _selectedShop == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a shop')),
       );
+      }
       return;
     }
 
@@ -711,7 +723,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
 
         // Shop information
         CustomCard(
-          color: AppTheme.secondaryBurgundy.withOpacity(0.05),
+          color: AppTheme.secondaryBurgundy.withValues(alpha: 0.05),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -873,7 +885,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
           decoration: BoxDecoration(
             color: AppTheme.warningOrange.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppTheme.warningOrange.withOpacity(0.3)),
+            border: Border.all(color: AppTheme.warningOrange.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [

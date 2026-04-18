@@ -26,8 +26,8 @@ class ProductCategoryCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              theme.colorScheme.primary.withOpacity(0.14),
-              theme.colorScheme.secondary.withOpacity(0.06),
+              theme.colorScheme.primary.withValues(alpha: 0.14),
+              theme.colorScheme.secondary.withValues(alpha: 0.06),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -35,7 +35,7 @@ class ProductCategoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: Offset(0, 6),
             ),
@@ -60,7 +60,7 @@ class ProductCategoryCard extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.18),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.18),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
@@ -95,7 +95,7 @@ class ProductCategoryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    category.description ?? '',
+                    category.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(

@@ -92,12 +92,14 @@ class _ModernAbbatoirProfileScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading profile: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {
@@ -167,23 +169,27 @@ class _ModernAbbatoirProfileScreenState
 
       if (mounted) {
         setState(() => _isEditing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully!'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating profile: $e'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {
@@ -246,7 +252,7 @@ class _ModernAbbatoirProfileScreenState
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                             ),
                             child: CircleAvatar(
                               radius: 40,
@@ -271,7 +277,7 @@ class _ModernAbbatoirProfileScreenState
                           Text(
                             user?.email ?? '',
                             style: AppTypography.bodySmall().copyWith(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                             ),
                           ),
                         ],
@@ -540,7 +546,7 @@ class _ModernAbbatoirProfileScreenState
                 Icon(
                   Icons.history_outlined,
                   size: 64,
-                  color: AppColors.textTertiary.withOpacity(0.5),
+                  color: AppColors.textTertiary.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: AppTheme.space16),
                 Text(
@@ -622,7 +628,7 @@ class _ModernAbbatoirProfileScreenState
             true, // Only fill when enabled for better contrast? Or always light fill
         fillColor: enabled
             ? Colors.transparent
-            : AppColors.backgroundGray.withOpacity(0.5),
+            : AppColors.backgroundGray.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           borderSide: BorderSide(color: AppColors.divider),
@@ -637,7 +643,7 @@ class _ModernAbbatoirProfileScreenState
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          borderSide: BorderSide(color: AppColors.divider.withOpacity(0.5)),
+          borderSide: BorderSide(color: AppColors.divider.withValues(alpha: 0.5)),
         ),
         labelStyle: AppTypography.bodyMedium().copyWith(
           color: AppColors.textSecondary,
@@ -659,12 +665,12 @@ class _ModernAbbatoirProfileScreenState
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: AppColors.divider.withOpacity(0.5)),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.5)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -672,7 +678,7 @@ class _ModernAbbatoirProfileScreenState
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 24),
@@ -712,7 +718,7 @@ class _ModernAbbatoirProfileScreenState
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        side: BorderSide(color: AppColors.divider.withOpacity(0.5)),
+        side: BorderSide(color: AppColors.divider.withValues(alpha: 0.5)),
       ),
       margin: const EdgeInsets.only(bottom: AppTheme.space12),
       child: InkWell(
@@ -725,7 +731,7 @@ class _ModernAbbatoirProfileScreenState
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.abbatoirPrimary.withOpacity(0.1),
+                  color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: AppColors.abbatoirPrimary, size: 24),
@@ -761,12 +767,12 @@ class _ModernAbbatoirProfileScreenState
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(color: AppColors.divider.withOpacity(0.5)),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -774,7 +780,7 @@ class _ModernAbbatoirProfileScreenState
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _getActivityColor(activity.type).withOpacity(0.1),
+              color: _getActivityColor(activity.type).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -875,7 +881,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
+      ..color = Colors.white.withValues(alpha: 0.1)
       ..strokeWidth = 1;
 
     const double spacing = 20.0;

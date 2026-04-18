@@ -178,7 +178,7 @@ class TransferCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(AppTheme.space8),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(isDark ? 0.2 : 0.1),
+                    color: AppColors.success.withValues(alpha: isDark ? 0.2 : 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),
                   child: Row(

@@ -146,12 +146,14 @@ class _InitialInventoryOnboardingScreenState
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Inventory Item Added Successfully'),
             backgroundColor: Colors.green,
           ),
         );
+        }
         // Clear form for next entry
         _nameController.clear();
         _weightController.clear();
@@ -160,12 +162,14 @@ class _InitialInventoryOnboardingScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding inventory: $e'),
             backgroundColor: Colors.red,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {

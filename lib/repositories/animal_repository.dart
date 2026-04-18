@@ -61,7 +61,7 @@ class AnimalRepository {
     await _db.addToSyncQueue(
       SyncQueueItem(
         endpoint: Constants.animalsEndpoint,
-        method: SyncMethod.POST,
+        method: SyncMethod.post,
         body: offlineAnimal.toMap()..remove('id'),
         filePaths: photo != null ? {'photo': photo.path} : null,
         createdAt: DateTime.now(),
@@ -90,7 +90,7 @@ class AnimalRepository {
     await _db.addToSyncQueue(
       SyncQueueItem(
         endpoint: '${Constants.animalsEndpoint}$animalId/slaughter/',
-        method: SyncMethod.POST,
+        method: SyncMethod.post,
         body: {
           'slaughtered_at': updatedAnimal.slaughteredAt?.toIso8601String(),
         },
@@ -106,7 +106,7 @@ class AnimalRepository {
     await _db.addToSyncQueue(
       SyncQueueItem(
         endpoint: '${Constants.animalsEndpoint}$animalId/',
-        method: SyncMethod.DELETE,
+        method: SyncMethod.delete,
         body: {},
         createdAt: DateTime.now(),
       ),

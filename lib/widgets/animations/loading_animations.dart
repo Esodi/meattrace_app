@@ -38,7 +38,7 @@ class LoadingOverlay extends StatelessWidget {
 
   /// Hide loading overlay
   static void hide(BuildContext context) {
-    Navigator.of(context).pop();
+    if (context.mounted) Navigator.of(context).pop();
   }
 
   @override

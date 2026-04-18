@@ -396,9 +396,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   Future<void> _submitInvoice() async {
     if (!_formKey.currentState!.validate()) return;
     if (_items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add at least one item')),
       );
+      }
       return;
     }
 
@@ -438,21 +440,25 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Invoice created successfully'),
             behavior: SnackBarBehavior.fixed,
           ),
         );
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${e.toString()}'),
             behavior: SnackBarBehavior.fixed,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {

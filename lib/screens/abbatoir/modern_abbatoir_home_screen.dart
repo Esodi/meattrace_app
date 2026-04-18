@@ -111,61 +111,61 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
   Future<void> _loadData() async {
     if (_isDataLoading) return;
     _isDataLoading = true;
-    print(
+    debugPrint(
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     );
-    print('🏠 ABBATOIR_DASHBOARD - LOAD_DATA START');
-    print('   Time: ${DateTime.now()}');
-    print('   Widget mounted: $mounted');
-    print('   Context: ${context.hashCode}');
-    print(
+    debugPrint('🏠 ABBATOIR_DASHBOARD - LOAD_DATA START');
+    debugPrint('   Time: ${DateTime.now()}');
+    debugPrint('   Widget mounted: $mounted');
+    debugPrint('   Context: ${context.hashCode}');
+    debugPrint(
       '   Called from: ${StackTrace.current.toString().split('\n').take(3).join('\n')}',
     );
-    print(
+    debugPrint(
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     );
 
     try {
-      print('🔍 Attempting to get AnimalProvider...');
+      debugPrint('🔍 Attempting to get AnimalProvider...');
       final animalProvider = Provider.of<AnimalProvider>(
         context,
         listen: false,
       );
-      print('✅ AnimalProvider obtained successfully');
+      debugPrint('✅ AnimalProvider obtained successfully');
 
-      print('📊 Provider state BEFORE fetch:');
-      print(
+      debugPrint('📊 Provider state BEFORE fetch:');
+      debugPrint(
         '   - animalProvider.animals.length: ${animalProvider.animals.length}',
       );
-      print('   - animalProvider.isLoading: ${animalProvider.isLoading}');
-      print('   - animalProvider.error: ${animalProvider.error}');
+      debugPrint('   - animalProvider.isLoading: ${animalProvider.isLoading}');
+      debugPrint('   - animalProvider.error: ${animalProvider.error}');
 
       // Try to get ActivityProvider, but don't fail if it's not available
       ActivityProvider? activityProvider;
       try {
-        print('🔍 Attempting to get ActivityProvider...');
+        debugPrint('🔍 Attempting to get ActivityProvider...');
         activityProvider = Provider.of<ActivityProvider>(
           context,
           listen: false,
         );
-        print('✅ ActivityProvider obtained successfully');
-        print(
+        debugPrint('✅ ActivityProvider obtained successfully');
+        debugPrint(
           '   - activityProvider.activities.length: ${activityProvider.activities.length}',
         );
-        print('   - activityProvider.isLoading: ${activityProvider.isLoading}');
-        print('   - activityProvider instance: ${activityProvider.hashCode}');
+        debugPrint('   - activityProvider.isLoading: ${activityProvider.isLoading}');
+        debugPrint('   - activityProvider instance: ${activityProvider.hashCode}');
       } catch (e, stack) {
-        print('❌ ActivityProvider access FAILED!');
-        print('   Error: $e');
-        print('   Type: ${e.runtimeType}');
-        print('   Stack: ${stack.toString().split('\n').take(10).join('\n')}');
+        debugPrint('❌ ActivityProvider access FAILED!');
+        debugPrint('   Error: $e');
+        debugPrint('   Type: ${e.runtimeType}');
+        debugPrint('   Stack: ${stack.toString().split('\n').take(10).join('\n')}');
       }
 
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
-      print(
+      debugPrint(
         '📡 Starting parallel fetch of animals, activities, and dashboard...',
       );
       try {
@@ -185,54 +185,54 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
 
         await Future.wait(futures);
 
-        print(
+        debugPrint(
           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
         );
-        print('✅ FETCH COMPLETE');
-        print(
+        debugPrint('✅ FETCH COMPLETE');
+        debugPrint(
           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
         );
-        print('📊 Provider state AFTER fetch:');
-        print(
+        debugPrint('📊 Provider state AFTER fetch:');
+        debugPrint(
           '   - animalProvider.animals.length: ${animalProvider.animals.length}',
         );
-        print('   - animalProvider.isLoading: ${animalProvider.isLoading}');
-        print('   - animalProvider.error: ${animalProvider.error}');
+        debugPrint('   - animalProvider.isLoading: ${animalProvider.isLoading}');
+        debugPrint('   - animalProvider.error: ${animalProvider.error}');
         if (activityProvider != null) {
-          print(
+          debugPrint(
             '   - activityProvider.activities.length: ${activityProvider.activities.length}',
           );
         }
-        print(
+        debugPrint(
           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
         );
       } catch (e, stackTrace) {
-        print('❌ ERROR in parallel fetch: $e');
-        print('❌ Stack trace: $stackTrace');
+        debugPrint('❌ ERROR in parallel fetch: $e');
+        debugPrint('❌ Stack trace: $stackTrace');
       }
 
-      print('🔄 Loading transferred count...');
+      debugPrint('🔄 Loading transferred count...');
       await _loadTransferredCount();
 
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('� ABBATOIR_DASHBOARD - LOAD_DATA COMPLETE');
-      print(
+      debugPrint('� ABBATOIR_DASHBOARD - LOAD_DATA COMPLETE');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('📊 Final counts:');
-      print('   - Total animals: ${animalProvider.animals.length}');
-      print('   - Transferred count: $_transferredCount');
+      debugPrint('📊 Final counts:');
+      debugPrint('   - Total animals: ${animalProvider.animals.length}');
+      debugPrint('   - Transferred count: $_transferredCount');
       if (activityProvider != null) {
-        print('   - Activities: ${activityProvider.activities.length}');
+        debugPrint('   - Activities: ${activityProvider.activities.length}');
       }
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
     } catch (e, stackTrace) {
-      print('❌ CRITICAL ERROR in _loadData: $e');
-      print('❌ Stack trace: $stackTrace');
+      debugPrint('❌ CRITICAL ERROR in _loadData: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
     } finally {
       _isDataLoading = false;
     }
@@ -346,9 +346,9 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
+                  color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -454,47 +454,47 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
                   padding: const EdgeInsets.only(top: AppTheme.space24),
                   child: Builder(
                     builder: (context) {
-                      print(
+                      debugPrint(
                         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                       );
-                      print('🎯 ACTIVITY CONSUMER - BUILD START');
-                      print('   Time: ${DateTime.now()}');
-                      print('   Context: ${context.hashCode}');
-                      print(
+                      debugPrint('🎯 ACTIVITY CONSUMER - BUILD START');
+                      debugPrint('   Time: ${DateTime.now()}');
+                      debugPrint('   Context: ${context.hashCode}');
+                      debugPrint(
                         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                       );
 
                       try {
-                        print('🔍 Attempting Consumer<ActivityProvider>...');
+                        debugPrint('🔍 Attempting Consumer<ActivityProvider>...');
                         return Consumer<ActivityProvider>(
                           builder: (context, activityProvider, child) {
-                            print(
+                            debugPrint(
                               '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                             );
-                            print('🎨 ACTIVITY CONSUMER - BUILDER CALLED');
-                            print(
+                            debugPrint('🎨 ACTIVITY CONSUMER - BUILDER CALLED');
+                            debugPrint(
                               '   Provider instance: ${activityProvider.hashCode}',
                             );
-                            print(
+                            debugPrint(
                               '   isLoading: ${activityProvider.isLoading}',
                             );
-                            print(
+                            debugPrint(
                               '   activities.length: ${activityProvider.activities.length}',
                             );
-                            print('   error: ${activityProvider.error}');
-                            print(
+                            debugPrint('   error: ${activityProvider.error}');
+                            debugPrint(
                               '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                             );
 
                             if (activityProvider.isLoading &&
                                 activityProvider.activities.isEmpty) {
-                              print(
+                              debugPrint(
                                 '⏭️ Skipping render - provider is loading with no activities',
                               );
                               return const SizedBox.shrink();
                             }
 
-                            print(
+                            debugPrint(
                               '✅ Rendering ActivityTimeline with ${activityProvider.getRecentActivities(limit: 5).length} activities',
                             );
                             return ActivityTimeline(
@@ -503,27 +503,29 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
                               ),
                               onViewAll: () {
                                 // TODO: Navigate to full activity history
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
                                       'Activity history coming soon!',
                                     ),
                                   ),
                                 );
+                                }
                               },
                             );
                           },
                         );
                       } catch (e, stack) {
-                        print(
+                        debugPrint(
                           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                         );
-                        print('❌ ACTIVITY CONSUMER - EXCEPTION CAUGHT!');
-                        print('   Error: $e');
-                        print('   Type: ${e.runtimeType}');
-                        print('   Stack trace:');
-                        print(stack.toString().split('\n').take(15).join('\n'));
-                        print(
+                        debugPrint('❌ ACTIVITY CONSUMER - EXCEPTION CAUGHT!');
+                        debugPrint('   Error: $e');
+                        debugPrint('   Type: ${e.runtimeType}');
+                        debugPrint('   Stack trace:');
+                        debugPrint(stack.toString().split('\n').take(15).join('\n'));
+                        debugPrint(
                           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                         );
                         return const SizedBox.shrink();
@@ -567,26 +569,26 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
               // Recent Animals List
               Consumer<AnimalProvider>(
                 builder: (context, animalProvider, child) {
-                  print(
+                  debugPrint(
                     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                   );
-                  print('� UI CONSUMER - REBUILDING');
-                  print(
+                  debugPrint('� UI CONSUMER - REBUILDING');
+                  debugPrint(
                     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                   );
-                  print('📊 Current provider state:');
-                  print('   - isLoading: ${animalProvider.isLoading}');
-                  print(
+                  debugPrint('📊 Current provider state:');
+                  debugPrint('   - isLoading: ${animalProvider.isLoading}');
+                  debugPrint(
                     '   - animals.length: ${animalProvider.animals.length}',
                   );
-                  print('   - error: ${animalProvider.error}');
-                  print(
+                  debugPrint('   - error: ${animalProvider.error}');
+                  debugPrint(
                     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                   );
 
                   if (animalProvider.isLoading &&
                       animalProvider.animals.isEmpty) {
-                    print('⏳ Showing loading indicator (no cached data)');
+                    debugPrint('⏳ Showing loading indicator (no cached data)');
                     return const SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
@@ -598,26 +600,26 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
                   }
 
                   final recentAnimals = animalProvider.animals.take(5).toList();
-                  print(
+                  debugPrint(
                     '📋 Recent animals to display: ${recentAnimals.length}',
                   );
                   if (recentAnimals.isNotEmpty) {
-                    print('📝 First few animals:');
+                    debugPrint('📝 First few animals:');
                     for (var i = 0; i < recentAnimals.length && i < 3; i++) {
                       final a = recentAnimals[i];
-                      print(
+                      debugPrint(
                         '   [$i] ${a.animalId} - ${a.species} (ID: ${a.id})',
                       );
                     }
                   }
 
                   if (recentAnimals.isEmpty) {
-                    print('📭 No animals - showing empty state');
+                    debugPrint('📭 No animals - showing empty state');
                     return SliverToBoxAdapter(child: _buildEmptyState());
                   }
 
-                  print('✅ Rendering ${recentAnimals.length} animal cards');
-                  print(
+                  debugPrint('✅ Rendering ${recentAnimals.length} animal cards');
+                  debugPrint(
                     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                   );
 
@@ -902,6 +904,12 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
         label: 'Stock',
         color: AppColors.abbatoirPrimary,
         route: '/abbatoir/stock',
+      ),
+      _QuickAction(
+        icon: Icons.delete_sweep_outlined,
+        label: 'Waste',
+        color: AppColors.error,
+        route: '/waste-list',
       ),
     ];
 

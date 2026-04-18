@@ -477,6 +477,10 @@ class Animal {
   final DateTime? acquisitionDate;
   final String originType; // 'BORN_HERE', 'PURCHASED', 'INITIAL_STOCK'
 
+  // Slaughter & waste tracking (read-only from backend)
+  final double? slaughterWeight;
+  final double? totalWasteWeight;
+
   Animal({
     this.id,
     required this.abbatoir,
@@ -520,6 +524,8 @@ class Animal {
     this.acquisitionPrice,
     this.acquisitionDate,
     this.originType = 'BORN_HERE',
+    this.slaughterWeight,
+    this.totalWasteWeight,
   });
 
   factory Animal.fromMap(Map<String, dynamic> json) {
@@ -545,7 +551,9 @@ class Animal {
                 slaughterParts.add(
                   SlaughterPart.fromMap(part as Map<String, dynamic>),
                 );
-              } catch (e) {}
+              } catch (_) {
+                continue;
+              }
             }
           }
         } else {}
@@ -640,6 +648,16 @@ class Animal {
             ? DateTime.tryParse(json['acquisition_date'])
             : null,
         originType: json['origin_type'] ?? 'BORN_HERE',
+        slaughterWeight: json['slaughter_weight'] != null
+            ? (json['slaughter_weight'] is num
+                  ? (json['slaughter_weight'] as num).toDouble()
+                  : double.tryParse(json['slaughter_weight'].toString()))
+            : null,
+        totalWasteWeight: json['total_waste_weight'] != null
+            ? (json['total_waste_weight'] is num
+                  ? (json['total_waste_weight'] as num).toDouble()
+                  : double.tryParse(json['total_waste_weight'].toString()))
+            : null,
       );
     } catch (e) {
       rethrow;
@@ -683,6 +701,8 @@ class Animal {
       'acquisition_price': acquisitionPrice,
       'acquisition_date': acquisitionDate?.toIso8601String(),
       'origin_type': originType,
+      'slaughter_weight': slaughterWeight,
+      'total_waste_weight': totalWasteWeight,
     };
   }
 
@@ -718,6 +738,17 @@ class Animal {
   bool get isSplitCarcass =>
       carcassMeasurement?.carcassType == CarcassType.split;
   bool get hasSlaughterParts => slaughterParts.isNotEmpty;
+
+  // Prefer slaughter weight over initial live weight for transfer flows.
+  // Falls back to summing slaughter parts, then live weight as last resort.
+  double? get effectiveTransferWeight {
+    if (slaughterWeight != null && slaughterWeight! > 0) return slaughterWeight;
+    if (slaughterParts.isNotEmpty) {
+      final total = slaughterParts.fold<double>(0.0, (a, p) => a + p.weight);
+      if (total > 0) return total;
+    }
+    return liveWeight;
+  }
 
   // Computed lifecycle status (fallback if not provided by backend)
   AnimalLifecycleStatus get computedLifecycleStatus {
@@ -803,6 +834,8 @@ class Animal {
     double? acquisitionPrice,
     DateTime? acquisitionDate,
     String? originType,
+    double? slaughterWeight,
+    double? totalWasteWeight,
   }) {
     return Animal(
       id: id ?? this.id,
@@ -848,6 +881,8 @@ class Animal {
       acquisitionPrice: acquisitionPrice ?? this.acquisitionPrice,
       acquisitionDate: acquisitionDate ?? this.acquisitionDate,
       originType: originType ?? this.originType,
+      slaughterWeight: slaughterWeight ?? this.slaughterWeight,
+      totalWasteWeight: totalWasteWeight ?? this.totalWasteWeight,
     );
   }
 }

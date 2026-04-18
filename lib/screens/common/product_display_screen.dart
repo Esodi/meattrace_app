@@ -30,7 +30,7 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProduct();
       // Debug logs for new fields
-      print('Product Display Screen: initState called');
+      debugPrint('Product Display Screen: initState called');
     });
   }
 
@@ -94,12 +94,12 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
           }
 
           // Debug logs for new fields
-          print(
+          debugPrint(
             'Product Display: processingUnitName: ${product.processingUnitName}',
           );
-          print('Product Display: animalAnimalId: ${product.animalAnimalId}');
-          print('Product Display: animalSpecies: ${product.animalSpecies}');
-          print('Product Display: receivedByName: ${product.receivedByName}');
+          debugPrint('Product Display: animalAnimalId: ${product.animalAnimalId}');
+          debugPrint('Product Display: animalSpecies: ${product.animalSpecies}');
+          debugPrint('Product Display: receivedByName: ${product.receivedByName}');
 
           return _buildProductDetails(product, isDark);
         },
@@ -527,12 +527,14 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
 
   void _shareProduct() {
     // TODO: Implement share functionality
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Share functionality coming soon!'),
         backgroundColor: AppColors.info,
       ),
     );
+    }
   }
 
   String _formatDate(DateTime date) {

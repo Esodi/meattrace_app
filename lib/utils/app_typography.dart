@@ -412,7 +412,7 @@ class AppTypography {
   
   /// Change text opacity
   static TextStyle withOpacity(TextStyle style, double opacity) => style.copyWith(
-    color: style.color?.withOpacity(opacity),
+    color: style.color?.withValues(alpha: opacity),
   );
   
   /// Add letter spacing

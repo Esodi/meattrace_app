@@ -33,9 +33,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   }
 
   Future<void> _triggerSync() async {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Starting synchronization...')),
     );
+    }
     await _syncManager.processQueue();
     await _refreshQueue();
   }
@@ -135,12 +137,12 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
 
   Widget _getMethodIcon(SyncMethod method) {
     switch (method) {
-      case SyncMethod.POST:
+      case SyncMethod.post:
         return const Icon(Icons.add_circle, color: Colors.green);
-      case SyncMethod.PUT:
-      case SyncMethod.PATCH:
+      case SyncMethod.put:
+      case SyncMethod.patch:
         return const Icon(Icons.edit, color: Colors.orange);
-      case SyncMethod.DELETE:
+      case SyncMethod.delete:
         return const Icon(Icons.delete_forever, color: Colors.red);
     }
   }

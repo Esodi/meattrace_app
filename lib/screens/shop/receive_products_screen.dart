@@ -56,13 +56,13 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
       // All products returned are already filtered as pending
       final pending = productProvider.products;
 
-      print(
+      debugPrint(
         '🔍 RECEIVE_PRODUCTS_SCREEN - Pending products from API: ${pending.length}',
       );
 
       setState(() => _pendingProducts = pending);
     } catch (e) {
-      print('❌ RECEIVE_PRODUCTS_SCREEN - Error: $e');
+      debugPrint('❌ RECEIVE_PRODUCTS_SCREEN - Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -75,11 +75,13 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
 
   Future<void> _receiveSelectedProducts() async {
     if (_selectedProducts.isEmpty && _rejections.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select products to receive or reject'),
         ),
       );
+      }
       return;
     }
 
@@ -143,7 +145,8 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
           message = 'Successfully rejected $totalRejected product(s)';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
             backgroundColor: totalRejected > 0
@@ -161,16 +164,19 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                 : null,
           ),
         );
+        }
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error processing products: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } finally {
       setState(() => _isLoading = false);
@@ -212,7 +218,8 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
         }
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             result['reject_all']
@@ -231,6 +238,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
           ),
         ),
       );
+      }
     }
   }
 

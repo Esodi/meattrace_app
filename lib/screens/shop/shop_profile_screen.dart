@@ -123,11 +123,13 @@ class ShopProfileScreen extends StatelessWidget {
                       // Use context.push to maintain navigation stack
                       context.push('/shop/users?shopId=$shopId');
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Shop ID not found. Please try again.'),
                         ),
                       );
+                      }
                     }
                   },
                 ),

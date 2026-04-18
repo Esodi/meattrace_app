@@ -574,7 +574,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   void _confirmSelection() {
     widget.onImagesSelected(_selectedImages);
-    Navigator.of(context).pop();
+    if (context.mounted) Navigator.of(context).pop();
   }
 
   void _toggleCameraMode() {
@@ -586,13 +586,15 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.black87,
       ),
     );
+    }
   }
 }
 

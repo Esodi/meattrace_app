@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'dio_client.dart';
 
@@ -17,7 +18,7 @@ class ApiTestService {
       final response = await _dioClient.dio.get('/health/');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print('API connectivity test failed: ${e.message}');
+      debugPrint('API connectivity test failed: ${e.message}');
       return false;
     }
   }
@@ -28,7 +29,7 @@ class ApiTestService {
       final response = await _dioClient.dio.get('/meattrace/');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print('Meat traces endpoint test failed: ${e.message}');
+      debugPrint('Meat traces endpoint test failed: ${e.message}');
       return false;
     }
   }
@@ -39,7 +40,7 @@ class ApiTestService {
       final response = await _dioClient.dio.get('/animals/');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print('Animals endpoint test failed: ${e.message}');
+      debugPrint('Animals endpoint test failed: ${e.message}');
       return false;
     }
   }
@@ -50,7 +51,7 @@ class ApiTestService {
       final response = await _dioClient.dio.get('/products/');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print('Products endpoint test failed: ${e.message}');
+      debugPrint('Products endpoint test failed: ${e.message}');
       return false;
     }
   }
@@ -61,7 +62,7 @@ class ApiTestService {
       final response = await _dioClient.dio.get('/categories/');
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print('Categories endpoint test failed: ${e.message}');
+      debugPrint('Categories endpoint test failed: ${e.message}');
       return false;
     }
   }
@@ -70,7 +71,7 @@ class ApiTestService {
   Future<Map<String, bool>> runAllTests() async {
     final results = <String, bool>{};
     
-    print('Running API connectivity tests...');
+    debugPrint('Running API connectivity tests...');
     
     results['connectivity'] = await testConnectivity();
     results['meattrace'] = await testMeatTracesEndpoint();
@@ -78,9 +79,9 @@ class ApiTestService {
     results['products'] = await testProductsEndpoint();
     results['categories'] = await testCategoriesEndpoint();
     
-    print('API Test Results:');
+    debugPrint('API Test Results:');
     results.forEach((test, passed) {
-      print('  $test: ${passed ? "PASSED" : "FAILED"}');
+      debugPrint('  $test: ${passed ? "PASSED" : "FAILED"}');
     });
     
     return results;
@@ -92,7 +93,7 @@ class ApiTestService {
       final response = await _dioClient.dio.get('/info/');
       return response.data;
     } on DioException catch (e) {
-      print('Failed to get server info: ${e.message}');
+      debugPrint('Failed to get server info: ${e.message}');
       return null;
     }
   }

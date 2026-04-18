@@ -106,19 +106,6 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
     return filtered;
   }
 
-  Color _getStockStatusColor(int tabIndex) {
-    switch (tabIndex) {
-      case 1:
-        return AppColors.success;
-      case 2:
-        return AppColors.warning;
-      case 3:
-        return AppColors.error;
-      default:
-        return AppColors.shopPrimary;
-    }
-  }
-
   String _getStockStatusLabel(Product product) {
     final stockWeight = product.weight ?? 0;
     if (stockWeight == 0) return 'Out of Stock';
@@ -500,7 +487,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                     child: Row(
                       children: [
                         Icon(
-                          CustomIcons.MEATTRACE_ICON,
+                          CustomIcons.meattraceIcon,
                           color: AppColors.textPrimary,
                         ),
                         const SizedBox(width: AppTheme.space8),
@@ -609,12 +596,14 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
   }
 
   void _editProduct(Product product) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Edit product: ${product.productType}'),
         backgroundColor: AppColors.info,
       ),
     );
+    }
     // TODO: Navigate to edit product screen
   }
 
@@ -627,7 +616,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
         ),
         title: Row(
           children: [
-            Icon(CustomIcons.MEATTRACE_ICON, color: AppColors.shopPrimary),
+            Icon(CustomIcons.meattraceIcon, color: AppColors.shopPrimary),
             const SizedBox(width: AppTheme.space8),
             Text('Product QR Code', style: AppTypography.headlineMedium()),
           ],
@@ -644,7 +633,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
               child: Column(
                 children: [
                   Icon(
-                    CustomIcons.MEATTRACE_ICON,
+                    CustomIcons.meattraceIcon,
                     size: 120,
                     color: AppColors.shopPrimary,
                   ),
@@ -715,14 +704,16 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
             label: 'Delete',
             customColor: AppColors.error,
             onPressed: () {
-              Navigator.of(context).pop();
+              if (context.mounted) Navigator.of(context).pop();
               // TODO: Implement delete functionality
-              ScaffoldMessenger.of(context).showSnackBar(
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Delete functionality coming soon'),
                   backgroundColor: AppColors.warning,
                 ),
               );
+              }
             },
           ),
         ],
@@ -790,18 +781,21 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                   : () async {
                       final priceText = priceController.text.trim();
                       if (priceText.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Please enter a price'),
                             backgroundColor: AppColors.warning,
                           ),
                         );
+                        }
                         return;
                       }
 
                       final price = double.tryParse(priceText);
                       if (price == null || price <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
                               'Please enter a valid price greater than 0',
@@ -809,6 +803,7 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                             backgroundColor: AppColors.warning,
                           ),
                         );
+                        }
                         return;
                       }
 
@@ -832,8 +827,9 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                         await _loadInventory();
 
                         if (mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (context.mounted) Navigator.of(context).pop();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 'Price updated to TZS ${price.toStringAsFixed(2)}',
@@ -841,16 +837,19 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                               backgroundColor: AppColors.success,
                             ),
                           );
+                          }
                         }
                       } catch (e) {
                         setDialogState(() => isLoading = false);
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Failed to update price: $e'),
                               backgroundColor: AppColors.error,
                             ),
                           );
+                          }
                         }
                       }
                     },
@@ -931,18 +930,21 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                   : () async {
                       final priceText = priceController.text.trim();
                       if (priceText.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Please enter a price'),
                             backgroundColor: AppColors.warning,
                           ),
                         );
+                        }
                         return;
                       }
 
                       final price = double.tryParse(priceText);
                       if (price == null || price <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
                               'Please enter a valid price greater than 0',
@@ -950,12 +952,13 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                             backgroundColor: AppColors.warning,
                           ),
                         );
+                        }
                         return;
                       }
 
                       // Check if price hasn't changed
                       if (price == product.price) {
-                        Navigator.of(context).pop();
+                        if (context.mounted) Navigator.of(context).pop();
                         return;
                       }
 
@@ -979,8 +982,9 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                         await _loadInventory();
 
                         if (mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (context.mounted) Navigator.of(context).pop();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 'Price updated to TZS ${price.toStringAsFixed(2)}',
@@ -988,17 +992,20 @@ class _ShopInventoryScreenState extends State<ShopInventoryScreen>
                               backgroundColor: AppColors.success,
                             ),
                           );
+                          }
                         }
                       } catch (e) {
                         setDialogState(() => isLoading = false);
                         if (mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (context.mounted) Navigator.of(context).pop();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Failed to update price: $e'),
                               backgroundColor: AppColors.error,
                             ),
                           );
+                          }
                         }
                       }
                     },

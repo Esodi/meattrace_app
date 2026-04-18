@@ -29,6 +29,7 @@ import 'providers/external_vendor_provider.dart';
 import 'providers/invoice_provider.dart';
 import 'providers/shop_settings_provider.dart';
 import 'providers/sale_provider.dart';
+import 'providers/waste_provider.dart';
 import 'services/api_service.dart';
 
 // Modern UI screens (actively used)
@@ -98,6 +99,7 @@ import 'screens/abbatoir/abbatoir_stock_screen.dart';
 import 'screens/processing_unit/processor_stock_screen.dart';
 import 'screens/shop/shop_stock_screen.dart';
 import 'screens/abbatoir/abbatoir_inventory_screen.dart';
+import 'screens/abbatoir/waste_list_screen.dart';
 
 import 'screens/common/user_profile_screen.dart';
 import 'screens/common/settings_screen.dart';
@@ -354,6 +356,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             GoRoute(
               path: '/abbatoir/stock',
               builder: (context, state) => const AbbatoirStockScreen(),
+            ),
+            GoRoute(
+              path: '/waste-list',
+              builder: (context, state) => const WasteListScreen(),
             ),
           ],
         ),
@@ -663,6 +669,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => ShopSettingsProvider()),
         ChangeNotifierProvider(create: (_) => SaleProvider()),
+        ChangeNotifierProvider(create: (_) => WasteProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

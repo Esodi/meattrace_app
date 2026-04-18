@@ -197,7 +197,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
                     setState(() => _selectedCategory = category);
                   },
                   backgroundColor: Colors.white,
-                  selectedColor: AppColors.processorPrimary.withOpacity(0.2),
+                  selectedColor: AppColors.processorPrimary.withValues(alpha: 0.2),
                   checkmarkColor: AppColors.processorPrimary,
                 ),
               );
@@ -352,17 +352,6 @@ class _ProductsListScreenState extends State<ProductsListScreen>
     );
   }
 
-  Widget _buildRating(double rating) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.star, size: 16, color: Colors.amber),
-        const SizedBox(width: 4),
-        Text(rating.toStringAsFixed(1), style: AppTypography.bodyMedium()),
-      ],
-    );
-  }
-
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -373,7 +362,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             Icon(
               Icons.inventory_2_outlined,
               size: 80,
-              color: AppColors.textSecondary.withOpacity(0.5),
+              color: AppColors.textSecondary.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -406,7 +395,7 @@ class _ProductsListScreenState extends State<ProductsListScreen>
             Icon(
               Icons.error_outline,
               size: 80,
-              color: Colors.red.withOpacity(0.5),
+              color: Colors.red.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(

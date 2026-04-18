@@ -26,6 +26,7 @@ class Constants {
   static const String shopsEndpoint = '/shops/';
   static const String uploadEndpoint = '/upload/';
   static const String activitiesEndpoint = '/activities/';
+  static const String wasteEndpoint = '/waste/';
 
   // Order & Sales Endpoints
   static const String ordersEndpoint = '/orders/';

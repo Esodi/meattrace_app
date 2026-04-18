@@ -117,12 +117,14 @@ class _ExternalVendorsScreenState extends State<ExternalVendorsScreen> {
                     if (context.mounted) {
                       Navigator.pop(dialogContext);
                       if (created != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Vendor "${created.name}" added'),
                             backgroundColor: Colors.green,
                           ),
                         );
+                        }
                       }
                     }
                   }

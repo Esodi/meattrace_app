@@ -38,7 +38,6 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
 
   // Tag ID editing state
   bool _isTagIdEditable = false;
-  final bool _isCheckingTagId = false;
 
   // Form state
   String? _selectedSpecies;
@@ -48,7 +47,6 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   String _selectedHealthStatus = 'healthy';
   File? _selectedImage;
   bool _isLoading = false;
-  final bool _useManualWeightInput = false;
 
   // External Vendor State
   bool _isExternalSource = false;
@@ -72,7 +70,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔵 [RegisterAnimalScreen] initState called');
+    debugPrint('🔵 [RegisterAnimalScreen] initState called');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ExternalVendorProvider>().fetchVendors();
     });
@@ -101,13 +99,15 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         _isScaleConnected = true;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Scale connected successfully'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
       );
+      }
     }
   }
 
@@ -117,27 +117,29 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
       return;
     }
 
-    print('👆 [RegisterScreen] Reading weight from scale...');
+    debugPrint('👆 [RegisterScreen] Reading weight from scale...');
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Reading from scale... Please ensure weight is stable.'),
         duration: Duration(seconds: 10),
       ),
     );
+    }
 
     bool gotWeight = false;
 
     try {
-      print('👆 [RegisterScreen] Attempting manual read...');
+      debugPrint('👆 [RegisterScreen] Attempting manual read...');
       await _scaleService.readWeight();
     } catch (e) {
-      print('⚠️ [RegisterScreen] Manual read failed: $e');
+      debugPrint('⚠️ [RegisterScreen] Manual read failed: $e');
     }
 
     StreamSubscription? singleRead;
     singleRead = _scaleService.weightStream.listen((weight) {
-      print('✅ [RegisterScreen] Received weight: $weight kg');
+      debugPrint('✅ [RegisterScreen] Received weight: $weight kg');
       if (!gotWeight) {
         gotWeight = true;
         setState(() {
@@ -146,23 +148,26 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         });
         singleRead?.cancel();
 
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Weight: ${weight.toStringAsFixed(2)} kg'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
         );
+        }
       }
     });
 
     Future.delayed(const Duration(seconds: 10), () {
       if (!gotWeight) {
-        print('⏱️ [RegisterScreen] Timeout waiting for weight');
+        debugPrint('⏱️ [RegisterScreen] Timeout waiting for weight');
         singleRead?.cancel();
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
               'No weight received. Ensure weight is on scale and stable.',
@@ -171,24 +176,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
             duration: Duration(seconds: 3),
           ),
         );
-      }
-    });
-  }
-
-  void _updateWeightFromText(String value) {
-    final weight = double.tryParse(value);
-    if (weight != null && weight >= 0 && weight <= 1000) {
-      setState(() {
-        _weightValue = weight;
-      });
-    }
-  }
-
-  void _updateWeightFromSlider(double value) {
-    setState(() {
-      _weightValue = value;
-      if (!_useManualWeightInput) {
-        _weightController.text = value.toStringAsFixed(1);
+        }
       }
     });
   }
@@ -342,42 +330,42 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   }
 
   Future<void> _registerAnimal() async {
-    print(
+    debugPrint(
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     );
-    print('🐄 REGISTER_ANIMAL - START');
-    print(
+    debugPrint('🐄 REGISTER_ANIMAL - START');
+    debugPrint(
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     );
 
     if (!_formKey.currentState!.validate()) {
-      print('❌ Form validation failed');
+      debugPrint('❌ Form validation failed');
       return;
     }
 
     if (_selectedSpecies == null) {
-      print('❌ No species selected');
+      debugPrint('❌ No species selected');
       _showErrorSnackbar('Please select a species');
       return;
     }
 
-    print('✅ Form validated successfully');
-    print('📋 Animal Details:');
-    print('   - Species: $_selectedSpecies');
-    print('   - Tag ID: ${_tagIdController.text}');
-    print('   - Breed: ${_breedController.text}');
-    print('   - Weight: $_weightValue kg');
-    print('   - Gender: $_selectedGender');
-    print('   - Health Status: $_selectedHealthStatus');
-    print('   - Has Photo: ${_selectedImage != null}');
+    debugPrint('✅ Form validated successfully');
+    debugPrint('📋 Animal Details:');
+    debugPrint('   - Species: $_selectedSpecies');
+    debugPrint('   - Tag ID: ${_tagIdController.text}');
+    debugPrint('   - Breed: ${_breedController.text}');
+    debugPrint('   - Weight: $_weightValue kg');
+    debugPrint('   - Gender: $_selectedGender');
+    debugPrint('   - Health Status: $_selectedHealthStatus');
+    debugPrint('   - Has Photo: ${_selectedImage != null}');
 
     setState(() => _isLoading = true);
 
     try {
       final animalProvider = context.read<AnimalProvider>();
-      print('📊 Provider state BEFORE creation:');
-      print('   - Current animals count: ${animalProvider.animals.length}');
-      print('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
+      debugPrint('📊 Provider state BEFORE creation:');
+      debugPrint('   - Current animals count: ${animalProvider.animals.length}');
+      debugPrint('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
 
       // Calculate age in months from birth date
       final now = DateTime.now();
@@ -385,10 +373,10 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           .round();
       final finalAge = ageInMonths < 1 ? 1.0 : ageInMonths.toDouble();
 
-      print('📅 Age calculation:');
-      print('   - Birth date: $_selectedDate');
-      print('   - Current date: $now');
-      print('   - Age in months: $finalAge');
+      debugPrint('📅 Age calculation:');
+      debugPrint('   - Birth date: $_selectedDate');
+      debugPrint('   - Current date: $now');
+      debugPrint('   - Age in months: $finalAge');
 
       final animal = Animal(
         abbatoir: 0, // Will be set by backend from auth user
@@ -426,11 +414,11 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         }
       }
 
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('📡 Calling animalProvider.createAnimal()...');
-      print(
+      debugPrint('📡 Calling animalProvider.createAnimal()...');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
@@ -439,70 +427,70 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         photo: _selectedImage,
       );
 
-      print('🔄 Fetching updated animal list for abbatoir dashboard');
+      debugPrint('🔄 Fetching updated animal list for abbatoir dashboard');
       await animalProvider.fetchAnimals(slaughtered: null);
 
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('✅ CREATE_ANIMAL RESPONSE RECEIVED');
-      print(
+      debugPrint('✅ CREATE_ANIMAL RESPONSE RECEIVED');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('📊 Created animal details:');
-      print('   - Created: ${createdAnimal != null}');
+      debugPrint('📊 Created animal details:');
+      debugPrint('   - Created: ${createdAnimal != null}');
       if (createdAnimal != null) {
-        print('   - ID: ${createdAnimal.id}');
-        print('   - Animal ID: ${createdAnimal.animalId}');
-        print('   - Species: ${createdAnimal.species}');
-        print('   - Slaughtered: ${createdAnimal.slaughtered}');
+        debugPrint('   - ID: ${createdAnimal.id}');
+        debugPrint('   - Animal ID: ${createdAnimal.animalId}');
+        debugPrint('   - Species: ${createdAnimal.species}');
+        debugPrint('   - Slaughtered: ${createdAnimal.slaughtered}');
       }
-      print('📊 Provider state AFTER creation:');
-      print('   - Animals count: ${animalProvider.animals.length}');
-      print('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
-      print(
+      debugPrint('📊 Provider state AFTER creation:');
+      debugPrint('   - Animals count: ${animalProvider.animals.length}');
+      debugPrint('   - isCreatingAnimal: ${animalProvider.isCreatingAnimal}');
+      debugPrint(
         '   - Last animal in list: ${animalProvider.animals.isNotEmpty ? animalProvider.animals.last.animalId : "none"}',
       );
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
       if (mounted && createdAnimal != null) {
-        print('✅ Animal created successfully, showing success message');
+        debugPrint('✅ Animal created successfully, showing success message');
         _showSuccessSnackbar('Animal registered successfully!');
 
-        print('⏳ Waiting 500ms for snackbar visibility...');
+        debugPrint('⏳ Waiting 500ms for snackbar visibility...');
         await Future.delayed(const Duration(milliseconds: 500));
 
-        print('🔙 Navigating back to previous screen');
+        debugPrint('🔙 Navigating back to previous screen');
         if (mounted) {
           context.pop();
-          print(
+          debugPrint(
             '✅ Navigation complete - Dashboard should auto-refresh via didChangeDependencies',
           );
         }
       } else {
-        print('❌ Animal creation returned null or widget not mounted');
+        debugPrint('❌ Animal creation returned null or widget not mounted');
       }
 
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('🏁 REGISTER_ANIMAL - COMPLETE');
-      print(
+      debugPrint('🏁 REGISTER_ANIMAL - COMPLETE');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
     } catch (e) {
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('❌ REGISTER_ANIMAL - ERROR');
-      print(
+      debugPrint('❌ REGISTER_ANIMAL - ERROR');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('❌ Error: $e');
-      print('❌ Error type: ${e.runtimeType}');
-      print(
+      debugPrint('❌ Error: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
@@ -512,13 +500,14 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
-        print('🔄 Loading state set to false');
+        debugPrint('🔄 Loading state set to false');
       }
     }
   }
 
   void _showSuccessSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -533,10 +522,12 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         duration: const Duration(seconds: 4),
       ),
     );
+    }
   }
 
   void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -551,11 +542,12 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         duration: const Duration(seconds: 4),
       ),
     );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    print('🔵 [RegisterAnimalScreen] build() called - isLoading: $_isLoading');
+    debugPrint('🔵 [RegisterAnimalScreen] build() called - isLoading: $_isLoading');
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: _buildAppBar(),
@@ -584,11 +576,11 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
               style: AppTypography.labelLarge(color: Colors.white),
             ),
             onPressed: () {
-              print(
+              debugPrint(
                 '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
               );
-              print('🔘 APPBAR SAVE BUTTON PRESSED');
-              print(
+              debugPrint('🔘 APPBAR SAVE BUTTON PRESSED');
+              debugPrint(
                 '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
               );
               _registerAnimal();
@@ -680,7 +672,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                 states,
               ) {
                 if (states.contains(WidgetState.selected)) {
-                  return AppColors.abbatoirPrimary.withOpacity(0.2);
+                  return AppColors.abbatoirPrimary.withValues(alpha: 0.2);
                 }
                 return null;
               }),
@@ -869,8 +861,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           const SizedBox(height: 16),
 
           // Tag ID
-          Container(
-            child: Column(
+          Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -941,7 +932,6 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
                   ),
               ],
             ),
-          ),
           const SizedBox(height: 16),
 
           // Species Dropdown
@@ -1250,7 +1240,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.abbatoirPrimary.withOpacity(0.1)
+              ? AppColors.abbatoirPrimary.withValues(alpha: 0.1)
               : AppColors.backgroundGray,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
@@ -1297,7 +1287,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : AppColors.backgroundGray,
+          color: isSelected ? color.withValues(alpha: 0.1) : AppColors.backgroundGray,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? color : AppColors.divider,
@@ -1328,33 +1318,35 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   }
 
   Widget _buildRegisterButton() {
-    print('🔵 [RegisterButton] Building button - isLoading: $_isLoading');
+    debugPrint('🔵 [RegisterButton] Building button - isLoading: $_isLoading');
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: _isLoading
             ? null
             : () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('👆 Register button tapped')),
                 );
-                print(
+                }
+                debugPrint(
                   '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                 );
-                print('🔘 REGISTER BUTTON PRESSED');
-                print(
+                debugPrint('🔘 REGISTER BUTTON PRESSED');
+                debugPrint(
                   '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                 );
-                print('📋 Current form state:');
-                print('   - isLoading: $_isLoading');
-                print('   - selectedSpecies: $_selectedSpecies');
-                print('   - tagId: ${_tagIdController.text}');
-                print('   - breed: ${_breedController.text}');
-                print('   - weight: $_weightValue');
-                print('   - gender: $_selectedGender');
-                print('   - healthStatus: $_selectedHealthStatus');
-                print('   - hasPhoto: ${_selectedImage != null}');
-                print(
+                debugPrint('📋 Current form state:');
+                debugPrint('   - isLoading: $_isLoading');
+                debugPrint('   - selectedSpecies: $_selectedSpecies');
+                debugPrint('   - tagId: ${_tagIdController.text}');
+                debugPrint('   - breed: ${_breedController.text}');
+                debugPrint('   - weight: $_weightValue');
+                debugPrint('   - gender: $_selectedGender');
+                debugPrint('   - healthStatus: $_selectedHealthStatus');
+                debugPrint('   - hasPhoto: ${_selectedImage != null}');
+                debugPrint(
                   '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                 );
                 _registerAnimal();

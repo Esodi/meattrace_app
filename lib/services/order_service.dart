@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/order.dart';
 import 'dio_client.dart';
@@ -33,13 +34,13 @@ class OrderService {
         throw Exception('Unexpected response format');
       }
     } on DioException catch (e) {
-      print('🔍 [OrderService] DioException in fetchOrders: ${e.message}');
-      print('🔍 [OrderService] Response status: ${e.response?.statusCode}');
-      print('🔍 [OrderService] Response data: ${e.response?.data}');
+      debugPrint('🔍 [OrderService] DioException in fetchOrders: ${e.message}');
+      debugPrint('🔍 [OrderService] Response status: ${e.response?.statusCode}');
+      debugPrint('🔍 [OrderService] Response data: ${e.response?.data}');
       final errorMessage = e.message ?? 'Unknown network error';
       throw Exception('Failed to fetch orders: $errorMessage');
     } catch (e) {
-      print('🔍 [OrderService] General exception in fetchOrders: $e');
+      debugPrint('🔍 [OrderService] General exception in fetchOrders: $e');
       throw Exception('Failed to fetch orders: $e');
     }
   }
@@ -52,23 +53,23 @@ class OrderService {
         orderData['items_data'] = order.items.map((item) => item.toMapForCreate()).toList();
       }
 
-      print('🔍 [OrderService] Sending order data: $orderData');
+      debugPrint('🔍 [OrderService] Sending order data: $orderData');
 
       final response = await _dioClient.dio.post(
         '/orders/',
         data: orderData,
       );
 
-      print('🔍 [OrderService] Response status: ${response.statusCode}');
-      print('🔍 [OrderService] Response data: ${response.data}');
+      debugPrint('🔍 [OrderService] Response status: ${response.statusCode}');
+      debugPrint('🔍 [OrderService] Response data: ${response.data}');
 
       return Order.fromJson(response.data);
     } on DioException catch (e) {
-      print('🔍 [OrderService] DioException: ${e.message}');
-      print('🔍 [OrderService] Response: ${e.response?.data}');
+      debugPrint('🔍 [OrderService] DioException: ${e.message}');
+      debugPrint('🔍 [OrderService] Response: ${e.response?.data}');
       throw Exception('Failed to create order: ${e.message}');
     } catch (e) {
-      print('🔍 [OrderService] General exception: $e');
+      debugPrint('🔍 [OrderService] General exception: $e');
       throw Exception('Failed to create order: $e');
     }
   }

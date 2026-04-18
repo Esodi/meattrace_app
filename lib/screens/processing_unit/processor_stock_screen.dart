@@ -196,22 +196,26 @@ class _ProcessorStockScreenState extends State<ProcessorStockScreen>
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_getCategoryName()} Added Successfully'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
         _clearForm();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding stock: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {

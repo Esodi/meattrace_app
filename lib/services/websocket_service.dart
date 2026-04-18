@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'dart:convert';
@@ -38,7 +39,7 @@ class WebSocketService {
 
       _isConnected = true;
     } catch (e) {
-      print('WebSocket connection failed: $e');
+      debugPrint('WebSocket connection failed: $e');
       _isConnected = false;
     }
   }
@@ -67,17 +68,15 @@ class WebSocketService {
           break;
         case 'unread_count_update':
           // Update unread count
-          final unreadCount = data['unread_count'] ?? 0;
           // This would need to be implemented in the provider
           break;
       }
     } catch (e) {
-      print('Error processing WebSocket message: $e');
+      debugPrint('Error processing WebSocket message: $e');
     }
   }
 
   void _handleNotificationUpdate(Map<String, dynamic> data) {
-    final notificationId = data['notification_id'];
     final action = data['action'];
 
     switch (action) {
@@ -91,14 +90,14 @@ class WebSocketService {
   }
 
   void _onConnectionClosed() {
-    print('WebSocket connection closed');
+    debugPrint('WebSocket connection closed');
     _isConnected = false;
     // Implement reconnection logic here
     _scheduleReconnection();
   }
 
   void _onConnectionError(dynamic error) {
-    print('WebSocket connection error: $error');
+    debugPrint('WebSocket connection error: $error');
     _isConnected = false;
     _scheduleReconnection();
   }
@@ -109,7 +108,7 @@ class WebSocketService {
       if (!_isConnected) {
         // Attempt to reconnect
         // This would need the user ID from somewhere
-        print('Attempting to reconnect WebSocket...');
+        debugPrint('Attempting to reconnect WebSocket...');
       }
     });
   }

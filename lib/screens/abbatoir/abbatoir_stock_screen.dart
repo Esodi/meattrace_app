@@ -114,7 +114,7 @@ class _AbbatoirStockScreenState extends State<AbbatoirStockScreen>
       } else if (_tabController.index == 1) {
         // Register Slaughtered Animal
         final animal = Animal(
-          abbatoir: currentUser.id ?? 0,
+          abbatoir: currentUser.id,
           abbatoirName: currentUser.username,
           species: _selectedSpecies,
           animalId: tagId,
@@ -141,7 +141,7 @@ class _AbbatoirStockScreenState extends State<AbbatoirStockScreen>
         // We'll create a "Phantom Animal" to hold these initial parts if animalId is not provided.
 
         final phantomAnimal = Animal(
-          abbatoir: currentUser.id ?? 0,
+          abbatoir: currentUser.id,
           abbatoirName: currentUser.username,
           species: _selectedSpecies,
           animalId: 'PART-HOLDER-${now.millisecondsSinceEpoch}',
@@ -175,22 +175,26 @@ class _AbbatoirStockScreenState extends State<AbbatoirStockScreen>
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_getCategoryName()} Added Successfully'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
         _clearForm();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding stock: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {

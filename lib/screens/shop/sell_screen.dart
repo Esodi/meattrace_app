@@ -69,18 +69,21 @@ class _SellScreenState extends State<SellScreen>
 
   void _addToCart(Product product, double weight) {
     if (weight <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter weight'),
           backgroundColor: AppColors.warning,
         ),
       );
+      }
       return;
     }
 
     // Validate weight against stock
     if (product.weight != null && weight > product.weight!) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Only ${product.weight!.toStringAsFixed(1)} ${product.weightUnit} available in stock',
@@ -88,6 +91,7 @@ class _SellScreenState extends State<SellScreen>
           backgroundColor: AppColors.error,
         ),
       );
+      }
       return;
     }
 
@@ -120,7 +124,8 @@ class _SellScreenState extends State<SellScreen>
     // Clear the input controllers after adding
     _weightControllers[product.id]?.text = '';
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${product.name} added to cart'),
         backgroundColor: AppColors.success,
@@ -132,6 +137,7 @@ class _SellScreenState extends State<SellScreen>
         ),
       ),
     );
+    }
   }
 
   void _removeFromCart(int productId) {
@@ -172,12 +178,14 @@ class _SellScreenState extends State<SellScreen>
 
   Future<void> _completeSale() async {
     if (_cart.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Cart is empty. Add products to continue.'),
           backgroundColor: AppColors.warning,
         ),
       );
+      }
       return;
     }
 
@@ -256,19 +264,21 @@ class _SellScreenState extends State<SellScreen>
 
       // Navigate back
       if (mounted) {
-        Navigator.of(context).pop();
+        if (context.mounted) Navigator.of(context).pop();
       }
     } catch (e) {
       setState(() => _isProcessing = false);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to complete sale: $e'),
             backgroundColor: AppColors.error,
             duration: const Duration(seconds: 4),
           ),
         );
+        }
       }
     }
   }

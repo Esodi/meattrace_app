@@ -130,12 +130,14 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
     final settings = provider.settings;
     if (settings == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Settings not loaded yet. Please try again.'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
       return;
     }
@@ -168,22 +170,26 @@ class _ShopBrandingScreenState extends State<ShopBrandingScreen> {
       await provider.saveAllSettings(settings.id!, data);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Settings saved successfully!'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${e.toString()}'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     }
   }

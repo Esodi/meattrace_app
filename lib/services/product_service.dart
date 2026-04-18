@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/product.dart';
 import 'dio_client.dart';
@@ -46,9 +47,9 @@ class ProductService {
               try {
                 return Product.fromMap(json);
               } catch (e, stack) {
-                print('❌ Error parsing product: $e');
-                print('Stack trace: $stack');
-                print('📄 JSON: $json');
+                debugPrint('❌ Error parsing product: $e');
+                debugPrint('Stack trace: $stack');
+                debugPrint('📄 JSON: $json');
                 rethrow;
               }
             })
@@ -61,9 +62,9 @@ class ProductService {
               try {
                 return Product.fromMap(json);
               } catch (e, stack) {
-                print('❌ Error parsing product: $e');
-                print('Stack trace: $stack');
-                print('📄 JSON: $json');
+                debugPrint('❌ Error parsing product: $e');
+                debugPrint('Stack trace: $stack');
+                debugPrint('📄 JSON: $json');
                 rethrow;
               }
             })
@@ -93,24 +94,24 @@ class ProductService {
 
   Future<Product> createProduct(Product product) async {
     try {
-      print('🔄 [ProductService] Creating product...');
-      print('📤 [ProductService] Sending data: ${product.toMapForCreate()}');
+      debugPrint('🔄 [ProductService] Creating product...');
+      debugPrint('📤 [ProductService] Sending data: ${product.toMapForCreate()}');
 
       final response = await _dioClient.dio.post(
         Constants.productsEndpoint,
         data: product.toMapForCreate(),
       );
 
-      print(
+      debugPrint(
         '✅ [ProductService] Product created successfully: ${response.statusCode}',
       );
-      print('📄 [ProductService] Response data: ${response.data}');
+      debugPrint('📄 [ProductService] Response data: ${response.data}');
       return Product.fromMap(response.data);
     } on DioException catch (e) {
-      print('❌ [ProductService] Product creation failed');
-      print('📊 [ProductService] Status Code: ${e.response?.statusCode}');
-      print('📄 [ProductService] Response Data: ${e.response?.data}');
-      print('🔍 [ProductService] Error Message: ${e.message}');
+      debugPrint('❌ [ProductService] Product creation failed');
+      debugPrint('📊 [ProductService] Status Code: ${e.response?.statusCode}');
+      debugPrint('📄 [ProductService] Response Data: ${e.response?.data}');
+      debugPrint('🔍 [ProductService] Error Message: ${e.message}');
 
       // Create detailed error message
       String errorMessage = 'Failed to create product';
@@ -251,22 +252,22 @@ class ProductService {
       final response = await _dioClient.dio.get(Constants.shopsEndpoint);
       final data = response.data;
 
-      print('[PRODUCT_SERVICE] getShops response type: ${data.runtimeType}');
-      print('[PRODUCT_SERVICE] getShops response data: $data');
+      debugPrint('[PRODUCT_SERVICE] getShops response type: ${data.runtimeType}');
+      debugPrint('[PRODUCT_SERVICE] getShops response data: $data');
 
       // Handle both List and Map with 'results' key
       if (data is List) {
-        print('[PRODUCT_SERVICE] Response is List, converting to List<Map>');
+        debugPrint('[PRODUCT_SERVICE] Response is List, converting to List<Map>');
         return List<Map<String, dynamic>>.from(data);
       } else if (data is Map && data.containsKey('results')) {
-        print('[PRODUCT_SERVICE] Response is Map with results key');
+        debugPrint('[PRODUCT_SERVICE] Response is Map with results key');
         return List<Map<String, dynamic>>.from(data['results']);
       } else {
-        print('[PRODUCT_SERVICE] Unexpected response format: $data');
+        debugPrint('[PRODUCT_SERVICE] Unexpected response format: $data');
         throw Exception('Unexpected response format');
       }
     } on DioException catch (e) {
-      print('[PRODUCT_SERVICE] Error fetching shops: ${e.message}');
+      debugPrint('[PRODUCT_SERVICE] Error fetching shops: ${e.message}');
       throw Exception('Failed to fetch shops: ${e.message}');
     }
   }

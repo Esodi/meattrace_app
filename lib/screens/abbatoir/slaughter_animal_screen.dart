@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../models/animal.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/activity_provider.dart';
-import '../../services/dio_client.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../widgets/core/custom_button.dart';
@@ -73,7 +72,6 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   bool _isOffline = false;
   List<Animal> _availableAnimals = [];
   List<Animal> _filteredAnimals = [];
-  String? _networkError;
   int _retryCount = 0;
   static const int _maxRetries = 3;
 
@@ -85,27 +83,18 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔵 [SlaughterScreen] initState called');
+    debugPrint('🔵 [SlaughterScreen] initState called');
     _searchController.addListener(_filterAnimals);
-    // Schedule data loading after build completes to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🔵 [SlaughterScreen] Post frame callback - loading animals');
+      debugPrint('🔵 [SlaughterScreen] Post frame callback - loading animals');
       _loadAvailableAnimals();
     });
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Don't reload here - it causes duplicate calls
-    // Only load in initState
-    print(
-      '🔵 [SlaughterScreen] didChangeDependencies called (skipping reload)',
-    );
-  }
-
-  @override
   void dispose() {
+    _weightSubscription?.cancel();
+    _searchController.removeListener(_filterAnimals);
     _searchController.dispose();
     _headWeightController.dispose();
     _feetWeightController.dispose();
@@ -116,207 +105,41 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     _feetWeightWholeController.dispose();
     _wholeCarcassWeightController.dispose();
     _notesController.dispose();
-    _weightSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _connectScale() async {
-    if (_scaleService.isConnected) {
-      // Already connected, maybe show status or disconnect option?
-      // For now, just show a toast or snackbar
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Scale already connected')));
-      return;
-    }
-
-    final result = await showDialog(
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => const ScaleConnectionDialog(),
     );
 
-    if (result == true) {
+    if (result == true && mounted) {
       setState(() {
         _isScaleConnected = true;
       });
-
-      // Listen to weight stream
-      _weightSubscription?.cancel();
-      _weightSubscription = _scaleService.weightStream.listen((weight) {
-        // We could auto-update a focused field, or just keep the latest value
-        // For this implementation, we'll pull on demand via the button
-        print('Scale weight: $weight');
-      });
-    }
-  }
-
-  void _readWeightFromScale(TextEditingController controller) async {
-    if (!_scaleService.isConnected) {
-      _connectScale();
-      return;
-    }
-
-    print('👆 [SlaughterScreen] Reading weight from scale...');
-
-    // Show loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Reading from scale... Please ensure weight is stable.'),
-        duration: Duration(seconds: 10),
-      ),
-    );
-
-    bool gotWeight = false;
-
-    // Try to manually read the characteristic first (some scales need this)
-    try {
-      print('👆 [SlaughterScreen] Attempting manual read...');
-      await _scaleService.readWeight();
-    } catch (e) {
-      print(
-        '⚠️ [SlaughterScreen] Manual read failed (normal for notify-only scales): $e',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Scale connected successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
       );
     }
-
-    // Listen for the next weight value from the stream
-    StreamSubscription? singleRead;
-    singleRead = _scaleService.weightStream.listen((weight) {
-      print('✅ [SlaughterScreen] Received weight: $weight kg');
-      if (!gotWeight) {
-        gotWeight = true;
-        setState(() {
-          controller.text = weight.toStringAsFixed(2);
-        });
-        singleRead?.cancel();
-
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Weight: ${weight.toStringAsFixed(2)} kg'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    });
-
-    // Longer timeout (10 seconds) to give scale time to stabilize and send data
-    Future.delayed(const Duration(seconds: 10), () {
-      if (!gotWeight) {
-        print('⏱️ [SlaughterScreen] Timeout waiting for weight');
-        singleRead?.cancel();
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No weight received. Ensure weight is on scale and stable.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    });
-  }
-
-  Widget _buildWeightFieldWithScale(
-    TextEditingController controller,
-    String label,
-    String unit,
-    Function(String?)? onChanged,
-  ) {
-    // Parse current weight from controller
-    double? currentWeight;
-    if (controller.text.isNotEmpty) {
-      currentWeight = double.tryParse(controller.text);
-    }
-
-    return BluetoothWeightDisplay(
-      label: label,
-      weight: currentWeight,
-      isConnected: _isScaleConnected,
-      onTap: () async {
-        // Read weight and update controller
-        if (!_scaleService.isConnected) {
-          await _connectScale();
-          return;
-        }
-
-        print('👆 [SlaughterScreen] Reading weight for $label...');
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Reading from scale... Please ensure weight is stable.',
-            ),
-            duration: Duration(seconds: 10),
-          ),
-        );
-
-        bool gotWeight = false;
-
-        try {
-          await _scaleService.readWeight();
-        } catch (e) {
-          print('⚠️ [SlaughterScreen] Manual read failed: $e');
-        }
-
-        StreamSubscription? singleRead;
-        singleRead = _scaleService.weightStream.listen((weight) {
-          if (!gotWeight) {
-            gotWeight = true;
-            setState(() {
-              controller.text = weight.toStringAsFixed(2);
-            });
-            if (onChanged != null) {
-              onChanged(weight.toStringAsFixed(2));
-            }
-            singleRead?.cancel();
-
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('$label: ${weight.toStringAsFixed(2)} $unit'),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        });
-
-        Future.delayed(const Duration(seconds: 10), () {
-          if (!gotWeight) {
-            singleRead?.cancel();
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'No weight received. Ensure weight is on scale and stable.',
-                ),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          }
-        });
-      },
-      unit: unit,
-      themeColor: AppColors.abbatoirPrimary, // Abbatoir green theme
-    );
   }
 
   Future<void> _loadAvailableAnimals() async {
-    print('🔵 [SlaughterScreen] _loadAvailableAnimals started');
+    debugPrint('🔵 [SlaughterScreen] _loadAvailableAnimals started');
     setState(() => _isLoading = true);
     try {
       final animalProvider = Provider.of<AnimalProvider>(
         context,
         listen: false,
       );
-      print('🔵 [SlaughterScreen] Fetching animals from provider...');
+      debugPrint('🔵 [SlaughterScreen] Fetching animals from provider...');
       await animalProvider.fetchAnimals(slaughtered: false);
 
-      print(
+      debugPrint(
         '🔵 [SlaughterScreen] Total animals from provider: ${animalProvider.animals.length}',
       );
 
@@ -328,24 +151,23 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             animal.healthStatus!.toLowerCase() == 'healthy' ||
             animal.healthStatus!.toLowerCase() == 'active';
 
-        print(
+        debugPrint(
           '  Animal ${animal.animalId}: slaughtered=$notSlaughtered, transferred=$notTransferred, health=$healthOk',
         );
 
         return notSlaughtered && notTransferred && healthOk;
       }).toList();
 
-      print('🔵 [SlaughterScreen] Filtered animals count: ${animals.length}');
+      debugPrint('🔵 [SlaughterScreen] Filtered animals count: ${animals.length}');
 
       setState(() {
         _availableAnimals = animals;
         _filteredAnimals = animals;
         _isLoading = false;
         _isOffline = false;
-        _networkError = null;
       });
 
-      print(
+      debugPrint(
         '🔵 [SlaughterScreen] State updated - _availableAnimals: ${_availableAnimals.length}, _filteredAnimals: ${_filteredAnimals.length}',
       );
 
@@ -358,11 +180,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         }
       }
     } catch (e) {
-      print('❌ [SlaughterScreen] Error loading animals: $e');
+      debugPrint('❌ [SlaughterScreen] Error loading animals: $e');
       setState(() {
         _isLoading = false;
         _isOffline = true;
-        _networkError = e.toString();
       });
       _showError(
         'Failed to load animals: ${e.toString()}\n\nWorking in offline mode. Some features may be limited.',
@@ -371,7 +192,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   void _filterAnimals() {
-    print(
+    debugPrint(
       '🔍 [SlaughterScreen] _filterAnimals called with query: "${_searchController.text}"',
     );
     final query = _searchController.text.toLowerCase();
@@ -387,19 +208,19 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             species.contains(query) ||
             breed.contains(query);
       }).toList();
-      print(
+      debugPrint(
         '🔍 [SlaughterScreen] Filtered results: ${_filteredAnimals.length} animals',
       );
     });
   }
 
   void _selectAnimal(Animal animal) {
-    print('✅ [SlaughterScreen] Animal selected: ${animal.animalId}');
+    debugPrint('✅ [SlaughterScreen] Animal selected: ${animal.animalId}');
     setState(() {
       _selectedAnimal = animal;
       _currentStep = 1;
     });
-    print('✅ [SlaughterScreen] Current step set to: $_currentStep');
+    debugPrint('✅ [SlaughterScreen] Current step set to: $_currentStep');
   }
 
   void _nextStep() {
@@ -506,7 +327,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
   double _calculateYieldPercentage() {
     if (_selectedAnimal == null) {
-      print(
+      debugPrint(
         '⚠️ [SlaughterScreen] _calculateYieldPercentage called with null _selectedAnimal',
       );
       return 0.0;
@@ -520,10 +341,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   Future<void> _confirmAndSlaughter() async {
-    print('🔵 [SlaughterScreen] _confirmAndSlaughter called');
+    debugPrint('🔵 [SlaughterScreen] _confirmAndSlaughter called');
 
     if (_selectedAnimal == null) {
-      print(
+      debugPrint(
         '❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _confirmAndSlaughter',
       );
       _showError('Error: No animal selected');
@@ -531,7 +352,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     }
 
     if (!_formKey.currentState!.validate()) {
-      print('⚠️ [SlaughterScreen] Form validation failed');
+      debugPrint('⚠️ [SlaughterScreen] Form validation failed');
       _showError('Please fill in all required fields');
       return;
     }
@@ -543,10 +364,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     // Validate minimum measurements
     final totalWeight = _calculateTotalWeight();
-    print('🔵 [SlaughterScreen] Total weight: $totalWeight kg');
+    debugPrint('🔵 [SlaughterScreen] Total weight: $totalWeight kg');
 
     if (totalWeight <= 0) {
-      print('⚠️ [SlaughterScreen] Invalid total weight: $totalWeight');
+      debugPrint('⚠️ [SlaughterScreen] Invalid total weight: $totalWeight');
       _showError('Total carcass weight must be greater than 0');
       return;
     }
@@ -573,9 +394,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       return;
     }
 
-    print('✅ [SlaughterScreen] Showing confirmation dialog');
+    debugPrint('✅ [SlaughterScreen] Showing confirmation dialog');
 
-    print('✅ [SlaughterScreen] User confirmed slaughter, proceeding...');
+    debugPrint('✅ [SlaughterScreen] User confirmed slaughter, proceeding...');
     await _performSlaughter();
   }
 
@@ -602,10 +423,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   Future<void> _performSlaughter() async {
-    print('🔵 [SlaughterScreen] _performSlaughter started');
+    debugPrint('🔵 [SlaughterScreen] _performSlaughter started');
 
     if (_selectedAnimal == null) {
-      print(
+      debugPrint(
         '❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _performSlaughter',
       );
       _showError('Error: No animal selected');
@@ -618,7 +439,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       await _performSlaughterWithRetry();
     } catch (e) {
       setState(() => _isSubmitting = false);
-      print('❌ [SlaughterScreen] Final failure after retries: $e');
+      debugPrint('❌ [SlaughterScreen] Final failure after retries: $e');
 
       // Check if it's a network error and offer offline fallback
       if (_isNetworkError(e)) {
@@ -634,14 +455,11 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     while (_retryCount <= _maxRetries) {
       try {
-        print(
+        debugPrint(
           '🔵 [SlaughterScreen] Attempt ${_retryCount + 1}/${_maxRetries + 1}',
         );
 
-        print('🔵 [SlaughterScreen] Creating DioClient');
-        final dioClient = DioClient();
-
-        print(
+        debugPrint(
           '🔵 [SlaughterScreen] Creating carcass measurements FIRST (before marking as slaughtered)',
         );
         // STEP 1: Create carcass measurements FIRST
@@ -693,8 +511,8 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           };
         }
 
-        print('🔵 [SlaughterScreen] Measurements prepared: $measurements');
-        print(
+        debugPrint('🔵 [SlaughterScreen] Measurements prepared: $measurements');
+        debugPrint(
           '🔵 [SlaughterScreen] Carcass type before API call: $_carcassType',
         );
 
@@ -733,7 +551,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         return; // Success, exit retry loop
       } catch (e) {
         _retryCount++;
-        print('⚠️ [SlaughterScreen] Attempt $_retryCount failed: $e');
+        debugPrint('⚠️ [SlaughterScreen] Attempt $_retryCount failed: $e');
 
         if (_retryCount <= _maxRetries && _isNetworkError(e)) {
           // Wait before retry (exponential backoff)
@@ -782,9 +600,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.info.withOpacity(0.1),
+                color: AppColors.info.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.info.withOpacity(0.3)),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
               ),
               child: Text(
                 'Offline data will be automatically synced when connection is restored.',
@@ -816,16 +634,6 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   Future<void> _saveSlaughterOffline() async {
     try {
       // Create offline slaughter record
-      final offlineData = {
-        'animal_id': _selectedAnimal!.id,
-        'animal_tag': _selectedAnimal!.animalId,
-        'carcass_type': _carcassType,
-        'measurements': _prepareMeasurements(),
-        'notes': _notesController.text,
-        'timestamp': DateTime.now().toIso8601String(),
-        'synced': false,
-      };
-
       // Save to local storage (you would implement this based on your storage solution)
       // For now, we'll just show a success message
       setState(() => _isSubmitting = false);
@@ -837,57 +645,6 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       setState(() => _isSubmitting = false);
       _showError('Failed to save offline: ${e.toString()}');
     }
-  }
-
-  Map<String, Map<String, dynamic>> _prepareMeasurements() {
-    Map<String, Map<String, dynamic>> measurements = {};
-
-    if (_carcassType == 'split') {
-      // Send only the four new fields for split carcass
-      if (_headWeightController.text.isNotEmpty) {
-        measurements['head'] = {
-          'value': double.parse(_headWeightController.text),
-          'unit': _headUnit,
-        };
-      }
-      if (_feetWeightController.text.isNotEmpty) {
-        measurements['feet'] = {
-          'value': double.parse(_feetWeightController.text),
-          'unit': _feetUnit,
-        };
-      }
-      if (_leftCarcassWeightController.text.isNotEmpty) {
-        measurements['left_carcass'] = {
-          'value': double.parse(_leftCarcassWeightController.text),
-          'unit': _leftCarcassUnit,
-        };
-      }
-      if (_rightCarcassWeightController.text.isNotEmpty) {
-        measurements['right_carcass'] = {
-          'value': double.parse(_rightCarcassWeightController.text),
-          'unit': _rightCarcassUnit,
-        };
-      }
-    } else {
-      if (_headWeightWholeController.text.isNotEmpty) {
-        measurements['head_weight'] = {
-          'value': double.parse(_headWeightWholeController.text),
-          'unit': _headWholeUnit,
-        };
-      }
-      if (_feetWeightWholeController.text.isNotEmpty) {
-        measurements['feet_weight'] = {
-          'value': double.parse(_feetWeightWholeController.text),
-          'unit': _feetWholeUnit,
-        };
-      }
-      measurements['whole_carcass_weight'] = {
-        'value': double.parse(_wholeCarcassWeightController.text),
-        'unit': _wholeCarcassUnit,
-      };
-    }
-
-    return measurements;
   }
 
   void _showOfflineSuccessDialog() {
@@ -927,9 +684,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.1),
+                color: AppColors.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
               ),
               child: Text(
                 'This record will be automatically synced when you regain internet connection.',
@@ -942,7 +699,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           CustomButton(
             label: 'Done',
             onPressed: () {
-              Navigator.of(context).pop();
+              if (context.mounted) Navigator.of(context).pop();
               context.go('/abbatoir-home');
             },
             customColor: AppColors.abbatoirPrimary,
@@ -954,10 +711,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   }
 
   void _showSuccessDialog() {
-    print('🔵 [SlaughterScreen] _showSuccessDialog called');
+    debugPrint('🔵 [SlaughterScreen] _showSuccessDialog called');
 
     if (_selectedAnimal == null) {
-      print(
+      debugPrint(
         '❌ [SlaughterScreen] ERROR: _selectedAnimal is null in _showSuccessDialog',
       );
       return;
@@ -1017,7 +774,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              if (context.mounted) Navigator.of(context).pop();
               context.go('/abbatoir-home');
             },
             child: const Text('Done'),
@@ -1025,7 +782,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           CustomButton(
             label: 'View Details',
             onPressed: () {
-              Navigator.of(context).pop();
+              if (context.mounted) Navigator.of(context).pop();
               context.push('/animals/${_selectedAnimal!.id}');
             },
             customColor: AppColors.abbatoirPrimary,
@@ -1068,7 +825,8 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       displayMessage += '\n\nYou can continue working offline.';
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(displayMessage),
         backgroundColor: AppColors.error,
@@ -1083,14 +841,15 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             : null,
       ),
     );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    print(
+    debugPrint(
       '🔵 [SlaughterScreen] build called - currentStep: $_currentStep, isSubmitting: $_isSubmitting',
     );
-    print(
+    debugPrint(
       '🔵 [SlaughterScreen] selectedAnimal: ${_selectedAnimal?.animalId ?? "null"}',
     );
 
@@ -1263,20 +1022,6 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                 ),
         ),
       ],
-    );
-  }
-
-  Widget _buildInfoChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundLight,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: AppTypography.bodySmall(color: AppColors.textSecondary),
-      ),
     );
   }
 
@@ -1474,9 +1219,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.info.withOpacity(0.1),
+              color: AppColors.info.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.info.withOpacity(0.3)),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1577,10 +1322,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.abbatoirPrimary.withOpacity(0.1),
+                color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.abbatoirPrimary.withOpacity(0.3),
+                  color: AppColors.abbatoirPrimary.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -1739,9 +1484,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.info.withOpacity(0.1),
+            color: AppColors.info.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.info.withOpacity(0.3)),
+            border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1843,9 +1588,10 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           return;
         }
 
-        print('👆 [SlaughterScreen] Reading weight for $label...');
+        debugPrint('👆 [SlaughterScreen] Reading weight for $label...');
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
               'Reading from scale... Please ensure weight is stable.',
@@ -1853,13 +1599,14 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             duration: Duration(seconds: 10),
           ),
         );
+        }
 
         bool gotWeight = false;
 
         try {
           await _scaleService.readWeight();
         } catch (e) {
-          print('⚠️ [SlaughterScreen] Manual read failed: $e');
+          debugPrint('⚠️ [SlaughterScreen] Manual read failed: $e');
         }
 
         StreamSubscription? singleRead;
@@ -1874,22 +1621,25 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
             singleRead?.cancel();
 
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
+            if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('$label: ${weight.toStringAsFixed(2)} $unit'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
             );
+            }
           }
         });
 
         Future.delayed(const Duration(seconds: 10), () {
           if (!gotWeight) {
             singleRead?.cancel();
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
+            if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
                   'No weight received. Ensure weight is on scale and stable.',
@@ -1898,6 +1648,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                 duration: Duration(seconds: 3),
               ),
             );
+            }
           }
         });
       },

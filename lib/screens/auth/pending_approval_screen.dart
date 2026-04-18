@@ -52,8 +52,8 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
               padding: const EdgeInsets.all(AppTheme.space24),
               decoration: BoxDecoration(
                 color: isRejected
-                    ? AppColors.error.withOpacity(0.1)
-                    : primaryColor.withOpacity(0.1),
+                    ? AppColors.error.withValues(alpha: 0.1)
+                    : primaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -98,7 +98,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 border: Border.all(color: Colors.grey.shade200),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -129,12 +129,12 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(AppTheme.space12),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.05),
+                        color: AppColors.error.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(
                           AppTheme.radiusMedium,
                         ),
                         border: Border.all(
-                          color: AppColors.error.withOpacity(0.2),
+                          color: AppColors.error.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Column(
@@ -323,9 +323,9 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
               Container(
                 padding: const EdgeInsets.all(AppTheme.space12),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
+                  color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,32 +432,38 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
 
       if (success && context.mounted) {
         // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Account successfully deleted'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
 
         // Navigate to login
         context.go('/login');
       } else if (context.mounted) {
         // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(authProvider.error ?? 'Failed to delete account'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     }
   }

@@ -182,9 +182,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   // Navigate to privacy policy
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Privacy Policy coming soon')),
                   );
+                  }
                 },
               ),
               ListTile(
@@ -192,11 +194,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   // Navigate to terms of service
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Terms of Service coming soon'),
                     ),
                   );
+                  }
                 },
               ),
               ListTile(
@@ -204,9 +208,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   // Navigate to help & support
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Help & Support coming soon')),
                   );
+                  }
                 },
               ),
             ],
@@ -469,12 +475,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Cache cleared successfully'),
                   backgroundColor: Colors.green,
                 ),
               );
+              }
             },
             child: const Text('Clear'),
           ),
@@ -557,12 +565,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               if (formKey.currentState!.validate()) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Password changed successfully'),
                     backgroundColor: Colors.green,
                   ),
                 );
+                }
               }
             },
             child: const Text('Change'),

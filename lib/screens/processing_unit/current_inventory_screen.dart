@@ -173,7 +173,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
                 label: const Text('All'),
                 selected: _rawMaterialsFilter == 'all',
                 onSelected: (_) => setState(() => _rawMaterialsFilter = 'all'),
-                selectedColor: AppColors.processorPrimary.withOpacity(0.2),
+                selectedColor: AppColors.processorPrimary.withValues(alpha: 0.2),
               ),
               const SizedBox(width: 8),
               FilterChip(
@@ -181,7 +181,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
                 selected: _rawMaterialsFilter == 'animals',
                 onSelected: (_) =>
                     setState(() => _rawMaterialsFilter = 'animals'),
-                selectedColor: AppColors.processorPrimary.withOpacity(0.2),
+                selectedColor: AppColors.processorPrimary.withValues(alpha: 0.2),
               ),
               const SizedBox(width: 8),
               FilterChip(
@@ -189,7 +189,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
                 selected: _rawMaterialsFilter == 'parts',
                 onSelected: (_) =>
                     setState(() => _rawMaterialsFilter = 'parts'),
-                selectedColor: AppColors.processorPrimary.withOpacity(0.2),
+                selectedColor: AppColors.processorPrimary.withValues(alpha: 0.2),
               ),
             ],
           ),
@@ -225,12 +225,12 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.processorPrimary.withOpacity(0.1),
-            AppColors.processorPrimary.withOpacity(0.05),
+            AppColors.processorPrimary.withValues(alpha: 0.1),
+            AppColors.processorPrimary.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.processorPrimary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.processorPrimary.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -349,7 +349,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppColors.processorPrimary.withOpacity(0.1),
+          backgroundColor: AppColors.processorPrimary.withValues(alpha: 0.1),
           child: Icon(Icons.pets, color: AppColors.processorPrimary),
         ),
         title: Text(
@@ -410,7 +410,7 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.orange.withOpacity(0.1),
+          backgroundColor: Colors.orange.withValues(alpha: 0.1),
           child: Icon(Icons.content_cut, color: Colors.orange.shade700),
         ),
         title: Text(

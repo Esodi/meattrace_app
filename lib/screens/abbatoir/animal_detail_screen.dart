@@ -405,7 +405,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
               Container(
                 width: 2,
                 height: 40,
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
               ),
           ],
         ),
@@ -453,13 +453,13 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
               color: canSlaughter
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.grey.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: canSlaughter
-                    ? Colors.green.withOpacity(0.3)
-                    : Colors.grey.withOpacity(0.3),
+                    ? Colors.green.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.3),
               ),
             ),
             child: Text(
@@ -489,9 +489,9 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -639,16 +639,20 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         final provider = Provider.of<AnimalProvider>(context, listen: false);
         await provider.deleteAnimal(_animal!.id!);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Animal deleted successfully')),
           );
+          }
           context.pop();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to delete animal: $e')),
           );
+          }
         }
       }
     }

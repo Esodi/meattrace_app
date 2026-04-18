@@ -73,7 +73,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
         setState(() => _sales = []); // Set empty list on error
         // Only show error if it's not a "no sales" situation
         if (!e.toString().contains('404')) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 'Error loading sales: ${e.toString().contains('404') ? 'No sales found' : e.toString()}',
@@ -82,6 +83,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
               duration: const Duration(seconds: 2),
             ),
           );
+          }
         }
       }
     } finally {

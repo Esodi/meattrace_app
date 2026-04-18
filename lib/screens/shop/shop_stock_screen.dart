@@ -114,22 +114,26 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
       await productProvider.createProduct(product);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Product Added Successfully'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
         _clearForm();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding product: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {

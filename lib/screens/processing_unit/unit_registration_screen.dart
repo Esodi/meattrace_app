@@ -87,34 +87,40 @@ class _ProcessingUnitRegistrationScreenState
 
     if (success) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Processing unit created successfully!'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
         context.go('/processor-home');
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(provider.error ?? 'Failed to create processing unit'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     }
   }
 
   Future<void> _submitJoinRequest() async {
     if (_selectedUnit == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Please select a processing unit'),
           backgroundColor: AppColors.warning,
         ),
       );
+      }
       return;
     }
 
@@ -131,22 +137,26 @@ class _ProcessingUnitRegistrationScreenState
 
     if (success) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Join request sent! Waiting for approval.'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
         context.go('/login');
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(provider.error ?? 'Failed to send join request'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     }
   }
@@ -191,7 +201,7 @@ class _ProcessingUnitRegistrationScreenState
             Container(
               padding: EdgeInsets.all(AppTheme.space16),
               decoration: BoxDecoration(
-                color: AppColors.processorPrimary.withOpacity(0.1),
+                color: AppColors.processorPrimary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
               ),
               child: Row(
@@ -317,9 +327,9 @@ class _ProcessingUnitRegistrationScreenState
             Container(
               padding: EdgeInsets.all(AppTheme.space12),
               decoration: BoxDecoration(
-                color: AppColors.info.withOpacity(0.1),
+                color: AppColors.info.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                border: Border.all(color: AppColors.info.withOpacity(0.3)),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,7 +429,7 @@ class _ProcessingUnitRegistrationScreenState
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.processorPrimary.withOpacity(0.1),
+                  color: AppColors.processorPrimary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -483,7 +493,7 @@ class _ProcessingUnitRegistrationScreenState
     return Container(
       padding: EdgeInsets.all(AppTheme.space16),
       decoration: BoxDecoration(
-        color: AppColors.processorPrimary.withOpacity(0.05),
+        color: AppColors.processorPrimary.withValues(alpha: 0.05),
         border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Column(

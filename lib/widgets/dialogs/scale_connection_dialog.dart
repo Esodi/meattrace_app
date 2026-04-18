@@ -37,16 +37,16 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
     });
 
     try {
-      print('🔍 [ScaleDialog] Checking Bluetooth support...');
+      debugPrint('🔍 [ScaleDialog] Checking Bluetooth support...');
 
       // Check if Bluetooth is supported
       if (await FlutterBluePlus.isSupported == false) {
         throw Exception('Bluetooth is not supported on this device');
       }
 
-      print('🔍 [ScaleDialog] Checking Bluetooth adapter state...');
+      debugPrint('🔍 [ScaleDialog] Checking Bluetooth adapter state...');
       final adapterState = await FlutterBluePlus.adapterState.first;
-      print('🔍 [ScaleDialog] Adapter state: $adapterState');
+      debugPrint('🔍 [ScaleDialog] Adapter state: $adapterState');
 
       if (adapterState != BluetoothAdapterState.on) {
         throw Exception(
@@ -54,11 +54,13 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
         );
       }
 
-      print('🔍 [ScaleDialog] Starting scan...');
+      debugPrint('🔍 [ScaleDialog] Starting scan...');
       await _scaleService.startScan(timeout: const Duration(seconds: 15));
 
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
-        print('🔍 [ScaleDialog] Scan results: ${results.length} devices found');
+        debugPrint(
+          '🔍 [ScaleDialog] Scan results: ${results.length} devices found',
+        );
         if (mounted) {
           // Use addPostFrameCallback to avoid setState during build
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,7 +72,7 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
 
               // Debug: print device names
               for (var result in results) {
-                print(
+                debugPrint(
                   '  - Device: ${result.device.platformName.isEmpty ? "Unknown" : result.device.platformName} (${result.device.remoteId})',
                 );
               }
@@ -82,21 +84,25 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
       // Auto-stop scanning after timeout
       Future.delayed(const Duration(seconds: 15), () {
         if (mounted && _isScanning) {
-          print('🔍 [ScaleDialog] Scan timeout reached, stopping...');
+          debugPrint('🔍 [ScaleDialog] Scan timeout reached, stopping...');
           _stopScan();
         }
       });
     } catch (e) {
-      print('❌ [ScaleDialog] Scan error: $e');
+      debugPrint('❌ [ScaleDialog] Scan error: $e');
       if (mounted) {
         setState(() => _isScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Scan failed: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        if (context.mounted) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Scan failed: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+        }
       }
     }
   }

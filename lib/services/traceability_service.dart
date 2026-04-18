@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/traceability_entry.dart';
 import 'dio_client.dart';
@@ -57,7 +58,7 @@ class TraceabilityService {
 
       return items.map((json) => TraceabilityEntry.fromJson(json)).toList();
     } on DioException catch (e) {
-      print('❌ [TraceabilityService] Error fetching report: ${e.message}');
+      debugPrint('❌ [TraceabilityService] Error fetching report: ${e.message}');
       throw Exception('Failed to fetch traceability report: ${e.message}');
     }
   }

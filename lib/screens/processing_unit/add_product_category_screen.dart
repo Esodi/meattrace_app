@@ -8,7 +8,7 @@ class AddProductCategoryScreen extends StatefulWidget {
   const AddProductCategoryScreen({super.key, this.initialCategory});
 
   @override
-  _AddProductCategoryScreenState createState() =>
+  State<AddProductCategoryScreen> createState() =>
       _AddProductCategoryScreenState();
 }
 
@@ -77,14 +77,18 @@ class _AddProductCategoryScreenState extends State<AddProductCategoryScreen> {
       );
       try {
         await ApiService().updateProductCategory(updated);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Category updated successfully!')),
         );
+        }
         Navigator.pop(context, true);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update category: $e')),
         );
+        }
       }
     } else {
       final newCategory = ProductCategory(

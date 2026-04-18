@@ -8,7 +8,7 @@ import '../services/product_service.dart';
 import '../services/database_helper.dart';
 import '../utils/initialization_helper.dart';
 
-class ProductProvider with ChangeNotifier {
+class ProductProvider with ChangeNotifier, WidgetsBindingObserver {
   final ProductService _productService = ProductService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Product> _products = [];
@@ -43,9 +43,24 @@ class ProductProvider with ChangeNotifier {
 
   ProductProvider() {
     _dataInitializer = LazyInitializer(() => _initPrefs());
+    WidgetsBinding.instance.addObserver(this);
     // Start initialization in background immediately
     _startBackgroundInitialization();
     _startBackgroundSync();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pause background polling whenever the app isn't in the foreground so
+    // we don't burn battery/bandwidth syncing products the user can't see.
+    if (state == AppLifecycleState.resumed) {
+      if (_isBackgroundSyncEnabled && _backgroundSyncTimer == null) {
+        _startBackgroundSync();
+      }
+    } else {
+      _backgroundSyncTimer?.cancel();
+      _backgroundSyncTimer = null;
+    }
   }
 
   Future<void> _startBackgroundInitialization() async {
@@ -61,17 +76,14 @@ class ProductProvider with ChangeNotifier {
     if (_isInitialized) return; // Already initialized
 
     _isLoading = true;
-    notifyListeners();
 
     try {
-      // Initialize SharedPreferences in background isolate
       _prefs = await InitializationHelper.initSharedPreferences();
       await _loadOfflineData();
-      _isInitialized = true;
     } catch (e) {
       debugPrint('Failed to initialize ProductProvider: $e');
-      _isInitialized = true; // Mark as initialized even on error
     } finally {
+      _isInitialized = true;
       _isLoading = false;
       notifyListeners();
     }
@@ -82,22 +94,19 @@ class ProductProvider with ChangeNotifier {
     await _dataInitializer.value;
   }
 
+  /// Loads cached products without notifying; caller is responsible for
+  /// triggering a single notifyListeners once all state is settled.
   Future<void> _loadOfflineData() async {
     try {
       _products = await _dbHelper.getProducts();
-      notifyListeners();
-    } catch (e) {
-      // If database fails, try shared preferences as fallback
+    } catch (_) {
       if (_prefs != null) {
         final cached = _prefs!.getString('products');
         if (cached != null) {
           try {
             final data = json.decode(cached) as List;
             _products = data.map((json) => Product.fromMap(json)).toList();
-            notifyListeners();
-          } catch (e) {
-            // Ignore invalid cache
-          }
+          } catch (_) {}
         }
       }
     }
@@ -115,15 +124,16 @@ class ProductProvider with ChangeNotifier {
     bool? pendingReceipt,
     bool forceRefresh = false,
   }) async {
-    // Defer state update to avoid "setState() or markNeedsBuild() called during build"
-    await Future.delayed(Duration.zero);
+    // Schedule to next microtask so callers invoking during build don't trip
+    // setState-during-build assertions.
+    await Future.microtask(() {});
 
     _isLoading = true;
     _error = null;
+    _isLoadingStream.add(true);
     notifyListeners();
 
     try {
-      // Always fetch fresh data from API (no caching)
       _products = await _productService.getProducts(
         productType: productType,
         animal: animal,
@@ -132,10 +142,9 @@ class ProductProvider with ChangeNotifier {
         pendingReceipt: pendingReceipt,
       );
       await _saveToDatabase();
-      _productsStream.add(_products); // Update stream with fresh data
+      _productsStream.add(_products);
     } catch (e) {
       _error = e.toString();
-      // Load offline data if API fails
       await _loadOfflineData();
     } finally {
       _isLoading = false;
@@ -146,9 +155,9 @@ class ProductProvider with ChangeNotifier {
 
   Future<Product?> createProduct(Product product) async {
     try {
-      print('🔄 [ProductProvider] Creating product via service...');
+      debugPrint('🔄 [ProductProvider] Creating product via service...');
       final newProduct = await _productService.createProduct(product);
-      print(
+      debugPrint(
         '✅ [ProductProvider] Product created successfully, adding to local list',
       );
       _products.add(newProduct);
@@ -157,7 +166,7 @@ class ProductProvider with ChangeNotifier {
       notifyListeners();
       return newProduct;
     } catch (e) {
-      print('❌ [ProductProvider] Product creation failed: $e');
+      debugPrint('❌ [ProductProvider] Product creation failed: $e');
       _error = e.toString();
       notifyListeners();
       return null;
@@ -322,6 +331,7 @@ class ProductProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _backgroundSyncTimer?.cancel();
     _productsStream.close();
     _isLoadingStream.close();

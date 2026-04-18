@@ -101,7 +101,7 @@ class AuthNotificationService {
   /// Dismiss all active notifications
   static void dismissAll(BuildContext context) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
+      if (context.mounted) ScaffoldMessenger.of(context).clearSnackBars();
     }
   }
 
@@ -115,7 +115,8 @@ class AuthNotificationService {
     VoidCallback? onTap,
   }) {
     final config = _getNotificationConfig(type);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
 
     messenger.showSnackBar(
       SnackBar(

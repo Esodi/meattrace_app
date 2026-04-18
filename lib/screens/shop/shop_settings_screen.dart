@@ -171,9 +171,11 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               icon: Icons.access_time,
               trailing: Icon(Icons.chevron_right),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Business hours feature coming soon')),
                 );
+                }
               },
               themeProvider: themeProvider,
             ),
@@ -266,7 +268,8 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                     if (shopId != null) {
                       context.push('/shop/users?shopId=$shopId');
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
                             'Shop not found. Please ensure you are logged in as a shop owner.',
@@ -274,6 +277,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
                           backgroundColor: AppColors.error,
                         ),
                       );
+                      }
                     }
                   },
                   themeProvider: themeProvider,
@@ -291,9 +295,11 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               icon: Icons.backup,
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Backup feature coming soon')),
                 );
+                }
               },
               themeProvider: themeProvider,
             ),
@@ -328,9 +334,11 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               icon: Icons.bug_report,
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Feedback form coming soon')),
                 );
+                }
               },
               themeProvider: themeProvider,
             ),
@@ -377,7 +385,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
         title,
         style: AppTypography.labelLarge(
           color: themeProvider.isDarkMode
-              ? Colors.white.withOpacity(0.7)
+              ? Colors.white.withValues(alpha: 0.7)
               : AppColors.textSecondary,
         ).copyWith(fontWeight: FontWeight.bold),
       ),
@@ -437,7 +445,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
         subtitle,
         style: AppTypography.bodyMedium(
           color: themeProvider.isDarkMode
-              ? Colors.white.withOpacity(0.7)
+              ? Colors.white.withValues(alpha: 0.7)
               : AppColors.textSecondary,
         ),
       ),
@@ -484,7 +492,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
         subtitle,
         style: AppTypography.bodyMedium(
           color: themeProvider.isDarkMode
-              ? Colors.white.withOpacity(0.7)
+              ? Colors.white.withValues(alpha: 0.7)
               : AppColors.textSecondary,
         ),
       ),
@@ -663,7 +671,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               'Adjust the text size for better readability',
               style: AppTypography.bodyMedium().copyWith(
                 color: isDark
-                    ? Colors.white.withOpacity(0.7)
+                    ? Colors.white.withValues(alpha: 0.7)
                     : AppColors.textSecondary,
               ),
             ),
@@ -736,7 +744,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
           'Are you sure you want to sign out?',
           style: AppTypography.bodyMedium().copyWith(
             color: isDark
-                ? Colors.white.withOpacity(0.7)
+                ? Colors.white.withValues(alpha: 0.7)
                 : AppColors.textSecondary,
           ),
         ),
@@ -747,7 +755,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               'Cancel',
               style: TextStyle(
                 color: isDark
-                    ? Colors.white.withOpacity(0.7)
+                    ? Colors.white.withValues(alpha: 0.7)
                     : AppColors.textSecondary,
               ),
             ),

@@ -39,76 +39,76 @@ class AnimalService {
       // Set a large page size to get all animals (or use the provided pageSize)
       queryParams['page_size'] = pageSize ?? 1000;
 
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('📡 ANIMAL_SERVICE - GET_ANIMALS REQUEST');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🔵 Endpoint: ${Constants.animalsEndpoint}');
-      print('🔵 Query params: $queryParams');
-      print('🔵 Full URL: ${Constants.baseUrl}${Constants.animalsEndpoint}');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('📡 ANIMAL_SERVICE - GET_ANIMALS REQUEST');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('🔵 Endpoint: ${Constants.animalsEndpoint}');
+      debugPrint('🔵 Query params: $queryParams');
+      debugPrint('🔵 Full URL: ${Constants.baseUrl}${Constants.animalsEndpoint}');
 
       // Get current auth token for debugging
       final dio = _dioClient.dio;
       final authHeader = dio.options.headers['Authorization'];
       if (authHeader != null) {
-        print(
+        debugPrint(
           '🔵 Auth header present: ${authHeader.toString().substring(0, 30)}...',
         );
       } else {
-        print('⚠️ WARNING: No auth header!');
+        debugPrint('⚠️ WARNING: No auth header!');
       }
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       final response = await _dioClient.dio.get(
         Constants.animalsEndpoint,
         queryParameters: queryParams,
       );
 
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('📡 ANIMAL_SERVICE - GET_ANIMALS RESPONSE');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('✅ Response status: ${response.statusCode}');
-      print('📦 RAW DATA: ${response.data}');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('📡 ANIMAL_SERVICE - GET_ANIMALS RESPONSE');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('✅ Response status: ${response.statusCode}');
+      debugPrint('📦 RAW DATA: ${response.data}');
 
       final data = response.data;
 
       if (data is Map) {
-        print('📋 Response is Map with keys: ${data.keys.toList()}');
+        debugPrint('📋 Response is Map with keys: ${data.keys.toList()}');
         if (data.containsKey('count')) {
-          print('📊 Total count from server: ${data['count']}');
+          debugPrint('📊 Total count from server: ${data['count']}');
         }
         if (data.containsKey('results')) {
           final resultsList = data['results'] as List;
-          print('📦 Results array length: ${resultsList.length}');
+          debugPrint('📦 Results array length: ${resultsList.length}');
           // Log each animal ID and animal_id for debugging
           for (var i = 0; i < resultsList.length; i++) {
             final animalData = resultsList[i];
-            print(
+            debugPrint(
               '   [$i] ID: ${animalData['id']}, Tag: ${animalData['animal_id']}, Species: ${animalData['species']}, Abbatoir: ${animalData['abbatoir']}',
             );
           }
         }
       } else if (data is List) {
-        print('📦 Response is List with length: ${data.length}');
+        debugPrint('📦 Response is List with length: ${data.length}');
         for (var i = 0; i < data.length; i++) {
           final animalData = data[i];
-          print(
+          debugPrint(
             '   [$i] ID: ${animalData['id']}, Tag: ${animalData['animal_id']}, Species: ${animalData['species']}, Abbatoir: ${animalData['abbatoir']}',
           );
         }
       }
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       // Handle both paginated and unpaginated responses
       if (data is List) {
         // Direct list response (no pagination)
-        print('🔄 PARSING ANIMALS FROM LIST (UNPAGINATED)');
+        debugPrint('🔄 PARSING ANIMALS FROM LIST (UNPAGINATED)');
         final animals = <Animal>[];
         for (var i = 0; i < data.length; i++) {
           try {
             animals.add(Animal.fromMap(data[i]));
           } catch (e) {
-            print('❌ Parse error at index $i: $e');
-            print('❌ Problematic data: ${data[i]}');
+            debugPrint('❌ Parse error at index $i: $e');
+            debugPrint('❌ Problematic data: ${data[i]}');
             continue;
           }
         }
@@ -120,14 +120,14 @@ class AnimalService {
         };
       } else if (data is Map && data.containsKey('results')) {
         final resultsList = data['results'] as List;
-        print('🔄 PARSING ANIMALS FROM PAGINATED RESPONSE');
+        debugPrint('🔄 PARSING ANIMALS FROM PAGINATED RESPONSE');
         final animals = <Animal>[];
         for (var i = 0; i < resultsList.length; i++) {
           try {
             animals.add(Animal.fromMap(resultsList[i]));
           } catch (e) {
-            print('❌ Parse error at index $i: $e');
-            print('❌ Problematic data: ${resultsList[i]}');
+            debugPrint('❌ Parse error at index $i: $e');
+            debugPrint('❌ Problematic data: ${resultsList[i]}');
             continue;
           }
         }
@@ -141,7 +141,7 @@ class AnimalService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      print('❌ ANIMAL_SERVICE - GET_ANIMALS ERROR: $e');
+      debugPrint('❌ ANIMAL_SERVICE - GET_ANIMALS ERROR: $e');
       throw Exception('Failed to fetch animals: $e');
     }
   }
@@ -178,11 +178,11 @@ class AnimalService {
 
   Future<Animal> createAnimal(Animal animal, {File? photo}) async {
     try {
-      print('AnimalService.createAnimal - Starting animal creation');
-      print(
+      debugPrint('AnimalService.createAnimal - Starting animal creation');
+      debugPrint(
         'Animal data: species=${animal.species}, age=${animal.age}, abbatoir=${animal.abbatoirName}',
       );
-      print('Photo provided: ${photo != null}');
+      debugPrint('Photo provided: ${photo != null}');
 
       final formData = FormData.fromMap(animal.toMapForCreate());
 
@@ -195,27 +195,27 @@ class AnimalService {
             await MultipartFile.fromFile(photo.path, filename: fileName),
           ),
         );
-        print('Photo added to form data: $fileName');
+        debugPrint('Photo added to form data: $fileName');
       }
 
-      print('Making POST request to ${Constants.animalsEndpoint}');
+      debugPrint('Making POST request to ${Constants.animalsEndpoint}');
       final response = await _dioClient.dio.post(
         Constants.animalsEndpoint,
         data: formData,
       );
-      print('Response received: status=${response.statusCode}');
-      print('Response data: ${response.data}');
+      debugPrint('Response received: status=${response.statusCode}');
+      debugPrint('Response data: ${response.data}');
       return Animal.fromMap(response.data);
     } catch (e) {
-      print('AnimalService.createAnimal - Exception occurred: $e');
-      print('Exception type: ${e.runtimeType}');
+      debugPrint('AnimalService.createAnimal - Exception occurred: $e');
+      debugPrint('Exception type: ${e.runtimeType}');
       if (e is DioException) {
-        print('DioException details:');
-        print('  - Status code: ${e.response?.statusCode}');
-        print('  - Response data: ${e.response?.data}');
-        print('  - Request URL: ${e.requestOptions.uri}');
-        print('  - Request method: ${e.requestOptions.method}');
-        print('  - Request data: ${e.requestOptions.data}');
+        debugPrint('DioException details:');
+        debugPrint('  - Status code: ${e.response?.statusCode}');
+        debugPrint('  - Response data: ${e.response?.data}');
+        debugPrint('  - Request URL: ${e.requestOptions.uri}');
+        debugPrint('  - Request method: ${e.requestOptions.method}');
+        debugPrint('  - Request data: ${e.requestOptions.data}');
       }
       throw Exception('Failed to create animal: $e');
     }
@@ -259,7 +259,7 @@ class AnimalService {
   }) async {
     try {
       final filteredAnimalIds = animalIds.where((id) => id != null).toList();
-      print(
+      debugPrint(
         'SERVICE_TRANSFER_START - Filtered Animal IDs: $filteredAnimalIds, Processing Unit ID: $processingUnitId',
       );
 
@@ -275,39 +275,39 @@ class AnimalService {
       // Add part_transfers if provided (for split carcass workflow)
       if (partTransfers != null && partTransfers.isNotEmpty) {
         requestData['part_transfers'] = partTransfers;
-        print(
+        debugPrint(
           'SERVICE_TRANSFER_PART_TRANSFERS - Part transfers: $partTransfers',
         );
       }
 
-      print('SERVICE_TRANSFER_REQUEST_DATA - Data: $requestData');
+      debugPrint('SERVICE_TRANSFER_REQUEST_DATA - Data: $requestData');
 
       final response = await _dioClient.dio.post(
         '${Constants.animalsEndpoint}transfer/',
         data: requestData,
       );
 
-      print(
+      debugPrint(
         'SERVICE_TRANSFER_SUCCESS - Status: ${response.statusCode}, Response: ${response.data}',
       );
       return response.data;
     } catch (e) {
-      print('SERVICE_TRANSFER_ERROR - Exception: $e');
-      print('SERVICE_TRANSFER_ERROR_TYPE - Type: ${e.runtimeType}');
+      debugPrint('SERVICE_TRANSFER_ERROR - Exception: $e');
+      debugPrint('SERVICE_TRANSFER_ERROR_TYPE - Type: ${e.runtimeType}');
       if (e is DioException) {
-        print(
+        debugPrint(
           'SERVICE_TRANSFER_DIO_ERROR - Status: ${e.response?.statusCode}, Response: ${e.response?.data}',
         );
-        print(
+        debugPrint(
           'SERVICE_TRANSFER_DIO_ERROR_REQUEST - URL: ${e.requestOptions.uri}',
         );
-        print(
+        debugPrint(
           'SERVICE_TRANSFER_DIO_ERROR_REQUEST_METHOD - Method: ${e.requestOptions.method}',
         );
-        print(
+        debugPrint(
           'SERVICE_TRANSFER_DIO_ERROR_REQUEST_DATA - Data: ${e.requestOptions.data}',
         );
-        print(
+        debugPrint(
           'SERVICE_TRANSFER_DIO_ERROR_REQUEST_HEADERS - Headers: ${e.requestOptions.headers}',
         );
       }
@@ -407,13 +407,13 @@ class AnimalService {
       // Add part_receives if provided (for split carcass workflow)
       if (partReceives != null && partReceives.isNotEmpty) {
         requestData['part_receives'] = partReceives;
-        print('SERVICE_RECEIVE_PART_RECEIVES - Part receives: $partReceives');
+        debugPrint('SERVICE_RECEIVE_PART_RECEIVES - Part receives: $partReceives');
       }
 
       // Add animal rejections if provided
       if (animalRejections != null && animalRejections.isNotEmpty) {
         requestData['animal_rejections'] = animalRejections;
-        print(
+        debugPrint(
           'SERVICE_RECEIVE_ANIMAL_REJECTIONS - Animal rejections: $animalRejections',
         );
       }
@@ -421,12 +421,12 @@ class AnimalService {
       // Add part rejections if provided
       if (partRejections != null && partRejections.isNotEmpty) {
         requestData['part_rejections'] = partRejections;
-        print(
+        debugPrint(
           'SERVICE_RECEIVE_PART_REJECTIONS - Part rejections: $partRejections',
         );
       }
 
-      print('SERVICE_RECEIVE_REQUEST_DATA - Data: $requestData');
+      debugPrint('SERVICE_RECEIVE_REQUEST_DATA - Data: $requestData');
 
       final response = await _dioClient.dio.post(
         '${Constants.animalsEndpoint}receive_animals/',
@@ -489,26 +489,26 @@ class AnimalService {
     CarcassMeasurement measurement,
   ) async {
     final timestamp = DateTime.now().toIso8601String();
-    print(
+    debugPrint(
       '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_CREATE_START - Animal ID: ${measurement.animalId}, Carcass Type: ${measurement.carcassType.name}',
     );
 
     try {
       final requestData = measurement.toMapForCreate();
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DATA_PREP - Request data prepared: $requestData',
       );
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_MEASUREMENTS - Measurements count: ${measurement.measurements.length}',
       );
 
       for (final entry in measurement.measurements.entries) {
-        print(
+        debugPrint(
           '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DETAIL - Field: ${entry.key}, Value: ${entry.value['value']}, Unit: ${entry.value['unit']}',
         );
       }
 
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_API_CALL_START - Making POST request to ${Constants.carcassMeasurementsEndpoint}',
       );
       // Increase timeout for carcass measurement API call
@@ -521,36 +521,36 @@ class AnimalService {
         data: requestData,
       );
 
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_API_CALL_SUCCESS - Response status: ${response.statusCode}',
       );
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_RESPONSE_DATA - Response data: ${response.data}',
       );
 
       final createdMeasurement = CarcassMeasurement.fromMap(response.data);
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_OBJECT_CREATED - Created measurement ID: ${createdMeasurement.id}',
       );
 
       return createdMeasurement;
     } catch (e) {
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_ERROR - Exception occurred: $e',
       );
-      print(
+      debugPrint(
         '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_ERROR_TYPE - Exception type: ${e.runtimeType}',
       );
 
       if (e is DioException) {
-        print(
+        debugPrint(
           '[$timestamp] ANIMAL_SERVICE_CARCASS_MEASUREMENT_DIO_ERROR - DioException details:',
         );
-        print('  - Status code: ${e.response?.statusCode}');
-        print('  - Response data: ${e.response?.data}');
-        print('  - Request URL: ${e.requestOptions.uri}');
-        print('  - Request method: ${e.requestOptions.method}');
-        print('  - Request data: ${e.requestOptions.data}');
+        debugPrint('  - Status code: ${e.response?.statusCode}');
+        debugPrint('  - Response data: ${e.response?.data}');
+        debugPrint('  - Request URL: ${e.requestOptions.uri}');
+        debugPrint('  - Request method: ${e.requestOptions.method}');
+        debugPrint('  - Request data: ${e.requestOptions.data}');
       }
 
       throw Exception('Failed to create carcass measurement: $e');

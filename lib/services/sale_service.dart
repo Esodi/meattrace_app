@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/sale.dart';
 import '../models/category_sales_summary.dart';
@@ -115,24 +116,24 @@ class SaleService {
   /// Create new sale with items
   Future<Sale> createSale(Map<String, dynamic> saleData) async {
     try {
-      print('🔄 [SaleService] Creating sale...');
-      print('📤 [SaleService] Sending data: $saleData');
+      debugPrint('🔄 [SaleService] Creating sale...');
+      debugPrint('📤 [SaleService] Sending data: $saleData');
 
       final response = await _dioClient.dio.post(
         '${Constants.baseUrl}/sales/',
         data: saleData,
       );
 
-      print(
+      debugPrint(
         '✅ [SaleService] Sale created successfully: ${response.statusCode}',
       );
-      print('📄 [SaleService] Response data: ${response.data}');
+      debugPrint('📄 [SaleService] Response data: ${response.data}');
       return Sale.fromJson(response.data);
     } on DioException catch (e) {
-      print('❌ [SaleService] Sale creation failed');
-      print('📊 [SaleService] Status Code: ${e.response?.statusCode}');
-      print('📄 [SaleService] Response Data: ${e.response?.data}');
-      print('🔍 [SaleService] Error Message: ${e.message}');
+      debugPrint('❌ [SaleService] Sale creation failed');
+      debugPrint('📊 [SaleService] Status Code: ${e.response?.statusCode}');
+      debugPrint('📄 [SaleService] Response Data: ${e.response?.data}');
+      debugPrint('🔍 [SaleService] Error Message: ${e.message}');
 
       // Create detailed error message
       String errorMessage = 'Failed to create sale';

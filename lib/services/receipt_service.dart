@@ -15,14 +15,20 @@ class ReceiptService {
 
   Future<List<ShopReceipt>> getReceipts({
     int? product,
+    int? shop,
     String? search,
     String? ordering,
+    int? page,
+    int? limit,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (product != null) queryParams['product'] = product;
+      if (shop != null) queryParams['shop'] = shop;
       if (search != null) queryParams['search'] = search;
       if (ordering != null) queryParams['ordering'] = ordering;
+      if (page != null) queryParams['page'] = page;
+      if (limit != null) queryParams['limit'] = limit;
 
       final response = await _dioClient.dio.get(
         Constants.receiptsEndpoint,
@@ -45,7 +51,9 @@ class ReceiptService {
 
   Future<ShopReceipt> getReceipt(int id) async {
     try {
-      final response = await _dioClient.dio.get('${Constants.receiptsEndpoint}$id/');
+      final response = await _dioClient.dio.get(
+        '${Constants.receiptsEndpoint}$id/',
+      );
       return ShopReceipt.fromJson(response.data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
@@ -87,10 +95,3 @@ class ReceiptService {
     }
   }
 }
-
-
-
-
-
-
-

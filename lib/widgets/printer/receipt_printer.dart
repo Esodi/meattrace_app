@@ -14,12 +14,20 @@ class ReceiptPrinter {
       BluetoothPrintingService();
 
   /// Print sale receipt with all details
-  static Future<void> printSaleReceipt(BuildContext context, Sale sale) async {
+  static Future<void> printSaleReceipt(
+    BuildContext context,
+    Sale sale, {
+    String? shopName,
+  }) async {
+    // Capture root navigator to safely close dialogs without popping the page
+    final navigator = Navigator.of(context, rootNavigator: true);
+
     // Show printing dialog
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const _PrintingDialog(),
+      useRootNavigator: true,
+      builder: (_) => const _PrintingDialog(),
     );
 
     try {
@@ -30,61 +38,76 @@ class ReceiptPrinter {
 
         if (!connected) {
           // No saved printer, show printer selection
-          Navigator.of(context).pop(); // Close printing dialog
+          navigator.pop(); // Close printing dialog using captured navigator
 
-          final shouldPrint = await _showPrinterSelectionDialog(context);
-          if (shouldPrint != true) return;
-
-          // Show printing dialog again
           if (context.mounted) {
+            final shouldPrint = await _showPrinterSelectionDialog(context);
+            if (shouldPrint != true) return;
+
+            // Show printing dialog again
             showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (context) => const _PrintingDialog(),
+              useRootNavigator: true,
+              builder: (_) => const _PrintingDialog(),
             );
+          } else {
+            return;
           }
         }
       }
 
       // Generate receipt bytes
-      final bytes = await _generateReceiptBytes(sale);
+      final bytes = await _generateReceiptBytes(sale, shopName: shopName);
 
       // Print receipt
       await _printingService.printerManager.writeBytes(bytes);
 
-      // Close printing dialog
-      if (context.mounted) {
-        Navigator.of(context).pop();
+      // Close printing dialog safely
+      navigator.pop();
 
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Receipt printed successfully!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
+      // Show success message if context is still valid
+      if (context.mounted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Receipt printed successfully!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
       }
     } catch (e) {
-      // Close printing dialog
-      if (context.mounted) {
-        Navigator.of(context).pop();
+      // Ensure dialog is closed even on error
+      try {
+        navigator.pop();
+      } catch (_) {
+        // Ignore if already popped
+      }
 
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to print receipt: $e'),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+      // Show error message if context is still valid
+      if (context.mounted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to print receipt: $e'),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     }
   }
 
   /// Generate ESC/POS receipt bytes
-  static Future<Uint8List> _generateReceiptBytes(Sale sale) async {
+  static Future<Uint8List> _generateReceiptBytes(
+    Sale sale, {
+    String? shopName,
+  }) async {
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm58, profile);
+    final currencyFormat = NumberFormat('#,###');
 
     List<int> bytes = [];
 
@@ -94,7 +117,7 @@ class ReceiptPrinter {
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.text(
-      'NYAMA TAMU',
+      shopName?.toUpperCase() ?? 'NYAMA TAMU',
       styles: PosStyles(
         align: PosAlign.center,
         bold: true,
@@ -115,43 +138,90 @@ class ReceiptPrinter {
       'Date: ${dateFormat.format(localTime)}',
       styles: PosStyles(align: PosAlign.left),
     );
+
+    // Receipt Number / UUID
+    if (sale.receiptUuid != null) {
+      bytes += generator.text(
+        'Receipt #: ${sale.receiptUuid!.substring(0, 8).toUpperCase()}',
+        styles: PosStyles(align: PosAlign.left),
+      );
+    } else {
+      bytes += generator.text(
+        'Sale #: ${sale.id ?? 'N/A'}',
+        styles: PosStyles(align: PosAlign.left),
+      );
+    }
+
+    // Cashier
     bytes += generator.text(
-      'Sale #: ${sale.id ?? 'N/A'}',
+      'Cashier ID: ${sale.soldBy}',
       styles: PosStyles(align: PosAlign.left),
     );
+
     bytes += generator.text(
       '--------------------------------',
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.feed(1);
 
-    // Items header
+    // Items list (Table Layout)
+    // 32 chars on 58mm: 14 for name, 6 for qty/wt, 10 for price
+    bytes += generator.row([
+      PosColumn(
+        text: 'Item',
+        width: 6,
+        styles: PosStyles(bold: true, align: PosAlign.left),
+      ),
+      PosColumn(
+        text: 'Qty/Wt',
+        width: 3,
+        styles: PosStyles(bold: true, align: PosAlign.right),
+      ),
+      PosColumn(
+        text: 'Total',
+        width: 3,
+        styles: PosStyles(bold: true, align: PosAlign.right),
+      ),
+    ]);
     bytes += generator.text(
-      'ITEMS:',
-      styles: PosStyles(align: PosAlign.left, bold: true),
+      '--------------------------------',
+      styles: PosStyles(align: PosAlign.center),
     );
-    bytes += generator.feed(1);
 
-    // Items list
     for (final item in sale.items) {
-      // Product name and batch
-      bytes += generator.text(
-        item.productName ?? 'Product',
-        styles: PosStyles(align: PosAlign.left, bold: true),
-      );
+      String name = item.productName ?? 'Product';
+      // Truncate name if too long to fit 58mm cleanly in column
+      if (name.length > 14) name = name.substring(0, 14);
+
+      String qtyStr = item.weight > 0
+          ? '${item.weight.toStringAsFixed(1)}${item.weightUnit}'
+          : item.quantity.toStringAsFixed(0);
+      String totalStr = currencyFormat.format(item.subtotal);
+
+      bytes += generator.row([
+        PosColumn(
+          text: name,
+          width: 6,
+          styles: PosStyles(align: PosAlign.left),
+        ),
+        PosColumn(
+          text: qtyStr,
+          width: 3,
+          styles: PosStyles(align: PosAlign.right),
+        ),
+        PosColumn(
+          text: totalStr,
+          width: 3,
+          styles: PosStyles(align: PosAlign.right),
+        ),
+      ]);
+
       if (item.batchNumber != null) {
         bytes += generator.text(
-          '  Batch: ${item.batchNumber}',
-          styles: PosStyles(align: PosAlign.left),
+          '  [Batch: ${item.batchNumber}]',
+          styles: PosStyles(align: PosAlign.left, height: PosTextSize.size1),
         );
       }
-
-      // Quantity, price, and subtotal
-      bytes += generator.text(
-        '  ${item.quantity.toStringAsFixed(2)} kg x TZS ${item.unitPrice.toStringAsFixed(2)} = TZS ${item.subtotal.toStringAsFixed(2)}',
-        styles: PosStyles(align: PosAlign.left),
-      );
-      bytes += generator.feed(1);
     }
 
     bytes += generator.text(
@@ -160,18 +230,24 @@ class ReceiptPrinter {
     );
 
     // Total
-    bytes += generator.text(
-      'TOTAL: TZS ${sale.totalAmount.toStringAsFixed(2)}',
-      styles: PosStyles(
-        align: PosAlign.right,
-        bold: true,
-        height: PosTextSize.size2,
+    bytes += generator.row([
+      PosColumn(
+        text: 'TOTAL:',
+        width: 6,
+        styles: PosStyles(align: PosAlign.left, bold: true),
       ),
-    );
+      PosColumn(
+        text: 'TZS ${currencyFormat.format(sale.totalAmount)}',
+        width: 6,
+        styles: PosStyles(align: PosAlign.right, bold: true),
+      ),
+    ]);
+
     bytes += generator.text(
-      'Payment: ${sale.paymentMethod}',
+      'Payment: ${sale.paymentMethod.toUpperCase()}',
       styles: PosStyles(align: PosAlign.right),
     );
+
     bytes += generator.text(
       '--------------------------------',
       styles: PosStyles(align: PosAlign.center),
@@ -203,26 +279,28 @@ class ReceiptPrinter {
       bytes += generator.feed(1);
     }
 
-    // QR Codes for each product (for traceability)
+    // Per-item traceability QRs — same format the processor prints for each
+    // product, so scanning either produces the same traceability page.
     if (sale.items.isNotEmpty) {
       bytes += generator.text(
         '================================',
         styles: PosStyles(align: PosAlign.center),
       );
       bytes += generator.text(
-        'PRODUCT TRACEABILITY',
+        'TRACE EACH ITEM',
         styles: PosStyles(align: PosAlign.center, bold: true),
       );
       bytes += generator.text(
-        '================================',
+        'Scan each QR to verify origin',
         styles: PosStyles(align: PosAlign.center),
       );
       bytes += generator.feed(1);
 
       for (final item in sale.items) {
-        // Product name
+        final label = item.productName ?? 'Product #${item.product}';
+        final truncated = label.length > 30 ? label.substring(0, 30) : label;
         bytes += generator.text(
-          item.productName ?? 'Product',
+          truncated,
           styles: PosStyles(align: PosAlign.center, bold: true),
         );
         if (item.batchNumber != null) {
@@ -231,31 +309,12 @@ class ReceiptPrinter {
             styles: PosStyles(align: PosAlign.center),
           );
         }
-        bytes += generator.feed(1);
-
-        // Generate QR code URL for this product
-        final productQrUrl =
-            '${Constants.baseUrl}/product-info/view/${item.product}/';
-
         bytes += generator.qrcode(
-          productQrUrl,
+          '${Constants.baseUrl}/product-info/view/${item.product}/',
           size: QRSize.Size4,
-          cor: QRCorrection.H,
-        );
-        bytes += generator.text(
-          'Scan to trace product origin',
-          styles: PosStyles(align: PosAlign.center),
+          cor: QRCorrection.L,
         );
         bytes += generator.feed(1);
-
-        // Separator between products if there are multiple
-        if (sale.items.length > 1 && item != sale.items.last) {
-          bytes += generator.text(
-            '- - - - - - - - - - - - - - - -',
-            styles: PosStyles(align: PosAlign.center),
-          );
-          bytes += generator.feed(1);
-        }
       }
     }
 
@@ -265,9 +324,10 @@ class ReceiptPrinter {
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.text(
-      'Thank you for your business!',
+      'Thank you for shopping with us!',
       styles: PosStyles(align: PosAlign.center),
     );
+
     bytes += generator.text(
       '================================',
       styles: PosStyles(align: PosAlign.center),
@@ -284,21 +344,24 @@ class ReceiptPrinter {
     final hasPermissions = await _printingService.requestPermissions();
     if (!hasPermissions) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bluetooth permissions are required to print'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bluetooth permissions are required to print'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
       return false;
     }
 
-    // Show scanning dialog
+    // Show scanning dialog on root navigator
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _PrinterSelectionDialog(),
+      useRootNavigator: true,
+      builder: (_) => _PrinterSelectionDialog(),
     );
   }
 }
@@ -371,13 +434,18 @@ class _PrinterSelectionDialogState extends State<_PrinterSelectionDialog> {
   }
 
   Future<void> _connectToPrinter(BluetoothDevice printer) async {
+    // Capture the root navigator BEFORE showing any nested dialog so that
+    // subsequent .pop() calls only dismiss dialog routes, not the page itself.
+    final rootNav = Navigator.of(context, rootNavigator: true);
+
     try {
-      // Show connecting dialog
+      // Show connecting dialog on the root navigator overlay
       if (mounted) {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const AlertDialog(
+          useRootNavigator: true,
+          builder: (_) => const AlertDialog(
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -394,18 +462,20 @@ class _PrinterSelectionDialogState extends State<_PrinterSelectionDialog> {
       await _printingService.saveSelectedPrinter(printer);
 
       if (mounted) {
-        Navigator.of(context).pop(); // Close connecting dialog
-        Navigator.of(context).pop(true); // Close printer selection dialog
+        rootNav.pop(); // Close connecting dialog
+        rootNav.pop(true); // Close printer selection dialog → returns true
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Close connecting dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to connect: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        rootNav.pop(); // Close connecting dialog only
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to connect: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
     }
   }

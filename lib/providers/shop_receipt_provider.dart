@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../models/shop_receipt.dart';
 import '../models/shop.dart';
-import '../services/shop_receipt_service.dart';
+import '../services/receipt_service.dart';
+import '../services/shop_service.dart';
 import '../services/database_helper.dart';
 
 class ShopReceiptProvider with ChangeNotifier {
-  final ShopReceiptService _receiptService = ShopReceiptService();
+  final ReceiptService _receiptService = ReceiptService();
+  final ShopService _shopService = ShopService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
+
   List<ShopReceipt> _receipts = [];
   List<Shop> _shops = [];
   bool _isLoading = false;
   String? _error;
-  SharedPreferences? _prefs;
 
   List<ShopReceipt> get receipts => _receipts;
   List<Shop> get shops => _shops;
@@ -21,47 +21,67 @@ class ShopReceiptProvider with ChangeNotifier {
   String? get error => _error;
 
   ShopReceiptProvider() {
-    _initPrefs();
-    _loadShops();
+    _init();
   }
 
-  Future<void> _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    await _loadOfflineData();
+  Future<void> _init() async {
+    _isLoading = true;
+    notifyListeners();
+
+    await Future.wait([_loadOfflineData(), _loadShops()]);
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> refresh() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await Future.wait([_loadShops(), fetchReceiptsFromApi()]);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> _loadOfflineData() async {
     try {
       _receipts = await _dbHelper.getShopReceipts();
-      notifyListeners();
     } catch (e) {
-      // If database fails, try shared preferences as fallback
-      if (_prefs != null) {
-        final cached = _prefs!.getString('shop_receipts');
-        if (cached != null) {
-          try {
-            final data = json.decode(cached) as List;
-            _receipts = data.map((json) => ShopReceipt.fromJson(json)).toList();
-            notifyListeners();
-          } catch (e) {
-            // Ignore invalid cache
-          }
-        }
-      }
+      // Ignore database errors during initial load
+      _error = 'Failed to load offline receipts: $e';
     }
   }
 
   Future<void> _loadShops() async {
-    // Mock shops - in real app, fetch from API
-    _shops = [
-      Shop(id: 1, name: 'Main Shop', location: 'Downtown'),
-      Shop(id: 2, name: 'Branch Shop', location: 'Suburb'),
-    ];
-    notifyListeners();
+    try {
+      _shops = await _shopService.getShops();
+    } catch (e) {
+      _error = 'Failed to load shops: $e';
+    }
+  }
+
+  Future<void> fetchReceiptsFromApi() async {
+    try {
+      final apiReceipts = await _receiptService.getReceipts(limit: 50);
+      _receipts = apiReceipts;
+      await _saveToDatabase();
+    } catch (e) {
+      _error = 'Failed to fetch receipts from API: $e';
+    }
   }
 
   Future<void> _saveToDatabase() async {
-    await _dbHelper.insertShopReceipts(_receipts);
+    try {
+      await _dbHelper.insertShopReceipts(_receipts);
+    } catch (e) {
+      _error = 'Failed to save receipts locally: $e';
+    }
   }
 
   Future<bool> recordReceipt(ShopReceipt receipt) async {
@@ -70,8 +90,8 @@ class ShopReceiptProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _receiptService.recordReceipt(receipt);
-      _receipts.add(receipt);
+      final createdReceipt = await _receiptService.createReceipt(receipt);
+      _receipts.insert(0, createdReceipt);
       await _saveToDatabase();
       notifyListeners();
       return true;
@@ -87,40 +107,44 @@ class ShopReceiptProvider with ChangeNotifier {
 
   Future<List<ShopReceipt>> fetchReceiptsByShop(int shopId) async {
     try {
-      // Mock API call - in real app, implement in service
-      return _receipts.where((receipt) => receipt.shop == shopId).toList();
+      return await _receiptService.getReceipts(shop: shopId);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
-      return [];
+      // Fallback to local filtering
+      return _receipts.where((receipt) => receipt.shop == shopId).toList();
     }
   }
 
   Future<List<ShopReceipt>> fetchReceiptsByProduct(int productId) async {
     try {
-      // Mock API call - in real app, implement in service
-      return _receipts
-          .where((receipt) => receipt.product == productId)
-          .toList();
+      return await _receiptService.getReceipts(product: productId);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
-      return [];
+      // Fallback to local filtering
+      return _receipts
+          .where((receipt) => receipt.product == productId)
+          .toList();
     }
   }
 
   Future<bool> isProductAlreadyReceived(int productId, int shopId) async {
     try {
-      // Check local data first
-      final existing = _receipts
-          .where(
-            (receipt) => receipt.product == productId && receipt.shop == shopId,
-          )
-          .toList();
-      if (existing.isNotEmpty) return true;
+      // Check local data first for fast response
+      final existingLocally = _receipts.any(
+        (receipt) => receipt.product == productId && receipt.shop == shopId,
+      );
+      if (existingLocally) return true;
 
-      // In real app, also check API
-      return false;
+      // Check API
+      final apiReceipts = await _receiptService.getReceipts(
+        product: productId,
+        shop: shopId,
+        limit: 1,
+      );
+
+      return apiReceipts.isNotEmpty;
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -133,11 +157,3 @@ class ShopReceiptProvider with ChangeNotifier {
     notifyListeners();
   }
 }
-
-
-
-
-
-
-
-

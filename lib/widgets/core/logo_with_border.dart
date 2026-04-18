@@ -31,14 +31,14 @@ class LogoWithBorder extends StatelessWidget {
         boxShadow: [
           // Layer 1: Soft ambient glow using brand colors
           BoxShadow(
-            color: effectiveGlow.first.withOpacity(0.15),
+            color: effectiveGlow.first.withValues(alpha: 0.15),
             blurRadius: 25,
             offset: const Offset(0, 12),
             spreadRadius: -5,
           ),
           // Layer 2: Sharp contact shadow for definition
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -77,10 +77,10 @@ class LogoWithBorder extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Colors.white.withOpacity(0.35),
-                        Colors.white.withOpacity(0.05),
+                        Colors.white.withValues(alpha: 0.35),
+                        Colors.white.withValues(alpha: 0.05),
                         Colors.transparent,
-                        Colors.black.withOpacity(0.04),
+                        Colors.black.withValues(alpha: 0.04),
                       ],
                       stops: const [0.0, 0.4, 0.6, 1.0],
                     ),

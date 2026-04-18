@@ -49,8 +49,8 @@ class BluetoothWeightDisplay extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: isConnected
-                  ? themeColor.withOpacity(0.2)
-                  : Colors.grey.withOpacity(0.1),
+                  ? themeColor.withValues(alpha: 0.2)
+                  : Colors.grey.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),

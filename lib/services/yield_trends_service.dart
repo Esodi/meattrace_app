@@ -268,7 +268,6 @@ class YieldTrendsService {
     } else if (period == '90d') {
       // Show weekly labels for 90 days
       return List.generate(13, (i) {
-        final date = now.subtract(Duration(days: (12 - i) * 7));
         return 'W${i + 1}';
       });
     } else if (period == '1y') {

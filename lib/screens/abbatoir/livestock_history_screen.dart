@@ -84,19 +84,16 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // Reload animals when app becomes active/resumed
+    // Only refresh if the cached data is older than this threshold — avoids
+    // re-fetching the full livestock list every time the user tabs away and
+    // back (main cause of perceived slowness on this screen).
     if (state == AppLifecycleState.resumed) {
-      print('📋 [LivestockHistory] App resumed, reloading animals');
-      _loadAnimals();
+      final lastLoad = _lastLoadAt;
+      if (lastLoad == null ||
+          DateTime.now().difference(lastLoad) > const Duration(minutes: 2)) {
+        _loadAnimals();
+      }
     }
-  }
-
-  @override
-  void didUpdateWidget(LivestockHistoryScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Reload animals when widget updates
-    print('📋 [LivestockHistory] didUpdateWidget - Reloading animals');
-    _loadAnimals();
   }
 
   @override
@@ -107,36 +104,18 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
     super.dispose();
   }
 
+  DateTime? _lastLoadAt;
+
   Future<void> _loadAnimals() async {
-    print('📋 [LivestockHistory] _loadAnimals - START');
     setState(() => _isLoading = true);
     try {
       final provider = Provider.of<AnimalProvider>(context, listen: false);
-      print(
-        '📋 [LivestockHistory] Current animals count: ${provider.animals.length}',
-      );
-
-      // Clear cache first to ensure fresh data
       await provider.clearAnimals();
-      print('📋 [LivestockHistory] Cache cleared');
-
-      // Fetch all animals (both active and slaughtered)
       await provider.fetchAnimals(slaughtered: null);
-      print(
-        '📋 [LivestockHistory] After fetch, animals count: ${provider.animals.length}',
-      );
-
-      // Log each animal for debugging
-      for (var i = 0; i < provider.animals.length && i < 5; i++) {
-        final animal = provider.animals[i];
-        print(
-          '  [$i] ${animal.animalId} - ${animal.species} (slaughtered: ${animal.slaughtered})',
-        );
-      }
+      _lastLoadAt = DateTime.now();
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
-        print('📋 [LivestockHistory] _loadAnimals - COMPLETE');
       }
     }
   }
@@ -232,7 +211,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
           // Navigate to register screen and reload animals when returning
           await context.push('/register-animal');
           // Reload animals after returning from registration
-          print(
+          debugPrint(
             '📋 [LivestockHistory] Returned from registration, reloading...',
           );
           if (mounted) {

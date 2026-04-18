@@ -122,22 +122,22 @@ class InventoryProvider with ChangeNotifier {
 
   Future<bool> updateInventoryItem(Inventory inventory) async {
     try {
-      print('🔍 [InventoryProvider] Updating inventory item: id=${inventory.id}, product=${inventory.product}, quantity=${inventory.quantity}');
+      debugPrint('🔍 [InventoryProvider] Updating inventory item: id=${inventory.id}, product=${inventory.product}, quantity=${inventory.quantity}');
       final updatedItem = await _inventoryService.updateInventoryItem(inventory);
-      print('🔍 [InventoryProvider] API update successful, returned quantity: ${updatedItem.quantity}');
+      debugPrint('🔍 [InventoryProvider] API update successful, returned quantity: ${updatedItem.quantity}');
       final index = _inventory.indexWhere((item) => item.id == inventory.id);
       if (index != -1) {
         _inventory[index] = updatedItem;
         await _saveToDatabase();
-        print('🔍 [InventoryProvider] Local inventory updated successfully');
+        debugPrint('🔍 [InventoryProvider] Local inventory updated successfully');
       } else {
-        print('🔍 [InventoryProvider] Warning: inventory item not found in local list');
+        debugPrint('🔍 [InventoryProvider] Warning: inventory item not found in local list');
       }
       _error = null;
       notifyListeners();
       return true;
     } catch (e) {
-      print('🔍 [InventoryProvider] Error updating inventory item: $e');
+      debugPrint('🔍 [InventoryProvider] Error updating inventory item: $e');
       _error = e.toString();
       notifyListeners();
       return false;

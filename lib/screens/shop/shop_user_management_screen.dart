@@ -60,14 +60,16 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
         );
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Access denied. Only shop owners or staff with permissions can manage shop users.',
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Access denied. Only shop owners or staff with permissions can manage shop users.',
+                  ),
+                  backgroundColor: Colors.red,
                 ),
-                backgroundColor: Colors.red,
-              ),
-            );
+              );
+            }
             // Redirect to appropriate dashboard based on role
             final dashboard = _getDashboardForRole(authProvider.user!.role);
             context.go(dashboard);
@@ -353,7 +355,9 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
               // Avatar
               CircleAvatar(
                 radius: 28,
-                backgroundColor: _getRoleColor(member.role).withOpacity(0.2),
+                backgroundColor: _getRoleColor(
+                  member.role,
+                ).withValues(alpha: 0.2),
                 child: Text(
                   member.username[0].toUpperCase(),
                   style: AppTypography.headlineMedium(
@@ -506,7 +510,7 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        side: BorderSide(color: AppColors.shopPrimary.withOpacity(0.3)),
+        side: BorderSide(color: AppColors.shopPrimary.withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(AppTheme.space16),
@@ -517,7 +521,7 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: AppColors.shopPrimary.withOpacity(0.2),
+                  backgroundColor: AppColors.shopPrimary.withValues(alpha: 0.2),
                   child: Text(
                     (request.username ?? 'U')[0].toUpperCase(),
                     style: AppTypography.headlineMedium(
@@ -655,9 +659,9 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
         vertical: AppTheme.space4,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         status,
@@ -681,7 +685,7 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
         vertical: AppTheme.space4,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
       ),
       child: Text(
@@ -707,7 +711,7 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
             Icon(
               icon,
               size: 80,
-              color: AppColors.textSecondary.withOpacity(0.5),
+              color: AppColors.textSecondary.withValues(alpha: 0.5),
             ),
             SizedBox(height: AppTheme.space24),
             Text(
@@ -867,7 +871,9 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: _getRoleColor(member.role).withOpacity(0.2),
+                  backgroundColor: _getRoleColor(
+                    member.role,
+                  ).withValues(alpha: 0.2),
                   child: Text(
                     member.username[0].toUpperCase(),
                     style: AppTypography.headlineLarge(
@@ -1073,16 +1079,18 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Invitation sent successfully!'
-                : provider.error ?? 'Failed to send invitation',
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Invitation sent successfully!'
+                  : provider.error ?? 'Failed to send invitation',
+            ),
+            backgroundColor: success ? AppColors.success : AppColors.error,
           ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-        ),
-      );
+        );
+      }
 
       if (success) {
         _refreshData();
@@ -1182,16 +1190,18 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Role updated successfully!'
-                : provider.error ?? 'Failed to update role',
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Role updated successfully!'
+                  : provider.error ?? 'Failed to update role',
+            ),
+            backgroundColor: success ? AppColors.success : AppColors.error,
           ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-        ),
-      );
+        );
+      }
 
       if (success) {
         _refreshData();
@@ -1242,14 +1252,16 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Suspend functionality will be implemented soon',
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Suspend functionality will be implemented soon',
+                      ),
+                      backgroundColor: AppColors.warning,
                     ),
-                    backgroundColor: AppColors.warning,
-                  ),
-                );
+                  );
+                }
               }
             },
             customColor: AppColors.warning,
@@ -1264,12 +1276,14 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
     ShopUser member,
     ShopManagementProvider provider,
   ) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Activate functionality will be implemented soon'),
-        backgroundColor: AppColors.info,
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Activate functionality will be implemented soon'),
+          backgroundColor: AppColors.info,
+        ),
+      );
+    }
   }
 
   void _showRemoveDialog(ShopUser member, ShopManagementProvider provider) {
@@ -1316,16 +1330,18 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Staff member removed successfully!'
-                : provider.error ?? 'Failed to remove staff member',
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Staff member removed successfully!'
+                  : provider.error ?? 'Failed to remove staff member',
+            ),
+            backgroundColor: success ? AppColors.success : AppColors.error,
           ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-        ),
-      );
+        );
+      }
 
       if (success) {
         _refreshData();
@@ -1343,16 +1359,18 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Join request approved!'
-                : provider.error ?? 'Failed to approve request',
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Join request approved!'
+                  : provider.error ?? 'Failed to approve request',
+            ),
+            backgroundColor: success ? AppColors.success : AppColors.error,
           ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-        ),
-      );
+        );
+      }
 
       if (success) {
         _refreshData();
@@ -1426,16 +1444,18 @@ class _ShopUserManagementScreenState extends State<ShopUserManagementScreen>
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Join request rejected'
-                : provider.error ?? 'Failed to reject request',
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Join request rejected'
+                  : provider.error ?? 'Failed to reject request',
+            ),
+            backgroundColor: success ? AppColors.warning : AppColors.error,
           ),
-          backgroundColor: success ? AppColors.warning : AppColors.error,
-        ),
-      );
+        );
+      }
 
       if (success) {
         _refreshData();

@@ -158,7 +158,7 @@ class OrderProvider with ChangeNotifier {
 
     try {
       final createdOrder = await _orderService.createOrder(order);
-      print('🔍 [OrderProvider] Created order ID: ${createdOrder.id}');
+      debugPrint('🔍 [OrderProvider] Created order ID: ${createdOrder.id}');
       _orders.insert(0, createdOrder);
       await _saveOrdersToDatabase();
 

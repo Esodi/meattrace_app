@@ -365,7 +365,7 @@ class _ProcessingUnitUserManagementScreenState
               // Avatar
               CircleAvatar(
                 radius: 28,
-                backgroundColor: _getRoleColor(member.role).withOpacity(0.2),
+                backgroundColor: _getRoleColor(member.role).withValues(alpha: 0.2),
                 child: Text(
                   member.username[0].toUpperCase(),
                   style: AppTypography.headlineMedium(
@@ -521,7 +521,7 @@ class _ProcessingUnitUserManagementScreenState
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        side: BorderSide(color: AppColors.processorPrimary.withOpacity(0.3)),
+        side: BorderSide(color: AppColors.processorPrimary.withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(AppTheme.space16),
@@ -532,7 +532,7 @@ class _ProcessingUnitUserManagementScreenState
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: AppColors.processorPrimary.withOpacity(0.2),
+                  backgroundColor: AppColors.processorPrimary.withValues(alpha: 0.2),
                   child: Text(
                     (request.username ?? 'U')[0].toUpperCase(),
                     style: AppTypography.headlineMedium(
@@ -670,9 +670,9 @@ class _ProcessingUnitUserManagementScreenState
         vertical: AppTheme.space4,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         status,
@@ -696,7 +696,7 @@ class _ProcessingUnitUserManagementScreenState
         vertical: AppTheme.space4,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
       ),
       child: Text(
@@ -722,7 +722,7 @@ class _ProcessingUnitUserManagementScreenState
             Container(
               padding: EdgeInsets.all(AppTheme.space24),
               decoration: BoxDecoration(
-                color: AppColors.processorPrimary.withOpacity(0.1),
+                color: AppColors.processorPrimary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 64, color: AppColors.processorPrimary),
@@ -968,7 +968,7 @@ class _ProcessingUnitUserManagementScreenState
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: _getRoleColor(member.role).withOpacity(0.2),
+                  backgroundColor: _getRoleColor(member.role).withValues(alpha: 0.2),
                   child: Text(
                     member.username[0].toUpperCase(),
                     style: AppTypography.headlineLarge(
@@ -1171,7 +1171,8 @@ class _ProcessingUnitUserManagementScreenState
     final provider = context.read<ProcessingUnitManagementProvider>();
 
     // Show loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -1190,6 +1191,7 @@ class _ProcessingUnitUserManagementScreenState
         duration: Duration(seconds: 30),
       ),
     );
+    }
 
     final success = await provider.inviteUser(
       unitId: widget.unitId,
@@ -1199,10 +1201,11 @@ class _ProcessingUnitUserManagementScreenState
 
     if (mounted) {
       // Hide loading indicator
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       // Show result
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -1224,6 +1227,7 @@ class _ProcessingUnitUserManagementScreenState
           duration: Duration(seconds: 3),
         ),
       );
+      }
 
       if (success) {
         _refreshData();
@@ -1326,7 +1330,8 @@ class _ProcessingUnitUserManagementScreenState
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
@@ -1336,6 +1341,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
+      }
 
       if (success) {
         _refreshData();
@@ -1416,7 +1422,8 @@ class _ProcessingUnitUserManagementScreenState
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
@@ -1426,6 +1433,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.warning : AppColors.error,
         ),
       );
+      }
 
       if (success) {
         _refreshData();
@@ -1443,7 +1451,8 @@ class _ProcessingUnitUserManagementScreenState
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
@@ -1453,6 +1462,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
+      }
 
       if (success) {
         _refreshData();
@@ -1507,7 +1517,8 @@ class _ProcessingUnitUserManagementScreenState
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
@@ -1517,6 +1528,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
+      }
 
       if (success) {
         _refreshData();
@@ -1555,7 +1567,8 @@ class _ProcessingUnitUserManagementScreenState
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
@@ -1565,6 +1578,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.success : AppColors.error,
         ),
       );
+      }
 
       if (success) {
         _refreshData();
@@ -1660,7 +1674,8 @@ class _ProcessingUnitUserManagementScreenState
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
@@ -1670,6 +1685,7 @@ class _ProcessingUnitUserManagementScreenState
           backgroundColor: success ? AppColors.warning : AppColors.error,
         ),
       );
+      }
 
       if (success) {
         _refreshData();

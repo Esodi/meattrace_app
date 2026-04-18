@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/inventory.dart';
 import 'dio_client.dart';
@@ -71,15 +72,15 @@ class InventoryService {
 
   Future<Inventory> updateInventoryItem(Inventory inventory) async {
     try {
-      print('🔍 [InventoryService] Making PUT request to ${Constants.inventoryEndpoint}${inventory.id}/ with data: ${inventory.toMap()}');
+      debugPrint('🔍 [InventoryService] Making PUT request to ${Constants.inventoryEndpoint}${inventory.id}/ with data: ${inventory.toMap()}');
       final response = await _dioClient.dio.put(
         '${Constants.inventoryEndpoint}${inventory.id}/',
         data: inventory.toMap(),
       );
-      print('🔍 [InventoryService] PUT response status: ${response.statusCode}, data: ${response.data}');
+      debugPrint('🔍 [InventoryService] PUT response status: ${response.statusCode}, data: ${response.data}');
       return Inventory.fromMap(response.data);
     } on DioException catch (e) {
-      print('🔍 [InventoryService] PUT request failed: ${e.message}, response: ${e.response?.data}');
+      debugPrint('🔍 [InventoryService] PUT request failed: ${e.message}, response: ${e.response?.data}');
       throw Exception('Failed to update inventory item: ${e.message}');
     }
   }

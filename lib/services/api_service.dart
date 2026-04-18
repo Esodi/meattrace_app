@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/meat_trace.dart';
 import '../models/product.dart';
@@ -159,14 +160,14 @@ class ApiService {
         throw Exception('Unexpected response format');
       }
     } on DioException catch (e) {
-      print('🔍 [ApiService] DioException in fetchOrders: ${e.message}');
-      print('🔍 [ApiService] Response status: ${e.response?.statusCode}');
-      print('🔍 [ApiService] Response data: ${e.response?.data}');
+      debugPrint('🔍 [ApiService] DioException in fetchOrders: ${e.message}');
+      debugPrint('🔍 [ApiService] Response status: ${e.response?.statusCode}');
+      debugPrint('🔍 [ApiService] Response data: ${e.response?.data}');
       // Handle null message case
       final errorMessage = e.message ?? 'Unknown network error';
       throw Exception('Failed to fetch orders: $errorMessage');
     } catch (e) {
-      print('🔍 [ApiService] General exception in fetchOrders: $e');
+      debugPrint('🔍 [ApiService] General exception in fetchOrders: $e');
       throw Exception('Failed to fetch orders: $e');
     }
   }

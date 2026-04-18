@@ -268,9 +268,11 @@ class _NotificationListScreenState extends State<NotificationListScreen>
     final success = await context.read<NotificationProvider>().markAsRead(notificationId);
     if (!success && mounted) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to mark notification as read')),
         );
+        }
       }
     }
   }
@@ -279,9 +281,11 @@ class _NotificationListScreenState extends State<NotificationListScreen>
     final success = await context.read<NotificationProvider>().deleteNotification(notificationId);
     if (!success && mounted) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to delete notification')),
         );
+        }
       }
     }
   }
@@ -289,21 +293,27 @@ class _NotificationListScreenState extends State<NotificationListScreen>
   Future<void> _markAllAsRead(BuildContext context) async {
     final success = await context.read<NotificationProvider>().markAllAsRead();
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('All notifications marked as read')),
       );
+      }
     } else if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to mark all notifications as read')),
       );
+      }
     }
   }
 
   void _showNotificationSettings(BuildContext context) {
     // TODO: Implement notification settings screen
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Notification settings coming soon!')),
     );
+    }
   }
 }
 

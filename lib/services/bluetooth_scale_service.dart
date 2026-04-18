@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 /// Service to handle Bluetooth Scale connections and data reading
@@ -15,7 +16,6 @@ class BluetoothScaleService {
 
   BluetoothDevice? _connectedDevice;
   BluetoothCharacteristic? _weightCharacteristic;
-  StreamSubscription? _scanSubscription;
   StreamSubscription? _connectionSubscription;
 
   // Stream controller for weight readings
@@ -37,7 +37,7 @@ class BluetoothScaleService {
   }) async {
     // Check if Bluetooth is supported and on
     if (await FlutterBluePlus.isSupported == false) {
-      print('Bluetooth not supported');
+      debugPrint('Bluetooth not supported');
       return;
     }
 
@@ -75,7 +75,7 @@ class BluetoothScaleService {
       // Discover services
       await _discoverServices(device);
     } catch (e) {
-      print('Error connecting to scale: $e');
+      debugPrint('Error connecting to scale: $e');
       _cleanupConnection();
       rethrow;
     }
@@ -99,59 +99,59 @@ class BluetoothScaleService {
   /// Manually trigger a weight read (for scales that support READ operation)
   Future<void> readWeight() async {
     if (_weightCharacteristic == null) {
-      print('⚠️ [ScaleService] No characteristic available for reading');
+      debugPrint('⚠️ [ScaleService] No characteristic available for reading');
       return;
     }
 
     try {
       if (_weightCharacteristic!.properties.read) {
-        print('📖 [ScaleService] Performing manual READ...');
+        debugPrint('📖 [ScaleService] Performing manual READ...');
         List<int> value = await _weightCharacteristic!.read();
-        print('📦 [ScaleService] Read data: $value');
+        debugPrint('📦 [ScaleService] Read data: $value');
         _parseWeightData(value);
       } else {
-        print(
+        debugPrint(
           '⚠️ [ScaleService] Characteristic does not support READ (NOTIFY-only scale)',
         );
-        print(
+        debugPrint(
           '💡 [ScaleService] Ensure weight is ON the scale and try changing it slightly',
         );
 
         // Check if notify is enabled
         bool isNotifying = _weightCharacteristic!.isNotifying;
-        print(
+        debugPrint(
           '🔔 [ScaleService] Notifications currently enabled: $isNotifying',
         );
 
         if (!isNotifying) {
-          print('🔄 [ScaleService] Re-enabling notifications...');
+          debugPrint('🔄 [ScaleService] Re-enabling notifications...');
           await _weightCharacteristic!.setNotifyValue(true);
         }
       }
     } catch (e) {
-      print('❌ [ScaleService] Read failed: $e');
+      debugPrint('❌ [ScaleService] Read failed: $e');
       rethrow;
     }
   }
 
   /// Discover services and find the weight characteristic
   Future<void> _discoverServices(BluetoothDevice device) async {
-    print('🔍 [ScaleService] Discovering services...');
+    debugPrint('🔍 [ScaleService] Discovering services...');
     List<BluetoothService> services = await device.discoverServices();
-    print('🔍 [ScaleService] Found ${services.length} services');
+    debugPrint('🔍 [ScaleService] Found ${services.length} services');
 
     // First pass: Look for standard weight service
     for (var service in services) {
-      print('  📦 Service UUID: ${service.uuid}');
+      debugPrint('  📦 Service UUID: ${service.uuid}');
 
       // Check for standard Weight Scale Service (0x181D)
       if (service.uuid.toString().toUpperCase().contains('181D')) {
-        print('  ✅ Found Weight Scale Service!');
+        debugPrint('  ✅ Found Weight Scale Service!');
         for (var characteristic in service.characteristics) {
-          print('    📝 Characteristic UUID: ${characteristic.uuid}');
+          debugPrint('    📝 Characteristic UUID: ${characteristic.uuid}');
           // Weight Measurement Characteristic (0x2A9D)
           if (characteristic.uuid.toString().toUpperCase().contains('2A9D')) {
-            print('    ✅ Found Weight Measurement Characteristic!');
+            debugPrint('    ✅ Found Weight Measurement Characteristic!');
             await _setupNotification(characteristic);
             return;
           }
@@ -159,7 +159,7 @@ class BluetoothScaleService {
       }
     }
 
-    print(
+    debugPrint(
       '\n⚠️ [ScaleService] Standard weight service not found. Scanning all characteristics...\n',
     );
 
@@ -167,11 +167,11 @@ class BluetoothScaleService {
     List<BluetoothCharacteristic> candidates = [];
 
     for (var service in services) {
-      print('  📦 Service: ${service.uuid}');
+      debugPrint('  📦 Service: ${service.uuid}');
       for (var characteristic in service.characteristics) {
         String uuid = characteristic.uuid.toString().toUpperCase();
-        print('    📝 Char: $uuid');
-        print(
+        debugPrint('    📝 Char: $uuid');
+        debugPrint(
           '       Properties: read=${characteristic.properties.read}, '
           'write=${characteristic.properties.write}, '
           'notify=${characteristic.properties.notify}, '
@@ -184,55 +184,55 @@ class BluetoothScaleService {
             uuid.contains('2A01') || // Appearance
             uuid.contains('2A04')) {
           // Peripheral Preferred Connection Parameters
-          print('       ⏭️  Skipping (system characteristic)');
+          debugPrint('       ⏭️  Skipping (system characteristic)');
           continue;
         }
 
         // Look for notify/indicate characteristics (potential weight data)
         if (characteristic.properties.notify ||
             characteristic.properties.indicate) {
-          print('       ⭐ CANDIDATE for weight data!');
+          debugPrint('       ⭐ CANDIDATE for weight data!');
           candidates.add(characteristic);
         }
       }
     }
 
-    print(
+    debugPrint(
       '\n🎯 [ScaleService] Found ${candidates.length} candidate characteristic(s)\n',
     );
 
     // Try the first suitable candidate
     if (candidates.isNotEmpty) {
-      print(
+      debugPrint(
         '🎯 [ScaleService] Using first candidate: ${candidates.first.uuid}',
       );
       await _setupNotification(candidates.first);
       return;
     }
 
-    print('❌ [ScaleService] No suitable characteristic found!');
+    debugPrint('❌ [ScaleService] No suitable characteristic found!');
   }
 
   Future<void> _setupNotification(
     BluetoothCharacteristic characteristic,
   ) async {
-    print(
+    debugPrint(
       '🔔 [ScaleService] Setting up notification for ${characteristic.uuid}',
     );
     _weightCharacteristic = characteristic;
 
     try {
       await characteristic.setNotifyValue(true);
-      print('✅ [ScaleService] Notifications enabled');
+      debugPrint('✅ [ScaleService] Notifications enabled');
 
       characteristic.lastValueStream.listen((value) {
-        print(
+        debugPrint(
           '📦 [ScaleService] Received data: $value (length: ${value.length})',
         );
         _parseWeightData(value);
       });
     } catch (e) {
-      print('❌ [ScaleService] Failed to enable notifications: $e');
+      debugPrint('❌ [ScaleService] Failed to enable notifications: $e');
     }
   }
 
@@ -240,29 +240,29 @@ class BluetoothScaleService {
   /// This logic depends heavily on the specific scale's protocol
   void _parseWeightData(List<int> data) {
     if (data.isEmpty) {
-      print('⚠️ [ScaleService] Received empty data');
+      debugPrint('⚠️ [ScaleService] Received empty data');
       return;
     }
 
-    print('📊 [ScaleService] Parsing weight data: $data');
+    debugPrint('📊 [ScaleService] Parsing weight data: $data');
 
     try {
       // Strategy 1: ASCII text parsing (for scales like SZL that send "ST,GS,+00001.0kg")
       try {
         String dataStr = String.fromCharCodes(data);
-        print('📝 [ScaleService] Data as string: "$dataStr"');
+        debugPrint('📝 [ScaleService] Data as string: "$dataStr"');
 
         // Try to extract number from string (handles formats like "+00001.0kg", "1.23 kg", etc.)
         RegExp numRegex = RegExp(r'([+-]?\d+\.?\d*)');
         Match? match = numRegex.firstMatch(dataStr);
         if (match != null) {
           double weight = double.parse(match.group(1)!);
-          print('✅ [ScaleService] Parsed weight (ASCII): $weight kg');
+          debugPrint('✅ [ScaleService] Parsed weight (ASCII): $weight kg');
           _weightController.add(weight);
           return;
         }
       } catch (e) {
-        print('⚠️ [ScaleService] ASCII parsing failed: $e');
+        debugPrint('⚠️ [ScaleService] ASCII parsing failed: $e');
       }
 
       // Strategy 2: Standard GATT Weight Measurement (binary)
@@ -278,7 +278,7 @@ class BluetoothScaleService {
           weight = weight * 0.453592; // Convert lbs to kg
         }
 
-        print('✅ [ScaleService] Parsed weight (GATT binary): $weight kg');
+        debugPrint('✅ [ScaleService] Parsed weight (GATT binary): $weight kg');
         _weightController.add(weight);
         return;
       }
@@ -287,14 +287,14 @@ class BluetoothScaleService {
       if (data.length >= 2) {
         int rawValue = data[0] + (data[1] << 8);
         double weight = rawValue / 10.0; // Assume 1 decimal place
-        print('⚠️ [ScaleService] Parsed weight (raw guess): $weight kg');
+        debugPrint('⚠️ [ScaleService] Parsed weight (raw guess): $weight kg');
         _weightController.add(weight);
         return;
       }
 
-      print('❌ [ScaleService] Could not parse weight data');
+      debugPrint('❌ [ScaleService] Could not parse weight data');
     } catch (e) {
-      print('❌ [ScaleService] Error parsing weight data: $e');
+      debugPrint('❌ [ScaleService] Error parsing weight data: $e');
     }
   }
 }

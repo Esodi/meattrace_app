@@ -11,7 +11,7 @@ class CustomIcons {
   /// MeatTrace App Icon - Primary branding icon used throughout the application
   /// This icon represents the MeatTrace application identity and should be used
   /// for app logo, splash screens, login screens, and main navigation
-  static const IconData MEATTRACE_ICON = Icons.blur_on;
+  static const IconData meattraceIcon = Icons.blur_on;
 
   // ========== LIVESTOCK SPECIES ICONS ==========
 
@@ -211,7 +211,6 @@ String getSpeciesDisplayName(String species) {
 IconData getRoleIcon(String role) {
   switch (role.toLowerCase()) {
     case 'abbatoir':
-    case 'abbatoir':
       return CustomIcons.abbatoir;
     case 'abattoir':
       return CustomIcons.abattoir;
@@ -296,7 +295,6 @@ IconData getSpeciesIconFallback(String species) {
 
 IconData getRoleIconFallback(String role) {
   switch (role.toLowerCase()) {
-    case 'abbatoir':
     case 'abbatoir':
       return MeatTraceIconsFallback.abbatoir;
     case 'abattoir':

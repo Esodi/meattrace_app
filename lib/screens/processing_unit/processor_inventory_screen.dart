@@ -52,7 +52,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
       ).fetchProducts();
       setState(() => _debugHelper += '\nProducts loaded.');
     } catch (e) {
-      print('Error loading products: $e');
+      debugPrint('Error loading products: $e');
       setState(() => _debugHelper += '\nProduct Error: $e');
     }
 
@@ -81,7 +81,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
         _debugHelper += '\nAnimals loaded: ${receivedAnimals.length}';
       });
     } catch (e) {
-      print('Error loading animals: $e');
+      debugPrint('Error loading animals: $e');
       setState(() => _debugHelper += '\nAnimal Error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -104,7 +104,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          print(
+          debugPrint(
             'DEBUG: Screen height: ${constraints.maxHeight}, width: ${constraints.maxWidth}',
           );
           return Column(
@@ -465,7 +465,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: AppColors.processorPrimary.withOpacity(0.1),
+                      color: AppColors.processorPrimary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(

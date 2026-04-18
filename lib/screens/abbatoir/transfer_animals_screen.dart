@@ -133,14 +133,14 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
       );
 
       // DIAGNOSTIC: Log what's being transferred
-      print('🔍 [TRANSFER_SUBMIT_DEBUG] Transfer submission started');
-      print('   - Selected whole animals: ${_selectedWholeAnimals.length}');
+      debugPrint('🔍 [TRANSFER_SUBMIT_DEBUG] Transfer submission started');
+      debugPrint('   - Selected whole animals: ${_selectedWholeAnimals.length}');
       for (var animal in _selectedWholeAnimals) {
-        print(
+        debugPrint(
           '     • ${animal.animalId}: isSplitCarcass=${animal.isSplitCarcass}, carcassMeasurement=${animal.carcassMeasurement?.carcassType.value ?? "NULL"}',
         );
       }
-      print('   - Selected parts by animal: ${_selectedPartsByAnimal.length}');
+      debugPrint('   - Selected parts by animal: ${_selectedPartsByAnimal.length}');
 
       // Prepare whole animal IDs
       final wholeAnimalIds = _selectedWholeAnimals.map((a) => a.id).toList();
@@ -151,7 +151,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
           .map((entry) => {'animal_id': entry.key, 'part_ids': entry.value})
           .toList();
 
-      print(
+      debugPrint(
         'Transfer Submit - Whole Animals: $wholeAnimalIds, Part Transfers: $partTransfers',
       );
 
@@ -200,20 +200,24 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
 
       if (mounted) {
         final totalCount = wholeAnimalIds.length + partTransfers.length;
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Successfully transferred $totalCount item(s)!'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
+        }
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error transferring animals: $e')),
         );
+        }
       }
     } finally {
       setState(() => _isLoading = false);
@@ -247,21 +251,25 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                   if (_currentStep == 0 &&
                       _selectedWholeAnimals.isEmpty &&
                       _selectedPartsByAnimal.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
                           'Please select at least one animal or parts to transfer',
                         ),
                       ),
                     );
+                    }
                     return;
                   }
                   if (_currentStep == 1 && _selectedProcessingUnit == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Please select a processing unit'),
                       ),
                     );
+                    }
                     return;
                   }
                   if (_currentStep < 2) {
@@ -409,13 +417,13 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: AppColors.textSecondary.withOpacity(0.3),
+                      color: AppColors.textSecondary.withValues(alpha: 0.3),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: AppColors.textSecondary.withOpacity(0.3),
+                      color: AppColors.textSecondary.withValues(alpha: 0.3),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -442,13 +450,13 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: AppColors.textSecondary.withOpacity(0.3),
+                      color: AppColors.textSecondary.withValues(alpha: 0.3),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: AppColors.textSecondary.withOpacity(0.3),
+                      color: AppColors.textSecondary.withValues(alpha: 0.3),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -497,20 +505,20 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
               final isExpanded = _expandedAnimals[animal.id] ?? false;
 
               // DIAGNOSTIC LOGGING
-              print('🔍 [TRANSFER_DEBUG] Animal ${animal.animalId}:');
-              print('   - isSplitCarcass: $isSplitCarcass');
-              print(
+              debugPrint('🔍 [TRANSFER_DEBUG] Animal ${animal.animalId}:');
+              debugPrint('   - isSplitCarcass: $isSplitCarcass');
+              debugPrint(
                 '   - carcassMeasurement: ${animal.carcassMeasurement != null ? "EXISTS" : "NULL"}',
               );
               if (animal.carcassMeasurement != null) {
-                print(
+                debugPrint(
                   '   - carcassType: ${animal.carcassMeasurement!.carcassType.value}',
                 );
               }
-              print(
+              debugPrint(
                 '   - slaughterParts count: ${animal.slaughterParts.length}',
               );
-              print('   - transferMode: ${_transferModeByAnimal[animal.id!]}');
+              debugPrint('   - transferMode: ${_transferModeByAnimal[animal.id!]}');
 
               // For whole carcass only
               if (!isSplitCarcass) {
@@ -548,11 +556,18 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Age: ${animal.age} months • Weight: ${animal.liveWeight ?? 0} kg',
+                          'Age: ${animal.age} months • Slaughter weight: ${(animal.effectiveTransferWeight ?? 0).toStringAsFixed(2)} kg',
                           style: AppTypography.bodySmall(
                             color: AppColors.textSecondary,
                           ),
                         ),
+                        if ((animal.totalWasteWeight ?? 0) > 0)
+                          Text(
+                            'Waste: ${animal.totalWasteWeight!.toStringAsFixed(2)} kg',
+                            style: AppTypography.bodySmall(
+                              color: AppColors.warning,
+                            ),
+                          ),
                         const SizedBox(height: 2),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -560,7 +575,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.info.withOpacity(0.1),
+                            color: AppColors.info.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -573,7 +588,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                       ],
                     ),
                     secondary: CircleAvatar(
-                      backgroundColor: AppColors.abbatoirPrimary.withOpacity(0.1),
+                      backgroundColor: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
                       child: Icon(
                         _getSpeciesIcon(animal.species),
                         color: AppColors.abbatoirPrimary,
@@ -626,7 +641,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.1),
+                              color: AppColors.warning.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -689,7 +704,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                             else
                               Icon(
                                 Icons.check_box_outline_blank,
-                                color: AppColors.textSecondary.withOpacity(0.3),
+                                color: AppColors.textSecondary.withValues(alpha: 0.3),
                               ),
                             const SizedBox(width: 8),
                             Icon(
@@ -707,7 +722,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                             else
                               Icon(
                                 Icons.check_box_outline_blank,
-                                color: AppColors.textSecondary.withOpacity(0.3),
+                                color: AppColors.textSecondary.withValues(alpha: 0.3),
                               ),
                           ],
                         ],
@@ -741,10 +756,10 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.info.withOpacity(0.1),
+                            color: AppColors.info.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: AppColors.info.withOpacity(0.3),
+                              color: AppColors.info.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -942,7 +957,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
           child: Container(
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppColors.abbatoirPrimary.withOpacity(0.05)
+                  ? AppColors.abbatoirPrimary.withValues(alpha: 0.05)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -952,7 +967,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                 vertical: 8,
               ),
               leading: CircleAvatar(
-                backgroundColor: AppColors.processorPrimary.withOpacity(0.1),
+                backgroundColor: AppColors.processorPrimary.withValues(alpha: 0.1),
                 child: Icon(Icons.factory, color: AppColors.processorPrimary),
               ),
               title: Text(
@@ -989,7 +1004,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                     )
                   : Icon(
                       Icons.circle_outlined,
-                      color: AppColors.textSecondary.withOpacity(0.3),
+                      color: AppColors.textSecondary.withValues(alpha: 0.3),
                     ),
             ),
           ),
@@ -1015,10 +1030,10 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.abbatoirPrimary.withOpacity(0.1),
+              color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColors.abbatoirPrimary.withOpacity(0.3),
+                color: AppColors.abbatoirPrimary.withValues(alpha: 0.3),
               ),
             ),
             child: Column(
@@ -1057,9 +1072,9 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.1),
+              color: AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1123,10 +1138,10 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.processorPrimary.withOpacity(0.1),
+            color: AppColors.processorPrimary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: AppColors.processorPrimary.withOpacity(0.3),
+              color: AppColors.processorPrimary.withValues(alpha: 0.3),
             ),
           ),
           child: Column(
@@ -1180,9 +1195,9 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.warning.withOpacity(0.1),
+            color: AppColors.warning.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

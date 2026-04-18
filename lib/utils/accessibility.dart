@@ -429,7 +429,6 @@ class AccessibleGrid extends StatefulWidget {
 }
 
 class _AccessibleGridState extends State<AccessibleGrid> {
-  int _focusedIndex = -1;
   late List<FocusNode> _focusNodes;
 
   @override
@@ -466,9 +465,7 @@ class _AccessibleGridState extends State<AccessibleGrid> {
   }
 
   void _updateFocusedIndex() {
-    setState(() {
-      _focusedIndex = _focusNodes.indexWhere((node) => node.hasFocus);
-    });
+    setState(() {});
   }
 
   void _handleKeyEvent(RawKeyEvent event) {

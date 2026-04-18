@@ -275,7 +275,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.green, width: 1),
                         ),
@@ -319,7 +319,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color, width: 1),
       ),
@@ -397,7 +397,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
-                        backgroundColor: _getStatusColor(invoice.status).withOpacity(0.2),
+                        backgroundColor: _getStatusColor(invoice.status).withValues(alpha: 0.2),
                         child: Icon(
                           Icons.receipt_long,
                           color: _getStatusColor(invoice.status),

@@ -86,12 +86,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       setState(() => _isEditing = false);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully!'),
             backgroundColor: Colors.green,
           ),
         );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -136,7 +138,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       gradient: LinearGradient(
                         colors: [
                           _getRoleColor(),
-                          _getRoleColor().withOpacity(0.7),
+                          _getRoleColor().withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -170,7 +172,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(

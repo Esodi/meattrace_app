@@ -93,7 +93,7 @@ class TimelineEventItem extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: eventColor.withOpacity(isDark ? 0.2 : 0.1),
+                    color: eventColor.withValues(alpha: isDark ? 0.2 : 0.1),
                     shape: BoxShape.circle,
                     border: Border.all(color: eventColor, width: 2),
                   ),
@@ -340,7 +340,7 @@ class CompactTraceabilityTimeline extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: eventColor.withOpacity(isDark ? 0.2 : 0.1),
+              color: eventColor.withValues(alpha: isDark ? 0.2 : 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(

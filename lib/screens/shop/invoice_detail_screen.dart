@@ -127,7 +127,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: statusColor, width: 1),
                   ),
@@ -292,7 +292,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
 
     return Card(
-      color: AppColors.shopPrimary.withOpacity(0.05),
+      color: AppColors.shopPrimary.withValues(alpha: 0.05),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -392,12 +392,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
     try {
       // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Generating PDF...'),
           duration: Duration(seconds: 2),
         ),
       );
+      }
 
       if (invoice.id == null) {
         throw Exception('Invoice ID is missing');
@@ -489,17 +491,21 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   );
                   if (mounted) {
                     Navigator.of(paymentCtx).pop(); // Close dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Payment recorded successfully'),
                       ),
                     );
+                    }
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: ${e.toString()}')),
                     );
+                    }
                   }
                 }
               },
@@ -568,18 +574,22 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     Navigator.of(saleCtx).pop(); // Close dialog
                     if (mounted) {
                       context.pop(); // Close detail screen using GoRouter
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Converted to sale successfully'),
                         ),
                       );
+                      }
                     }
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: ${e.toString()}')),
                     );
+                    }
                   }
                 }
               },
@@ -619,15 +629,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   ).cancelInvoice(widget.invoiceId);
                   if (mounted) {
                     Navigator.of(cancelCtx).pop(); // Close dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Invoice cancelled')),
                     );
+                    }
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: ${e.toString()}')),
                     );
+                    }
                   }
                 }
               },

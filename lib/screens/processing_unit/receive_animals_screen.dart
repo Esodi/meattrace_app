@@ -46,11 +46,11 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
   Future<void> _loadPendingAnimals() async {
     setState(() => _isLoading = true);
     try {
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('🔄 [RECEIVE_ANIMALS] Loading pending animals...');
-      print(
+      debugPrint('🔄 [RECEIVE_ANIMALS] Loading pending animals...');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
@@ -63,7 +63,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
       // based on user's role and linked processing unit
       await animalProvider.fetchAnimals(slaughtered: null);
 
-      print(
+      debugPrint(
         '📊 [RECEIVE_ANIMALS] Total animals from provider: ${animalProvider.animals.length}',
       );
 
@@ -92,15 +92,15 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
         final isPending = wholeAnimalPending || hasPendingParts;
 
         if (isPending) {
-          print(
+          debugPrint(
             '  📦 Pending: ${animal.animalId} - transferred_to: ${animal.transferredTo}, received_by: ${animal.receivedBy}, rejection_status: ${animal.rejectionStatus}',
           );
         } else if (animal.transferredTo != null && animal.receivedBy != null) {
-          print(
+          debugPrint(
             '  ✅ Already received: ${animal.animalId} - received_by: ${animal.receivedBy}',
           );
         } else if (animal.rejectionStatus == 'rejected') {
-          print(
+          debugPrint(
             '  ❌ Rejected: ${animal.animalId} - rejection_status: ${animal.rejectionStatus}',
           );
         }
@@ -108,12 +108,12 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
         return isPending;
       }).toList();
 
-      print(
+      debugPrint(
         '✨ [RECEIVE_ANIMALS] Found ${pending.length} pending animals/parts',
       );
       setState(() => _pendingAnimals = pending);
     } catch (e) {
-      print('❌ [RECEIVE_ANIMALS] Error loading animals: $e');
+      debugPrint('❌ [RECEIVE_ANIMALS] Error loading animals: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -1006,11 +1006,13 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop({
+              if (context.mounted) {
+                Navigator.of(context).pop({
                 'category': selectedCategory,
                 'specific_reason': selectedReason,
                 'notes': notesController.text.trim(),
               });
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
@@ -1197,11 +1199,11 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('📤 [RECEIVE_ANIMALS] Submitting decisions...');
-      print(
+      debugPrint('📤 [RECEIVE_ANIMALS] Submitting decisions...');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
@@ -1211,7 +1213,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
           .map((entry) => entry.key)
           .toList();
 
-      print('  ✅ Accepting ${animalIds.length} whole animals: $animalIds');
+      debugPrint('  ✅ Accepting ${animalIds.length} whole animals: $animalIds');
 
       // Prepare part receives - group accepted parts by animal
       final partReceives = <Map<String, dynamic>>[];
@@ -1234,7 +1236,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
         partReceives.add({'animal_id': animalId, 'part_ids': partIds});
       });
 
-      print('  ✅ Accepting parts from ${partReceives.length} animals');
+      debugPrint('  ✅ Accepting parts from ${partReceives.length} animals');
 
       // Prepare rejection data
       final animalRejections = _animalDecisions.entries
@@ -1252,14 +1254,13 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
           })
           .toList();
 
-      print('  ❌ Rejecting ${animalRejections.length} animals');
+      debugPrint('  ❌ Rejecting ${animalRejections.length} animals');
 
       // Prepare part rejections
       final partRejections = _partDecisions.entries
           .where((entry) => entry.value == 'reject')
           .map((entry) {
             final parts = entry.key.split('_');
-            final animalId = int.parse(parts[0]);
             final partId = int.parse(parts[1]);
             final reason = _partRejectionReasons[entry.key];
             return {
@@ -1272,10 +1273,10 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
           })
           .toList();
 
-      print('  ❌ Rejecting ${partRejections.length} parts');
+      debugPrint('  ❌ Rejecting ${partRejections.length} parts');
 
       // Submit to API
-      print('  🌐 Calling API: receiveAnimals()');
+      debugPrint('  🌐 Calling API: receiveAnimals()');
       final animalProvider = Provider.of<AnimalProvider>(
         context,
         listen: false,
@@ -1287,7 +1288,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
         partRejections: partRejections,
       );
 
-      print('  ✅ API call successful!');
+      debugPrint('  ✅ API call successful!');
 
       if (mounted) {
         // Clear decision state to prevent resubmission
@@ -1298,12 +1299,15 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
           _partRejectionReasons.clear();
         });
 
-        print('  🔄 Refreshing animal list...');
+        debugPrint('  🔄 Refreshing animal list...');
         // Refresh the animal data to reflect the updated received status
+        if (!mounted) return;
         await _loadPendingAnimals();
 
-        Navigator.of(context).pop(); // Close review screen
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+        if (context.mounted) Navigator.of(context).pop(); // Close review screen
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               'Successfully processed ${animalIds.length + partReceives.length} acceptances and ${animalRejections.length + partRejections.length} rejections',
@@ -1311,24 +1315,27 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
             backgroundColor: AppColors.success,
           ),
         );
-        print(
+        }
+        debugPrint(
           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
         );
-        print('✅ [RECEIVE_ANIMALS] Submit complete!');
-        print(
+        debugPrint('✅ [RECEIVE_ANIMALS] Submit complete!');
+        debugPrint(
           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
         );
         context.pop(); // Go back to previous screen
       }
     } catch (e) {
-      print('❌ [RECEIVE_ANIMALS] Error submitting decisions: $e');
+      debugPrint('❌ [RECEIVE_ANIMALS] Error submitting decisions: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error submitting decisions: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } finally {
       setState(() => _isLoading = false);

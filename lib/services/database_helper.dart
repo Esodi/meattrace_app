@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/product_category.dart';
@@ -46,9 +47,9 @@ class DatabaseHelper {
   Future<void> debugTableSchema(String tableName) async {
     final db = await database;
     final result = await db.rawQuery("PRAGMA table_info($tableName)");
-    print("🔍 [DatabaseHelper] Schema for table '$tableName':");
+    debugPrint("🔍 [DatabaseHelper] Schema for table '$tableName':");
     for (final column in result) {
-      print(
+      debugPrint(
         "   Column: ${column['name']} - Type: ${column['type']} - NotNull: ${column['notnull']} - Default: ${column['dflt_value']}",
       );
     }
@@ -467,7 +468,7 @@ class DatabaseHelper {
           )
         ''');
       } catch (e) {
-        print('Error reconstructing animals table: $e');
+        debugPrint('Error reconstructing animals table: $e');
       }
     }
     if (oldVersion < 16) {
@@ -484,7 +485,7 @@ class DatabaseHelper {
           )
         ''');
       } catch (e) {
-        print('Error creating external_vendors table: $e');
+        debugPrint('Error creating external_vendors table: $e');
       }
 
       // Add external source tracking columns to animals table
@@ -555,7 +556,7 @@ class DatabaseHelper {
         ''');
         await db.execute('DROP TABLE products_old');
       } catch (e) {
-        print('Error migrating products table for version 17: \$e');
+        debugPrint('Error migrating products table for version 17: \$e');
       }
     }
     if (oldVersion < 18) {
@@ -573,7 +574,7 @@ class DatabaseHelper {
           )
         ''');
       } catch (e) {
-        print('Error creating sync_queue table: \$e');
+        debugPrint('Error creating sync_queue table: \$e');
       }
 
       // Add synced column to existing tables

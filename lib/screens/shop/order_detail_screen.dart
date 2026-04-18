@@ -95,22 +95,26 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Order cancelled successfully'),
             backgroundColor: AppColors.success,
           ),
         );
+        }
         _loadOrderDetails();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error cancelling order: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     } finally {
       if (mounted) {
@@ -579,12 +583,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           label: 'Contact Support',
           variant: ButtonVariant.secondary,
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Contact support feature coming soon'),
                 backgroundColor: AppColors.info,
               ),
             );
+            }
           },
         ),
       ],

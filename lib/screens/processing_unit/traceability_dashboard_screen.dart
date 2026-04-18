@@ -47,12 +47,14 @@ class _ProcessingTraceabilityScreenState
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading report: $e'),
             backgroundColor: Colors.red,
           ),
         );
+        }
       }
       setState(() => _isLoading = false);
     }

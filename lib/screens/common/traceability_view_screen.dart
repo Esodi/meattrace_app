@@ -33,7 +33,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
         _sourceAnimal = Animal.fromMap(response.data);
       });
     } catch (e) {
-      print('Error loading source animal: $e');
+      debugPrint('Error loading source animal: $e');
     }
   }
 
@@ -48,9 +48,11 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
             icon: const Icon(Icons.share),
             onPressed: () {
               // Implement share traceability
-              ScaffoldMessenger.of(context).showSnackBar(
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Share traceability coming soon')),
               );
+              }
             },
           ),
         ],
@@ -67,7 +69,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                 gradient: LinearGradient(
                   colors: [
                     AppColors.processorPrimary,
-                    AppColors.processorPrimary.withOpacity(0.7),
+                    AppColors.processorPrimary.withValues(alpha: 0.7),
                   ],
                 ),
               ),
@@ -76,7 +78,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -251,9 +253,9 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -304,7 +306,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

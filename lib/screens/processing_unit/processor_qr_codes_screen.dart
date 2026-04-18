@@ -323,11 +323,13 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         // TODO: Implement share functionality
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Share feature coming soon'),
                           ),
                         );
+                        }
                       },
                       icon: const Icon(Icons.share),
                       label: const Text('Share'),
@@ -342,11 +344,13 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         // TODO: Implement download functionality
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Download feature coming soon'),
                           ),
                         );
+                        }
                       },
                       icon: const Icon(Icons.download),
                       label: const Text('Download'),

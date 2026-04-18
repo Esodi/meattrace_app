@@ -8,7 +8,7 @@ class ProductCategoriesScreen extends StatefulWidget {
   const ProductCategoriesScreen({super.key});
 
   @override
-  _ProductCategoriesScreenState createState() =>
+  State<ProductCategoriesScreen> createState() =>
       _ProductCategoriesScreenState();
 }
 
@@ -75,7 +75,7 @@ class _ProductCategoriesScreenState extends State<ProductCategoriesScreen>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
+                          color: Colors.black.withValues(alpha: 0.03),
                           blurRadius: 8,
                           offset: Offset(0, 4),
                         ),
@@ -148,11 +148,13 @@ class _ProductCategoriesScreenState extends State<ProductCategoriesScreen>
                               category: category,
                               onTap: () {
                                 // placeholder - could open category detail
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Selected ${category.name}'),
                                   ),
                                 );
+                                }
                               },
                               onEdit: () async {
                                 final result = await Navigator.push(
@@ -196,22 +198,26 @@ class _ProductCategoriesScreenState extends State<ProductCategoriesScreen>
                                     await ApiService().deleteProductCategory(
                                       category.id!,
                                     );
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text('Category deleted'),
                                       ),
                                     );
+                                    }
                                     setState(() {
                                       _categories = _fetchCategories();
                                     });
                                   } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
                                           'Failed to delete category: $e',
                                         ),
                                       ),
                                     );
+                                    }
                                   }
                                 }
                               },

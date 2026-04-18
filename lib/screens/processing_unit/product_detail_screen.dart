@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/product_provider.dart';
-import '../../providers/user_context_provider.dart';
 import '../../models/product.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -30,86 +29,54 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProduct());
+    _loadProduct();
   }
 
-  /// Fetch product data from backend API for real-time updates
   Future<void> _loadProduct() async {
-    if (!mounted) return;
-
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final productProvider = Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      );
+      final productId = int.tryParse(widget.productId);
+      if (productId == null) {
+        setState(() {
+          _error = 'Invalid product ID';
+          _isLoading = false;
+        });
+        return;
+      }
 
-      // Fetch specific product from API for real-time data
-      final int productId = int.parse(widget.productId);
+      final productProvider = context.read<ProductProvider>();
       final product = await productProvider.getProduct(productId);
 
-      if (product == null) {
-        throw Exception('Product not found');
-      }
-
-      if (mounted) {
-        setState(() {
-          _product = product;
-          _isLoading = false;
-          _error = null;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _product = product;
+        _error = product == null ? 'Product not found' : null;
+        _isLoading = false;
+      });
     } catch (e) {
-      debugPrint('Error loading product: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _error = e.toString();
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading product: $e'),
-            backgroundColor: Colors.red,
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: _loadProduct,
-            ),
-          ),
-        );
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
-  /// Refresh product data
   Future<void> _refreshProduct() async {
     await _loadProduct();
   }
 
   @override
   Widget build(BuildContext context) {
-    final userContext = Provider.of<UserContextProvider>(context);
-    final userRole = userContext.currentUser?.role;
-    final primaryColor = AppColors.getPrimaryColorForRole(userRole);
+    final primaryColor = AppColors.processorPrimary;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
       body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: primaryColor),
-                  const SizedBox(height: 16),
-                  const Text('Loading product details...'),
-                ],
-              ),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? _buildErrorState()
           : _product == null
@@ -263,11 +230,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 TextButton.icon(
                   onPressed: () {
                     // TODO: Implement print QR functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Print functionality coming soon'),
                       ),
                     );
+                    }
                   },
                   icon: const Icon(Icons.print),
                   label: const Text('Print'),
@@ -275,11 +244,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 TextButton.icon(
                   onPressed: () {
                     // TODO: Implement share QR functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Share functionality coming soon'),
                       ),
                     );
+                    }
                   },
                   icon: const Icon(Icons.share),
                   label: const Text('Share'),
@@ -311,7 +282,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.1),
+                  color: primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: primaryColor, width: 2),
                 ),
@@ -424,7 +395,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
             const Divider(height: 24),
             _buildInfoRow(
-              CustomIcons.MEATTRACE_ICON,
+              CustomIcons.meattraceIcon,
               'Batch Number',
               _product?.batchNumber ?? 'N/A',
             ),
@@ -633,12 +604,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isFirst ? primaryColor : primaryColor.withOpacity(0.5),
+                color: isFirst ? primaryColor : primaryColor.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.2),
+                    color: primaryColor.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -656,8 +627,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      primaryColor.withOpacity(0.5),
-                      primaryColor.withOpacity(0.2),
+                      primaryColor.withValues(alpha: 0.5),
+                      primaryColor.withValues(alpha: 0.2),
                     ],
                   ),
                 ),
@@ -685,89 +656,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCertificationsSection() {
-    return CustomCard(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Certifications', style: AppTypography.headlineSmall()),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _buildCertificationBadge('✓ Organic', Colors.green),
-                _buildCertificationBadge('✓ Grade A', Colors.blue),
-                _buildCertificationBadge('✓ Halal', Colors.purple),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCertificationBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.bodyMedium(
-          color: color,
-        ).copyWith(fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
-  Widget _buildActionsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          CustomButton(
-            label: 'Transfer Product',
-            onPressed: () {
-              // Navigate to transfer screen
-            },
-            variant: ButtonVariant.primary,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: CustomButton(
-                  label: 'Edit Details',
-                  onPressed: () {
-                    // Navigate to edit screen
-                  },
-                  variant: ButtonVariant.secondary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: CustomButton(
-                  label: 'View Stock',
-                  onPressed: () {
-                    // Navigate to stock screen
-                  },
-                  variant: ButtonVariant.secondary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -803,7 +691,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             Icon(
               Icons.error_outline,
               size: 80,
-              color: Colors.red.withOpacity(0.5),
+              color: Colors.red.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(

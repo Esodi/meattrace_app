@@ -50,9 +50,11 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
       setState(() => _processingUnits = units);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading processing units: $e')),
         );
+        }
       }
     } finally {
       setState(() => _isLoading = false);
@@ -89,9 +91,11 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
 
   Future<void> _submitOrder() async {
     if (_cart.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add items to your order')),
       );
+      }
       return;
     }
 
@@ -126,12 +130,14 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
       await dio.post('/orders/', data: orderData);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Order placed successfully!'),
             backgroundColor: Colors.green,
           ),
         );
+        }
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -209,17 +215,21 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                 currentStep: _currentStep,
                 onStepContinue: () {
                   if (_currentStep == 0 && _selectedUnit == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Please select a supplier')),
                     );
+                    }
                     return;
                   }
                   if (_currentStep == 1 && _cart.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Please add items to your order'),
                       ),
                     );
+                    }
                     return;
                   }
                   if (_currentStep < 2) {
@@ -652,9 +662,9 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.shopPrimary.withOpacity(0.1),
+            color: AppColors.shopPrimary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.shopPrimary.withOpacity(0.3)),
+            border: Border.all(color: AppColors.shopPrimary.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

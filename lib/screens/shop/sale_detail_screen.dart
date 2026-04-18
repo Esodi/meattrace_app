@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../models/sale.dart';
+import '../../models/shop.dart';
 import '../../services/sale_service.dart';
+import '../../services/shop_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../widgets/core/custom_card.dart';
 import '../../widgets/core/custom_button.dart';
+import '../../widgets/printer/receipt_printer.dart';
 
 /// Sale Detail Screen
 /// Displays receipt-like view of a single sale transaction
@@ -23,8 +29,10 @@ class SaleDetailScreen extends StatefulWidget {
 
 class _SaleDetailScreenState extends State<SaleDetailScreen> {
   final SaleService _saleService = SaleService();
+  final ShopService _shopService = ShopService();
 
   Sale? _sale;
+  Shop? _shop;
   bool _isLoading = true;
   String? _error;
 
@@ -35,10 +43,10 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSale();
+    _loadData();
   }
 
-  Future<void> _loadSale() async {
+  Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -46,16 +54,55 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
 
     try {
       final sale = await _saleService.getSale(widget.saleId);
-      setState(() {
-        _sale = sale;
-        _isLoading = false;
-      });
+
+      // Try to load shop info
+      Shop? shop;
+      try {
+        shop = await _shopService.getShop(sale.shop);
+      } catch (e) {
+        // Ignored, we'll just fall back to "NYAMA TAMU"
+      }
+
+      if (mounted) {
+        setState(() {
+          _sale = sale;
+          _shop = shop;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> _shareReceipt() async {
+    if (_sale == null) return;
+
+    final sale = _sale!;
+    final shopName = _shop?.name ?? 'Nyama Tamu Shop';
+
+    String shareText = 'Receipt from $shopName\n';
+    if (sale.receiptUuid != null) {
+      shareText += 'Receipt No: ${sale.receiptUuid}\n';
+    } else {
+      shareText += 'Sale ID: ${sale.id}\n';
+    }
+
+    shareText += 'Total: TZS ${_currencyFormat.format(sale.totalAmount)}\n';
+    shareText += 'Date: ${_dateFormat.format(sale.createdAt)}\n\n';
+
+    if (sale.publicReceiptUrl != null) {
+      final baseUrl = Constants.baseUrl.replaceAll('/api/v2', '');
+      final url = '$baseUrl${sale.publicReceiptUrl}';
+      shareText += 'View your digital receipt here:\n$url';
+    }
+
+    await Share.share(shareText, subject: 'Receipt #$sale.id');
   }
 
   String _formatPaymentMethod(String method) {
@@ -92,21 +139,16 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
         title: Text('Sale Details', style: AppTypography.headlineMedium()),
         actions: [
           if (_sale != null)
             IconButton(
-              icon: Icon(Icons.share, color: AppColors.shopPrimary),
+              icon: const Icon(Icons.share, color: AppColors.shopPrimary),
               tooltip: 'Share Receipt',
-              onPressed: () {
-                // TODO: Implement share functionality
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Share feature coming soon')),
-                );
-              },
+              onPressed: _shareReceipt,
             ),
         ],
       ),
@@ -128,7 +170,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              const Icon(Icons.error_outline, size: 64, color: AppColors.error),
               const SizedBox(height: AppTheme.space16),
               Text(
                 'Failed to load sale',
@@ -143,7 +185,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppTheme.space24),
-              CustomButton(label: 'Retry', onPressed: _loadSale),
+              CustomButton(label: 'Retry', onPressed: _loadData),
             ],
           ),
         ),
@@ -155,7 +197,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadSale,
+      onRefresh: _loadData,
       color: AppColors.shopPrimary,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppTheme.space16),
@@ -168,12 +210,15 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
             const SizedBox(height: AppTheme.space16),
 
             // QR Code Card
-            if (_sale!.receiptUuid != null) _buildQRCodeCard(),
+            if (_sale!.publicReceiptUrl != null) _buildQRCodeCard(),
 
             const SizedBox(height: AppTheme.space16),
 
             // Actions
             _buildActionsCard(),
+
+            // Add padding to bottom
+            const SizedBox(height: AppTheme.space32),
           ],
         ),
       ),
@@ -198,25 +243,37 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
             ),
             child: Column(
               children: [
-                Icon(
+                const Icon(
                   Icons.receipt_long,
                   size: 48,
                   color: AppColors.shopPrimary,
                 ),
                 const SizedBox(height: AppTheme.space8),
                 Text(
-                  'SALE RECEIPT',
+                  _shop?.name.toUpperCase() ?? 'NYAMA TAMU',
                   style: AppTypography.headlineMedium().copyWith(
                     letterSpacing: 2,
                     color: AppColors.shopPrimary,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                Text(
-                  '#${sale.id}',
-                  style: AppTypography.titleLarge().copyWith(
-                    color: AppColors.textSecondary,
+                if (sale.receiptUuid != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      'Receipt #${sale.receiptUuid!.substring(0, 8)}',
+                      style: AppTypography.titleMedium().copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    'Order #${sale.id}',
+                    style: AppTypography.titleMedium().copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -237,9 +294,14 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                   'Time',
                   _timeFormat.format(sale.createdAt),
                 ),
+                _buildInfoRow(
+                  Icons.person_pin,
+                  'Cashier ID',
+                  sale.soldBy.toString(),
+                ),
 
                 const SizedBox(height: AppTheme.space12),
-                Divider(color: AppColors.borderLight),
+                const Divider(color: AppColors.borderLight),
                 const SizedBox(height: AppTheme.space12),
 
                 // Customer
@@ -258,11 +320,11 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                   if (sale.customerPhone != null)
                     _buildInfoRow(Icons.phone, 'Phone', sale.customerPhone!),
                   const SizedBox(height: AppTheme.space12),
-                  Divider(color: AppColors.borderLight),
+                  const Divider(color: AppColors.borderLight),
                   const SizedBox(height: AppTheme.space12),
                 ],
 
-                // Items
+                // Items (Table Layout)
                 Text(
                   'ITEMS',
                   style: AppTypography.labelMedium().copyWith(
@@ -271,10 +333,52 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: AppTheme.space12),
-                ...sale.items.map((item) => _buildItemRow(item)),
+
+                // Table Header
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        'Item',
+                        style: AppTypography.bodySmall().copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'Qty/Wt',
+                        textAlign: TextAlign.right,
+                        style: AppTypography.bodySmall().copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'Total',
+                        textAlign: TextAlign.right,
+                        style: AppTypography.bodySmall().copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.space8),
+                const Divider(height: 1, color: AppColors.borderLight),
+                const SizedBox(height: AppTheme.space8),
+
+                ...sale.items.map((item) => _buildItemTableRow(item)),
 
                 const SizedBox(height: AppTheme.space12),
-                Divider(color: AppColors.borderLight),
+                const Divider(color: AppColors.borderLight),
                 const SizedBox(height: AppTheme.space12),
 
                 // Total
@@ -288,7 +392,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                       ),
                     ),
                     Text(
-                      'TZS ${_currencyFormat.format(sale.totalAmount.round())}',
+                      'TZS ${_currencyFormat.format(sale.totalAmount)}',
                       style: AppTypography.headlineMedium().copyWith(
                         color: AppColors.shopPrimary,
                         fontWeight: FontWeight.bold,
@@ -323,7 +427,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: AppTheme.space8),
-                      Icon(
+                      const Icon(
                         Icons.check_circle,
                         color: AppColors.success,
                         size: 20,
@@ -365,111 +469,97 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
     );
   }
 
-  Widget _buildItemRow(SaleItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppTheme.space12),
-      padding: const EdgeInsets.all(AppTheme.space12),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundLight,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-      ),
+  Widget _buildItemTableRow(SaleItem item) {
+    final qtyStr = item.weight > 0
+        ? '${item.weight.toStringAsFixed(1)}${item.weightUnit}'
+        : item.quantity.toStringAsFixed(0);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.productName ?? 'Product #${item.product}',
-                      style: AppTypography.titleMedium(),
-                    ),
-                    if (item.batchNumber != null)
-                      Text(
-                        'Batch: ${item.batchNumber}',
-                        style: AppTypography.bodySmall().copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                  ],
+                flex: 4,
+                child: Text(
+                  item.productName ?? 'Product #${item.product}',
+                  style: AppTypography.bodyMedium().copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              Text(
-                'TZS ${_currencyFormat.format(item.subtotal.round())}',
-                style: AppTypography.titleMedium().copyWith(
-                  color: AppColors.shopPrimary,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                flex: 2,
+                child: Text(
+                  qtyStr,
+                  textAlign: TextAlign.right,
+                  style: AppTypography.bodyMedium(),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  _currencyFormat.format(item.subtotal),
+                  textAlign: TextAlign.right,
+                  style: AppTypography.bodyMedium().copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space8),
-          Row(
-            children: [
-              _buildItemDetail(
-                'Weight',
-                '${item.weight.toStringAsFixed(2)} ${item.weightUnit}',
+          if (item.batchNumber != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                'Batch: ${item.batchNumber}',
+                style: AppTypography.caption().copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
-              const SizedBox(width: AppTheme.space16),
-              _buildItemDetail(
-                'Price',
-                'TZS ${_currencyFormat.format(item.unitPrice.round())}',
-              ),
-            ],
-          ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildItemDetail(String label, String value) {
-    return Row(
-      children: [
-        Text(
-          '$label: ',
-          style: AppTypography.bodySmall().copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        Text(
-          value,
-          style: AppTypography.bodySmall().copyWith(
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildItemQr(SaleItem item) {
+    final url = '${Constants.baseUrl}/product-info/view/${item.product}/';
+    final label = item.productName ?? 'Product #${item.product}';
 
-  Widget _buildQRCodeCard() {
-    final sale = _sale!;
-
-    return CustomCard(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.space16),
       child: Column(
         children: [
-          Text('Digital Receipt', style: AppTypography.titleMedium()),
-          const SizedBox(height: AppTheme.space4),
           Text(
-            'Scan to view receipt details',
-            style: AppTypography.bodySmall().copyWith(
-              color: AppColors.textSecondary,
+            label,
+            textAlign: TextAlign.center,
+            style: AppTypography.bodyMedium().copyWith(
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: AppTheme.space16),
+          if (item.batchNumber != null)
+            Text(
+              'Batch: ${item.batchNumber}',
+              style: AppTypography.caption().copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          const SizedBox(height: AppTheme.space8),
           Container(
-            padding: const EdgeInsets.all(AppTheme.space16),
+            padding: const EdgeInsets.all(AppTheme.space12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
               border: Border.all(color: AppColors.borderLight),
             ),
             child: QrImageView(
-              data: sale.receiptUuid ?? 'sale-${sale.id}',
+              data: url,
               version: QrVersions.auto,
-              size: 180,
+              size: 160,
               backgroundColor: Colors.white,
               eyeStyle: const QrEyeStyle(
                 eyeShape: QrEyeShape.square,
@@ -481,14 +571,84 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
               ),
             ),
           ),
-          const SizedBox(height: AppTheme.space12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQRCodeCard() {
+    final sale = _sale!;
+
+    return CustomCard(
+      child: Column(
+        children: [
+          Text('Trace Each Item', style: AppTypography.titleMedium()),
+          const SizedBox(height: AppTheme.space4),
           Text(
-            'Receipt ID: ${sale.receiptUuid?.substring(0, 8) ?? sale.id}...',
-            style: AppTypography.labelSmall().copyWith(
+            'Scan an item\'s QR to view its traceability — same code the processor printed.',
+            textAlign: TextAlign.center,
+            style: AppTypography.bodySmall().copyWith(
               color: AppColors.textSecondary,
-              fontFamily: 'monospace',
             ),
           ),
+          const SizedBox(height: AppTheme.space16),
+          ...sale.items.map(_buildItemQr),
+          const SizedBox(height: AppTheme.space16),
+          if (sale.receiptUuid != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.space12,
+                vertical: AppTheme.space8,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundGray,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Receipt ID:',
+                          style: AppTypography.caption().copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          sale.receiptUuid!,
+                          style: AppTypography.labelSmall().copyWith(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.copy,
+                      size: 20,
+                      color: AppColors.shopPrimary,
+                    ),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: sale.receiptUuid!));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Receipt ID copied to clipboard'),
+                        ),
+                      );
+                      }
+                    },
+                    tooltip: 'Copy ID',
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -499,20 +659,28 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
       child: Column(
         children: [
           CustomButton(
-            label: 'Print Receipt',
+            label: 'Print Thermal Receipt',
             icon: Icons.print,
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Print feature coming soon')),
-              );
-            },
+            onPressed: () => ReceiptPrinter.printSaleReceipt(
+              context,
+              _sale!,
+              shopName: _shop?.name,
+            ),
+            fullWidth: true,
+          ),
+          const SizedBox(height: AppTheme.space12),
+          CustomButton(
+            label: 'Share Digital Receipt',
+            icon: Icons.share,
+            variant: ButtonVariant.secondary,
+            onPressed: _shareReceipt,
             fullWidth: true,
           ),
           const SizedBox(height: AppTheme.space12),
           CustomButton(
             label: 'View Product Tracking',
             icon: Icons.timeline,
-            variant: ButtonVariant.secondary,
+            variant: ButtonVariant.outlined,
             onPressed: () {
               if (_sale != null && _sale!.items.isNotEmpty) {
                 final firstItem = _sale!.items.first;

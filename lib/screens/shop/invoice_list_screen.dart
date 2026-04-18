@@ -228,7 +228,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -275,7 +275,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -348,7 +348,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
                             Text(
                               'Balance Due',
                               style: AppTypography.labelSmall().copyWith(
-                                color: AppColors.error.withOpacity(0.7),
+                                color: AppColors.error.withValues(alpha: 0.7),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -363,7 +363,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
                         ),
                       const SizedBox(width: 8),
                       Material(
-                        color: AppColors.shopPrimary.withOpacity(0.1),
+                        color: AppColors.shopPrimary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
@@ -405,17 +405,19 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
       await file.writeAsBytes(pdfBytes);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
+        if (context.mounted) ScaffoldMessenger.of(context).clearSnackBars();
         await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('PDF error: ${e.toString()}'),
             backgroundColor: AppColors.error,
           ),
         );
+        }
       }
     }
   }

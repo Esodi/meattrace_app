@@ -57,12 +57,14 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     try {
       final opened = await openAppSettings();
       if (!opened && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please enable Bluetooth from your system settings')),
         );
+        }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open settings: $e')));
+      if (mounted) if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open settings: $e')));
     }
   }
 
@@ -77,9 +79,11 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       final granted = await _printingService.requestPermissions();
       if (!granted) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Bluetooth permissions are required to scan for printers')),
           );
+          }
         }
         setState(() => _isScanning = false);
         return;
@@ -93,9 +97,11 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to scan for printers: $e')),
         );
+        }
       }
     } finally {
       if (mounted) setState(() => _isScanning = false);
@@ -109,16 +115,20 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         setState(() => _connectedDevice = device);
         if (mounted) {
             final displayName = device.platformName.isNotEmpty ? device.platformName : device.remoteId.toString();
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Connected to $displayName'), backgroundColor: AppColors.success),
           );
+          }
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to connect: $e')),
         );
+        }
       }
     }
   }
@@ -131,15 +141,19 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       : (_connectedDevice?.remoteId.toString() ?? 'device');
       setState(() => _connectedDevice = null);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Disconnected from $deviceName'), backgroundColor: AppColors.warning),
         );
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to disconnect: $e')),
         );
+        }
       }
     }
   }
@@ -339,7 +353,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   onPressed: () async {
                     if (_connectedDevice != null) {
                       await _printingService.saveSelectedPrinter(_connectedDevice!);
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved as default printer')));
+                      if (mounted) if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved as default printer')));
                     }
                   },
                   icon: Icons.star,
@@ -352,7 +366,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   variant: ButtonVariant.secondary,
                   onPressed: () async {
                     await _printingService.clearSavedPrinter();
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cleared default printer')));
+                    if (mounted) if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cleared default printer')));
                   },
                   icon: Icons.clear,
                 ),
@@ -573,23 +587,27 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
 
   Future<void> _printLabel(PrintTemplate template, int copies) async {
     // TODO: Implement actual printing
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Printing $copies ${template.name} label(s)...'),
         backgroundColor: AppColors.info,
       ),
     );
+    }
 
     // Simulate printing
     await Future.delayed(const Duration(seconds: 2));
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Print completed successfully'),
           backgroundColor: AppColors.success,
         ),
       );
+      }
     }
   }
 }

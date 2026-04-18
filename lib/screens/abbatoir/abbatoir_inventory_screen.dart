@@ -178,7 +178,7 @@ class _AbbatoirInventoryScreenState extends State<AbbatoirInventoryScreen>
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor: AppColors.abbatoirPrimary.withOpacity(0.1),
+              backgroundColor: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
               child: Icon(Icons.pets, color: AppColors.abbatoirPrimary),
             ),
             const SizedBox(width: 16),
@@ -246,7 +246,7 @@ class _AbbatoirInventoryScreenState extends State<AbbatoirInventoryScreen>
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor: Colors.orange.withOpacity(0.1),
+              backgroundColor: Colors.orange.withValues(alpha: 0.1),
               child: const Icon(Icons.restaurant, color: Colors.orange),
             ),
             const SizedBox(width: 16),

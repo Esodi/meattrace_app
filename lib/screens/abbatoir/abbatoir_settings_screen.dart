@@ -62,7 +62,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
                 color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
                 borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
                 border: isDark
-                    ? Border.all(color: Colors.white.withOpacity(0.1))
+                    ? Border.all(color: Colors.white.withValues(alpha: 0.1))
                     : null,
                 boxShadow: isDark
                     ? null
@@ -119,7 +119,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
                           user?.email ?? 'abbatoir@meattrace.com',
                           style: AppTypography.bodySmall().copyWith(
                             color: isDark
-                                ? Colors.white.withOpacity(0.7)
+                                ? Colors.white.withValues(alpha: 0.7)
                                 : AppColors.textSecondary,
                           ),
                         ),
@@ -130,11 +130,13 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
                     icon: const Icon(Icons.edit_outlined),
                     color: AppColors.abbatoirPrimary,
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Edit profile coming soon!'),
                         ),
                       );
+                      }
                     },
                   ),
                 ],
@@ -156,9 +158,11 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
               title: 'Change Password',
               subtitle: 'Update your account password',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Change password coming soon!')),
                 );
+                }
               },
               isDark: isDark,
             ),
@@ -167,11 +171,13 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
               title: 'Privacy & Security',
               subtitle: 'Manage your privacy settings',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Privacy settings coming soon!'),
                   ),
                 );
+                }
               },
               isDark: isDark,
             ),
@@ -259,11 +265,13 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
               title: 'Language',
               subtitle: 'English (US)',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Language settings coming soon!'),
                   ),
                 );
+                }
               },
               isDark: isDark,
             ),
@@ -282,11 +290,13 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
               title: 'Terms & Conditions',
               subtitle: 'Read our terms and conditions',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Terms & Conditions coming soon!'),
                   ),
                 );
+                }
               },
               isDark: isDark,
             ),
@@ -295,9 +305,11 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
               title: 'Privacy Policy',
               subtitle: 'Read our privacy policy',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Privacy Policy coming soon!')),
                 );
+                }
               },
               isDark: isDark,
             ),
@@ -306,9 +318,11 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
               title: 'Help & Support',
               subtitle: 'Get help with MeatTrace',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Help & Support coming soon!')),
                 );
+                }
               },
               isDark: isDark,
             ),
@@ -398,7 +412,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
         color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: isDark
-            ? Border.all(color: Colors.white.withOpacity(0.1))
+            ? Border.all(color: Colors.white.withValues(alpha: 0.1))
             : null,
         boxShadow: isDark
             ? null
@@ -430,14 +444,14 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
           subtitle,
           style: AppTypography.bodySmall().copyWith(
             color: isDark
-                ? Colors.white.withOpacity(0.7)
+                ? Colors.white.withValues(alpha: 0.7)
                 : AppColors.textSecondary,
           ),
         ),
         trailing: Icon(
           Icons.chevron_right,
           color: isDark
-              ? Colors.white.withOpacity(0.7)
+              ? Colors.white.withValues(alpha: 0.7)
               : AppColors.textSecondary,
         ),
         onTap: onTap,
@@ -462,7 +476,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
         color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: isDark
-            ? Border.all(color: Colors.white.withOpacity(0.1))
+            ? Border.all(color: Colors.white.withValues(alpha: 0.1))
             : null,
         boxShadow: isDark
             ? null
@@ -494,7 +508,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
           subtitle,
           style: AppTypography.bodySmall().copyWith(
             color: isDark
-                ? Colors.white.withOpacity(0.7)
+                ? Colors.white.withValues(alpha: 0.7)
                 : AppColors.textSecondary,
           ),
         ),
@@ -527,7 +541,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
                     'Adjust the text size for better readability',
                     style: AppTypography.bodyMedium().copyWith(
                       color: isDark
-                          ? Colors.white.withOpacity(0.7)
+                          ? Colors.white.withValues(alpha: 0.7)
                           : AppColors.textSecondary,
                     ),
                   ),
@@ -692,7 +706,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
           'Are you sure you want to logout?',
           style: TextStyle(
             color: isDark
-                ? Colors.white.withOpacity(0.7)
+                ? Colors.white.withValues(alpha: 0.7)
                 : AppColors.textSecondary,
           ),
         ),
@@ -703,7 +717,7 @@ class _AbbatoirSettingsScreenState extends State<AbbatoirSettingsScreen> {
               'Cancel',
               style: TextStyle(
                 color: isDark
-                    ? Colors.white.withOpacity(0.7)
+                    ? Colors.white.withValues(alpha: 0.7)
                     : AppColors.textSecondary,
               ),
             ),

@@ -101,11 +101,10 @@ class AnimalProvider with ChangeNotifier {
     String? search,
     int? page,
   }) async {
-    Future.microtask(() {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-    });
+    await Future.microtask(() {});
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
     try {
       _animals = await _animalRepository.getAnimals(
@@ -123,16 +122,14 @@ class AnimalProvider with ChangeNotifier {
   }
 
   Future<void> fetchAnimalById(int id) async {
-    Future.microtask(() {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-    });
+    await Future.microtask(() {});
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
     try {
       final animal = await _animalRepository.getAnimal(id);
       if (animal == null) return;
-      // Update local list
       final index = _animals.indexWhere((a) => a.id == id);
       if (index != -1) {
         _animals[index] = animal;

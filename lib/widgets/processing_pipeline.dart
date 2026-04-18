@@ -256,7 +256,7 @@ class _ProcessingPipelineState extends State<ProcessingPipeline>
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -357,10 +357,10 @@ class _ProcessingPipelineState extends State<ProcessingPipeline>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: stage.getColor(widget.config).withOpacity(0.1),
+            color: stage.getColor(widget.config).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: stage.getColor(widget.config).withOpacity(0.3),
+              color: stage.getColor(widget.config).withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -419,7 +419,7 @@ class _ProcessingPipelineState extends State<ProcessingPipeline>
                     value: stage.progress,
                     backgroundColor: stage
                         .getColor(widget.config)
-                        .withOpacity(0.2),
+                        .withValues(alpha: 0.2),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       stage.getColor(widget.config),
                     ),
@@ -435,7 +435,7 @@ class _ProcessingPipelineState extends State<ProcessingPipeline>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: widget.config.errorColor.withOpacity(0.1),
+                    color: widget.config.errorColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
@@ -499,9 +499,9 @@ class _ProcessingPipelineState extends State<ProcessingPipeline>
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: widget.config.errorColor.withOpacity(0.1),
+        color: widget.config.errorColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: widget.config.errorColor.withOpacity(0.3)),
+        border: Border.all(color: widget.config.errorColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

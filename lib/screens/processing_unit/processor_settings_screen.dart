@@ -259,12 +259,14 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
                         '/processing-unit/users?unitId=$processingUnitId',
                       );
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Processing unit not found'),
                           backgroundColor: AppColors.error,
                         ),
                       );
+                      }
                     }
                   },
                   themeProvider: themeProvider,
@@ -282,9 +284,11 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               icon: Icons.backup,
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Backup feature coming soon')),
                 );
+                }
               },
               themeProvider: themeProvider,
             ),
@@ -319,9 +323,11 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               icon: Icons.bug_report,
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Feedback form coming soon')),
                 );
+                }
               },
               themeProvider: themeProvider,
             ),
@@ -368,7 +374,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         title,
         style: AppTypography.labelLarge().copyWith(
           color: themeProvider.isDarkMode
-              ? Colors.white.withOpacity(0.7)
+              ? Colors.white.withValues(alpha: 0.7)
               : AppColors.textSecondary,
           fontWeight: FontWeight.w600,
         ),
@@ -388,7 +394,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
             : Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: themeProvider.isDarkMode
-            ? Border.all(color: Colors.white.withOpacity(0.1))
+            ? Border.all(color: Colors.white.withValues(alpha: 0.1))
             : null,
         boxShadow: themeProvider.isDarkMode
             ? null
@@ -434,7 +440,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         subtitle,
         style: AppTypography.bodyMedium().copyWith(
           color: themeProvider.isDarkMode
-              ? Colors.white.withOpacity(0.7)
+              ? Colors.white.withValues(alpha: 0.7)
               : AppColors.textSecondary,
         ),
       ),
@@ -488,7 +494,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
         subtitle,
         style: AppTypography.bodyMedium().copyWith(
           color: themeProvider.isDarkMode
-              ? Colors.white.withOpacity(0.7)
+              ? Colors.white.withValues(alpha: 0.7)
               : AppColors.textSecondary,
         ),
       ),
@@ -666,7 +672,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               'Adjust the text size for better readability',
               style: AppTypography.bodyMedium().copyWith(
                 color: isDark
-                    ? Colors.white.withOpacity(0.7)
+                    ? Colors.white.withValues(alpha: 0.7)
                     : AppColors.textSecondary,
               ),
             ),
@@ -742,7 +748,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
           'Are you sure you want to logout?',
           style: TextStyle(
             color: isDark
-                ? Colors.white.withOpacity(0.7)
+                ? Colors.white.withValues(alpha: 0.7)
                 : AppColors.textSecondary,
           ),
         ),
@@ -753,7 +759,7 @@ class _ProcessorSettingsScreenState extends State<ProcessorSettingsScreen> {
               'Cancel',
               style: TextStyle(
                 color: isDark
-                    ? Colors.white.withOpacity(0.7)
+                    ? Colors.white.withValues(alpha: 0.7)
                     : AppColors.textSecondary,
               ),
             ),

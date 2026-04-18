@@ -62,7 +62,7 @@ class SystemNavigationHandler {
             preservedState: preservedState,
           );
           if (shouldPop) {
-            if (context.mounted) Navigator.of(context).pop();
+            if (context.mounted) if (context.mounted) Navigator.of(context).pop();
           }
         }
       },

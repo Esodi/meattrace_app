@@ -38,7 +38,6 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
 
   // Tag ID editing state
   bool _isTagIdEditable = false;
-  final bool _isCheckingTagId = false;
 
   // Form state
   String? _selectedSpecies;
@@ -49,7 +48,6 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   File? _selectedImage;
   bool _isLoading = false;
   bool _isLoadingAnimal = true;
-  final bool _useManualWeightInput = false;
 
   // Animal Data
   Animal? _animal;
@@ -71,7 +69,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   @override
   void initState() {
     super.initState();
-    print(
+    debugPrint(
       '🔵 [EditAnimalScreen] initState called for animalId: ${widget.animalId}',
     );
     _loadAnimal();
@@ -89,7 +87,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   }
 
   Future<void> _loadAnimal() async {
-    print(
+    debugPrint(
       '📋 [EditAnimalScreen] _loadAnimal - START for animalId: ${widget.animalId}',
     );
     setState(() => _isLoadingAnimal = true);
@@ -107,9 +105,9 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         _animal = animal;
         _populateFormFields(animal);
       });
-      print('✅ Animal loaded successfully: ${animal.animalId}');
+      debugPrint('✅ Animal loaded successfully: ${animal.animalId}');
     } catch (e) {
-      print('❌ Error loading animal: $e');
+      debugPrint('❌ Error loading animal: $e');
       _showErrorSnackbar('Failed to load animal: $e');
       if (mounted) context.pop();
     } finally {
@@ -150,13 +148,15 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         _isScaleConnected = true;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Scale connected successfully'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
       );
+      }
     }
   }
 
@@ -166,27 +166,29 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       return;
     }
 
-    print('👆 [EditScreen] Reading weight from scale...');
+    debugPrint('👆 [EditScreen] Reading weight from scale...');
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Reading from scale... Please ensure weight is stable.'),
         duration: Duration(seconds: 10),
       ),
     );
+    }
 
     bool gotWeight = false;
 
     try {
-      print('👆 [EditScreen] Attempting manual read...');
+      debugPrint('👆 [EditScreen] Attempting manual read...');
       await _scaleService.readWeight();
     } catch (e) {
-      print('⚠️ [EditScreen] Manual read failed: $e');
+      debugPrint('⚠️ [EditScreen] Manual read failed: $e');
     }
 
     StreamSubscription? singleRead;
     singleRead = _scaleService.weightStream.listen((weight) {
-      print('✅ [EditScreen] Received weight: $weight kg');
+      debugPrint('✅ [EditScreen] Received weight: $weight kg');
       if (!gotWeight) {
         gotWeight = true;
         setState(() {
@@ -195,23 +197,26 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         });
         singleRead?.cancel();
 
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Weight: ${weight.toStringAsFixed(2)} kg'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
         );
+        }
       }
     });
 
     Future.delayed(const Duration(seconds: 10), () {
       if (!gotWeight) {
-        print('⏱️ [EditScreen] Timeout waiting for weight');
+        debugPrint('⏱️ [EditScreen] Timeout waiting for weight');
         singleRead?.cancel();
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
               'No weight received. Ensure weight is on scale and stable.',
@@ -220,24 +225,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
             duration: Duration(seconds: 3),
           ),
         );
-      }
-    });
-  }
-
-  void _updateWeightFromText(String value) {
-    final weight = double.tryParse(value);
-    if (weight != null && weight >= 0 && weight <= 1000) {
-      setState(() {
-        _weightValue = weight;
-      });
-    }
-  }
-
-  void _updateWeightFromSlider(double value) {
-    setState(() {
-      _weightValue = value;
-      if (!_useManualWeightInput) {
-        _weightController.text = value.toStringAsFixed(1);
+        }
       }
     });
   }
@@ -384,40 +372,40 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   }
 
   Future<void> _updateAnimal() async {
-    print(
+    debugPrint(
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     );
-    print('🐄 UPDATE_ANIMAL - START');
-    print(
+    debugPrint('🐄 UPDATE_ANIMAL - START');
+    debugPrint(
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
     );
 
     if (!_formKey.currentState!.validate()) {
-      print('❌ Form validation failed');
+      debugPrint('❌ Form validation failed');
       return;
     }
 
     if (_selectedSpecies == null) {
-      print('❌ No species selected');
+      debugPrint('❌ No species selected');
       _showErrorSnackbar('Please select a species');
       return;
     }
 
     if (_animal == null) {
-      print('❌ No animal data available');
+      debugPrint('❌ No animal data available');
       _showErrorSnackbar('Animal data not available');
       return;
     }
 
-    print('✅ Form validated successfully');
-    print('📋 Updated Animal Details:');
-    print('   - Species: $_selectedSpecies');
-    print('   - Tag ID: ${_tagIdController.text}');
-    print('   - Breed: ${_breedController.text}');
-    print('   - Weight: $_weightValue kg');
-    print('   - Gender: $_selectedGender');
-    print('   - Health Status: $_selectedHealthStatus');
-    print('   - Has Photo: ${_selectedImage != null}');
+    debugPrint('✅ Form validated successfully');
+    debugPrint('📋 Updated Animal Details:');
+    debugPrint('   - Species: $_selectedSpecies');
+    debugPrint('   - Tag ID: ${_tagIdController.text}');
+    debugPrint('   - Breed: ${_breedController.text}');
+    debugPrint('   - Weight: $_weightValue kg');
+    debugPrint('   - Gender: $_selectedGender');
+    debugPrint('   - Health Status: $_selectedHealthStatus');
+    debugPrint('   - Has Photo: ${_selectedImage != null}');
 
     setState(() => _isLoading = true);
 
@@ -430,10 +418,10 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           .round();
       final finalAge = ageInMonths < 1 ? 1.0 : ageInMonths.toDouble();
 
-      print('📅 Age calculation:');
-      print('   - Birth date: $_selectedDate');
-      print('   - Current date: $now');
-      print('   - Age in months: $finalAge');
+      debugPrint('📅 Age calculation:');
+      debugPrint('   - Birth date: $_selectedDate');
+      debugPrint('   - Current date: $now');
+      debugPrint('   - Age in months: $finalAge');
 
       // Create updated animal object
       final updatedAnimal = Animal(
@@ -467,51 +455,49 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         }
       }
 
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('📡 Calling animalService.updateAnimal()...');
-      print(
+      debugPrint('📡 Calling animalService.updateAnimal()...');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
       final animalService = AnimalService();
-      final updatedAnimalFromServer = await animalService.updateAnimal(
-        updatedAnimal,
-      );
+      await animalService.updateAnimal(updatedAnimal);
 
-      print('✅ Animal updated successfully');
+      debugPrint('✅ Animal updated successfully');
       _showSuccessSnackbar('Animal updated successfully!');
 
       // Refresh the animal list
       await animalProvider.fetchAnimals(slaughtered: null);
 
-      print('⏳ Waiting 500ms for snackbar visibility...');
+      debugPrint('⏳ Waiting 500ms for snackbar visibility...');
       await Future.delayed(const Duration(milliseconds: 500));
 
-      print('🔙 Navigating back to previous screen');
+      debugPrint('🔙 Navigating back to previous screen');
       if (mounted) {
         context.pop();
       }
 
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('🏁 UPDATE_ANIMAL - COMPLETE');
-      print(
+      debugPrint('🏁 UPDATE_ANIMAL - COMPLETE');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
     } catch (e) {
-      print(
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('❌ UPDATE_ANIMAL - ERROR');
-      print(
+      debugPrint('❌ UPDATE_ANIMAL - ERROR');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
-      print('❌ Error: $e');
-      print('❌ Error type: ${e.runtimeType}');
-      print(
+      debugPrint('❌ Error: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
+      debugPrint(
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       );
 
@@ -521,13 +507,14 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
-        print('🔄 Loading state set to false');
+        debugPrint('🔄 Loading state set to false');
       }
     }
   }
 
   void _showSuccessSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -542,10 +529,12 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         duration: const Duration(seconds: 4),
       ),
     );
+    }
   }
 
   void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -560,11 +549,12 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         duration: const Duration(seconds: 4),
       ),
     );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    print(
+    debugPrint(
       '🔵 [EditAnimalScreen] build() called - isLoadingAnimal: $_isLoadingAnimal, isLoading: $_isLoading',
     );
     return Scaffold(
@@ -597,11 +587,11 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
               style: AppTypography.labelLarge(color: Colors.white),
             ),
             onPressed: () {
-              print(
+              debugPrint(
                 '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
               );
-              print('🔘 APPBAR SAVE BUTTON PRESSED');
-              print(
+              debugPrint('🔘 APPBAR SAVE BUTTON PRESSED');
+              debugPrint(
                 '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
               );
               _updateAnimal();
@@ -763,8 +753,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           const SizedBox(height: 16),
 
           // Tag ID with Edit functionality
-          Container(
-            child: Column(
+          Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -835,7 +824,6 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
                   ),
               ],
             ),
-          ),
           const SizedBox(height: 16),
 
           // Species Dropdown
@@ -1141,7 +1129,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.abbatoirPrimary.withOpacity(0.1)
+              ? AppColors.abbatoirPrimary.withValues(alpha: 0.1)
               : AppColors.backgroundGray,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
@@ -1188,7 +1176,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : AppColors.backgroundGray,
+          color: isSelected ? color.withValues(alpha: 0.1) : AppColors.backgroundGray,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? color : AppColors.divider,
@@ -1219,21 +1207,23 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   }
 
   Widget _buildUpdateButton() {
-    print('🔵 [UpdateButton] Building button - isLoading: $_isLoading');
+    debugPrint('🔵 [UpdateButton] Building button - isLoading: $_isLoading');
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: (_isLoading || _isLoadingAnimal)
             ? null
             : () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('👆 Update button tapped')),
                 );
-                print(
+                }
+                debugPrint(
                   '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                 );
-                print('🔘 UPDATE BUTTON PRESSED');
-                print(
+                debugPrint('🔘 UPDATE BUTTON PRESSED');
+                debugPrint(
                   '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
                 );
                 _updateAnimal();

@@ -8,6 +8,7 @@ import '../../utils/app_theme.dart';
 enum ButtonVariant {
   primary, // Filled button with primary color
   secondary, // Outlined button
+  outlined, // Another name for outlined button
   text, // Text button
   icon, // Icon button
   fab, // Floating action button
@@ -177,6 +178,7 @@ class CustomButton extends StatelessWidget {
         break;
 
       case ButtonVariant.secondary:
+      case ButtonVariant.outlined:
         button = OutlinedButton(
           onPressed: isDisabled ? null : onPressed,
           style: OutlinedButton.styleFrom(
