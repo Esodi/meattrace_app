@@ -110,7 +110,8 @@ class _AbbatoirStockScreenState extends State<AbbatoirStockScreen>
           originType: 'INITIAL_STOCK',
           notes: _notesController.text.trim(),
         );
-        await animalProvider.createAnimal(animal);
+        final result = await animalProvider.createAnimal(animal);
+        if (result == null) throw Exception('Failed to create animal');
       } else if (_tabController.index == 1) {
         // Register Slaughtered Animal
         final animal = Animal(
@@ -133,7 +134,8 @@ class _AbbatoirStockScreenState extends State<AbbatoirStockScreen>
           originType: 'INITIAL_STOCK',
           notes: _notesController.text.trim(),
         );
-        await animalProvider.createAnimal(animal);
+        final result2 = await animalProvider.createAnimal(animal);
+        if (result2 == null) throw Exception('Failed to create animal');
       } else {
         // Register Slaughter Part
         // For slaughter parts as opening stock, we might need a dummy animal or just create the part record
@@ -175,6 +177,8 @@ class _AbbatoirStockScreenState extends State<AbbatoirStockScreen>
       }
 
       if (mounted) {
+        // Refresh provider so home screen shows updated data
+        animalProvider.fetchAnimals(slaughtered: null);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -51,27 +51,29 @@ class AnimalRepository {
   }
 
   Future<Animal> createAnimal(Animal animal, {File? photo}) async {
-    final tempId = animal.id ?? DateTime.now().millisecondsSinceEpoch;
-    final offlineAnimal = animal.copyWith(id: tempId, synced: false);
-
-    // 1. Save locally
-    await _db.insertAnimals([offlineAnimal], synced: false);
-
-    // 2. Queue sync
-    await _db.addToSyncQueue(
-      SyncQueueItem(
-        endpoint: Constants.animalsEndpoint,
-        method: SyncMethod.post,
-        body: offlineAnimal.toMap()..remove('id'),
-        filePaths: photo != null ? {'photo': photo.path} : null,
-        createdAt: DateTime.now(),
-      ),
-    );
-
-    // 3. Trigger sync
-    _syncManager.processQueue();
-
-    return offlineAnimal;
+    try {
+      // Online-first: call API directly so data persists immediately
+      final created = await _animalService.createAnimal(animal, photo: photo);
+      await _db.insertAnimals([created], synced: true);
+      return created;
+    } catch (e) {
+      debugPrint('⚠️ [AnimalRepository] Online create failed, queuing for sync: $e');
+      // Offline fallback: save locally and queue for later sync
+      final tempId = animal.id ?? DateTime.now().millisecondsSinceEpoch;
+      final offlineAnimal = animal.copyWith(id: tempId, synced: false);
+      await _db.insertAnimals([offlineAnimal], synced: false);
+      await _db.addToSyncQueue(
+        SyncQueueItem(
+          endpoint: Constants.animalsEndpoint,
+          method: SyncMethod.post,
+          body: offlineAnimal.toMap()..remove('id'),
+          filePaths: photo != null ? {'photo': photo.path} : null,
+          createdAt: DateTime.now(),
+        ),
+      );
+      _syncManager.processQueue();
+      return offlineAnimal;
+    }
   }
 
   Future<void> slaughterAnimal(int animalId) async {

@@ -180,7 +180,6 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
         // Only fetch activities if provider is available
         if (activityProvider != null) {
           futures.add(activityProvider.fetchActivities());
-          futures.add(apiService.fetchActivities()); // Fetch activity data
         }
 
         await Future.wait(futures);
@@ -672,6 +671,7 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
   }
 
   Widget _buildWelcomeHeader(String username, AnimalProvider animalProvider) {
+    final isLoading = animalProvider.isLoading;
     final totalAnimals = animalProvider.animals.length;
     final activeAnimals = animalProvider.animals
         .where((a) => !a.slaughtered && a.transferredTo == null)
@@ -790,21 +790,21 @@ class _ModernAbbatoirHomeScreenState extends State<ModernAbbatoirHomeScreen>
               children: [
                 _buildModernStatItem(
                   'Total',
-                  totalAnimals.toString(),
+                  isLoading ? '...' : totalAnimals.toString(),
                   Icons.pets_outlined,
                   AppColors.abbatoirPrimary,
                 ),
                 _buildStatDivider(),
                 _buildModernStatItem(
                   'Active',
-                  activeAnimals.toString(),
+                  isLoading ? '...' : activeAnimals.toString(),
                   Icons.eco_outlined,
                   AppColors.success,
                 ),
                 _buildStatDivider(),
                 _buildModernStatItem(
                   'Processed',
-                  processedAnimals.toString(),
+                  isLoading ? '...' : processedAnimals.toString(),
                   Icons.check_circle_outline,
                   AppColors.secondaryBlue,
                 ),

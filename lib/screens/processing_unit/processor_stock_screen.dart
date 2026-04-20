@@ -119,7 +119,8 @@ class _ProcessorStockScreenState extends State<ProcessorStockScreen>
           receivedAt: now,
           transferredTo: unitId,
         );
-        await animalProvider.createAnimal(animal);
+        final result = await animalProvider.createAnimal(animal);
+        if (result == null) throw Exception('Failed to create animal');
       } else if (_tabController.index == 1) {
         // Register Slaughter Part
         final phantomAnimal = Animal(
@@ -196,6 +197,8 @@ class _ProcessorStockScreenState extends State<ProcessorStockScreen>
       }
 
       if (mounted) {
+        // Refresh so home screen shows updated counts
+        animalProvider.fetchAnimals(slaughtered: null);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
