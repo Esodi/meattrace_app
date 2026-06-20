@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -32,8 +33,27 @@ class PendingApprovalScreen extends StatefulWidget {
 
 class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
   String? _confirmationText;
+  Timer? _pollTimer;
 
   bool get isRejected => widget.rejectionReason != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // Poll every 30 s for approval status. GoRouter's refreshListenable on
+    // AuthProvider will redirect automatically once the user is approved.
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      Provider.of<AuthProvider>(context, listen: false)
+          .refreshProfileSilently();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

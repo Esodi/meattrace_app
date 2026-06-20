@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/product.dart';
 import '../../models/animal.dart';
 import '../../services/dio_client.dart';
@@ -214,7 +215,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                   _buildDetailRow('Batch Number', widget.product.batchNumber),
                   _buildDetailRow(
                     'Price',
-                    '\$${widget.product.price.toStringAsFixed(2)} per ${widget.product.weightUnit}',
+                    'TZS ${NumberFormat('#,###').format(widget.product.price)} per ${widget.product.weightUnit}',
                   ),
                   _buildDetailRow(
                     'Quantity',

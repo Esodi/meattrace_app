@@ -256,6 +256,29 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Silent refresh — used on app resume; does not set loading state.
+  Future<void> refreshProfileSilently() async {
+    try {
+      final isLoggedIn = await _authService.isLoggedIn();
+      if (!isLoggedIn) {
+        // Token gone or expired and refresh failed — force logout.
+        _user = null;
+        _userContextProvider.clearCurrentUser();
+        _error = 'Session expired. Please login again.';
+        notifyListeners();
+        return;
+      }
+      final updatedUser = await _authService.getCurrentUser();
+      if (updatedUser != null) {
+        _user = updatedUser;
+        _userContextProvider.setCurrentUser(_user!);
+        notifyListeners();
+      }
+    } catch (_) {
+      // Network unavailable — keep existing session, do nothing.
+    }
+  }
+
   Future<bool> refreshProfile() async {
     _isLoading = true;
     _error = null;

@@ -409,7 +409,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             _buildInfoRow(
               Icons.attach_money,
               'Price',
-              '\$${_product?.price.toStringAsFixed(2) ?? '0.00'}/kg',
+              'TZS ${NumberFormat('#,###').format(_product?.price ?? 0)}/kg',
             ),
             const Divider(height: 24),
             _buildInfoRow(

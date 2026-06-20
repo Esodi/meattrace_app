@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/product_provider.dart';
@@ -185,7 +186,7 @@ class _ProcessorAnalyticsScreenState extends State<ProcessorAnalyticsScreen> {
             ),
             _buildMetricCard(
               'Revenue',
-              '\$${totalRevenue.toStringAsFixed(0)}',
+              'TZS ${NumberFormat('#,###').format(totalRevenue)}',
               Icons.attach_money,
               AppColors.success,
               '+15% vs last $_selectedPeriod',

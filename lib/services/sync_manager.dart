@@ -12,6 +12,7 @@ class SyncManager {
   final DatabaseHelper _db = DatabaseHelper();
   final DioClient _dioClient = DioClient();
 
+  static const int _maxRetries = 5;
   bool _isProcessing = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
@@ -52,12 +53,19 @@ class SyncManager {
       );
 
       for (final item in queue) {
+        // Drop items that have exceeded the retry limit to prevent queue bloat.
+        if (item.retryCount >= _maxRetries) {
+          debugPrint(
+            '🗑️ [SyncManager] Dropping item ${item.id} after $_maxRetries failed attempts.',
+          );
+          await _db.removeFromSyncQueue(item.id!);
+          continue;
+        }
+
         final success = await _syncItem(item);
         if (success) {
           await _db.removeFromSyncQueue(item.id!);
         } else {
-          // If one fails, we might want to stop or continue based on error type
-          // For now, let's update retry count and continue with next if it's not a connection error
           final updatedItem = SyncQueueItem(
             id: item.id,
             endpoint: item.endpoint,

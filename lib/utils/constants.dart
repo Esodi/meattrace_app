@@ -2,6 +2,10 @@ class Constants {
   // API Configuration - production server
   static const String baseUrl = 'https://dev.shambabora.co.tz/api/v2';
 
+  // Public web base URL — used for consumer-facing QR traceability links.
+  // When a consumer scans a QR code this URL renders a traceability report page.
+  static const String webBaseUrl = 'https://dev.shambabora.co.tz';
+
   // LOCAL TESTING alternatives (comment out the line above and uncomment one below):
   // static const String baseUrl = 'http://10.0.2.2:8000/api/v2';   // Android Emulator
   // static const String baseUrl = 'http://192.168.44.223:8000/api/v2'; // Physical Device via LAN

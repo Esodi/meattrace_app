@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/animal.dart';
 import '../../models/product.dart';
 import '../../services/dio_client.dart';
@@ -500,7 +501,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '\$${product.price.toStringAsFixed(2)}',
+                        'TZS ${NumberFormat('#,###').format(product.price)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,

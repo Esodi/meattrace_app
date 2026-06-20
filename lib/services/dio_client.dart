@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -145,9 +146,17 @@ class _LoggingInterceptor extends Interceptor {
 class _ErrorInterceptor extends Interceptor {
   final DioClient _dioClient;
 
+  // Mutex: only one refresh in flight at a time; other 401s wait for it.
+  bool _isRefreshing = false;
+  Completer<bool>? _refreshCompleter;
+
   _ErrorInterceptor(this._dioClient);
+
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     if (kDebugMode) {
       developer.log(
         'ERROR[${err.response?.statusCode}] ${err.requestOptions.method} '
@@ -155,27 +164,101 @@ class _ErrorInterceptor extends Interceptor {
       );
     }
 
-    if (err.response?.statusCode == 401) {
-      _clearTokensAsync();
+    final isAuthEndpoint =
+        err.requestOptions.path.contains(Constants.loginEndpoint) ||
+        err.requestOptions.path.contains(Constants.refreshTokenEndpoint);
+
+    if (err.response?.statusCode == 401 && !isAuthEndpoint) {
+      // Attempt transparent token refresh before forcing logout.
+      final refreshed = await _tryRefreshToken();
+      if (refreshed) {
+        try {
+          // Retry original request with the new access token.
+          final prefs = await SharedPreferences.getInstance();
+          final newToken = prefs.getString(DioClient.accessTokenKey);
+          final opts = err.requestOptions;
+          if (newToken != null) {
+            opts.headers['Authorization'] = 'Bearer $newToken';
+          }
+          final response = await _dioClient.dio.fetch(opts);
+          handler.resolve(response);
+          return;
+        } catch (_) {
+          // Retry failed — fall through to force logout.
+        }
+      }
+      // Refresh unavailable or retry failed — clear session and notify app.
+      await _clearTokens();
       _dioClient._onUnauthorized?.call();
     }
 
     throw ApiException.fromDioException(err);
   }
 
-  // Helper method to clear tokens asynchronously
-  void _clearTokensAsync() {
-    Future.microtask(() async {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(DioClient.accessTokenKey);
-        await prefs.remove(DioClient.refreshTokenKey);
-      } catch (e) {
-        if (kDebugMode) {
-          developer.log('Error clearing tokens: $e');
-        }
+  Future<bool> _tryRefreshToken() async {
+    // If a refresh is already running, wait for its result.
+    if (_isRefreshing) {
+      return await (_refreshCompleter?.future ?? Future.value(false));
+    }
+
+    _isRefreshing = true;
+    _refreshCompleter = Completer<bool>();
+
+    try {
+      final refreshToken = await _dioClient.getRefreshToken();
+      if (refreshToken == null) {
+        _refreshCompleter!.complete(false);
+        return false;
       }
-    });
+
+      // Use a bare Dio instance to avoid re-triggering this interceptor.
+      final tempDio = Dio(
+        BaseOptions(
+          baseUrl: DioClient.baseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      final response = await tempDio.post(
+        Constants.refreshTokenEndpoint,
+        data: {'refresh': refreshToken},
+      );
+
+      final newAccessToken = response.data['access'] as String?;
+      if (newAccessToken == null) {
+        _refreshCompleter!.complete(false);
+        return false;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(DioClient.accessTokenKey, newAccessToken);
+
+      if (kDebugMode) developer.log('[DioClient] Access token refreshed.');
+      _refreshCompleter!.complete(true);
+      return true;
+    } catch (e) {
+      if (kDebugMode) developer.log('[DioClient] Token refresh failed: $e');
+      _refreshCompleter?.complete(false);
+      return false;
+    } finally {
+      _isRefreshing = false;
+      _refreshCompleter = null;
+    }
+  }
+
+  Future<void> _clearTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(DioClient.accessTokenKey);
+      await prefs.remove(DioClient.refreshTokenKey);
+    } catch (e) {
+      if (kDebugMode) developer.log('Error clearing tokens: $e');
+    }
   }
 }
 

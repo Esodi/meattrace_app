@@ -260,7 +260,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 style: AppTypography.titleMedium(),
               ),
               Text(
-                '\$${_order!.totalAmount.toStringAsFixed(2)}',
+                'TZS ${NumberFormat('#,###').format(_order!.totalAmount)}',
                 style: AppTypography.headlineLarge().copyWith(
                   color: AppColors.shopPrimary,
                   fontWeight: FontWeight.bold,
@@ -448,7 +448,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                         const SizedBox(height: AppTheme.space4),
                         Text(
-                          '${item.weight.toStringAsFixed(1)} ${item.weightUnit} × \$${item.unitPrice.toStringAsFixed(2)}',
+                          '${item.weight.toStringAsFixed(1)} ${item.weightUnit} × TZS ${NumberFormat('#,###').format(item.unitPrice)}',
                           style: AppTypography.bodySmall().copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -457,7 +457,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                   ),
                   Text(
-                    '\$${item.subtotal.toStringAsFixed(2)}',
+                    'TZS ${NumberFormat('#,###').format(item.subtotal)}',
                     style: AppTypography.titleMedium().copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -477,7 +477,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
               ),
               Text(
-                '\$${_order!.totalAmount.toStringAsFixed(2)}',
+                'TZS ${NumberFormat('#,###').format(_order!.totalAmount)}',
                 style: AppTypography.titleLarge().copyWith(
                   color: AppColors.shopPrimary,
                   fontWeight: FontWeight.bold,

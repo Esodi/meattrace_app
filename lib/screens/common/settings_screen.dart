@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../providers/theme_provider.dart';
@@ -180,28 +181,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ListTile(
                 title: const Text('Privacy Policy'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // Navigate to privacy policy
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Privacy Policy coming soon')),
-                  );
-                  }
-                },
+                onTap: () => launchUrl(
+                  Uri.parse('https://shambabora.co.tz/privacy-policy/'),
+                  mode: LaunchMode.externalApplication,
+                ),
               ),
               ListTile(
                 title: const Text('Terms of Service'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // Navigate to terms of service
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Terms of Service coming soon'),
-                    ),
-                  );
-                  }
-                },
+                onTap: () => launchUrl(
+                  Uri.parse('https://shambabora.co.tz/terms-of-service/'),
+                  mode: LaunchMode.externalApplication,
+                ),
               ),
               ListTile(
                 title: const Text('Help & Support'),

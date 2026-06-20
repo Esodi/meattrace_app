@@ -57,3 +57,18 @@ devtools_options.yaml
 *.md
 !README.md
 
+# ── Machine-specific Gradle truststore (Avast SSL scanning workaround) ────────
+android/gradle_cacerts
+
+# ── Release signing — NEVER commit these ──────────────────────────────────────
+android/key.properties
+android/*.keystore
+android/*.jks
+*.keystore
+*.jks
+
+# Firebase config (contains API keys)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+

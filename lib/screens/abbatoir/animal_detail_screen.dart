@@ -209,12 +209,110 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         _buildOriginSection(),
         const SizedBox(height: 16),
         _buildHealthSection(),
+        if (_animal?.slaughtered == true &&
+            _animal?.carcassMeasurement != null) ...[
+          const SizedBox(height: 16),
+          _buildCarcassMeasurementSection(primaryColor),
+        ],
         const SizedBox(height: 16),
         _buildTimelineSection(primaryColor),
         const SizedBox(height: 16),
         _buildActionsSection(),
         const SizedBox(height: 32),
       ],
+    );
+  }
+
+  String _measurementLabel(String key) {
+    switch (key) {
+      case 'head_weight':
+        return 'Head Weight';
+      case 'feet_weight':
+        return 'Feet Weight';
+      case 'left_carcass_weight':
+        return 'Left Carcass';
+      case 'right_carcass_weight':
+        return 'Right Carcass';
+      case 'whole_carcass_weight':
+        return 'Carcass Weight';
+      default:
+        return key.replaceAll('_', ' ').split(' ').map((w) {
+          if (w.isEmpty) return w;
+          return w[0].toUpperCase() + w.substring(1);
+        }).join(' ');
+    }
+  }
+
+  Widget _buildCarcassMeasurementSection(Color primaryColor) {
+    final cm = _animal!.carcassMeasurement!;
+    final isSplit = cm.carcassType == CarcassType.split;
+    final typeLabel = isSplit ? 'Split Carcass' : 'Whole Carcass';
+    final typeColor = isSplit ? Colors.orange.shade700 : Colors.green.shade700;
+    final typeBg = isSplit ? Colors.orange.shade50 : Colors.green.shade50;
+
+    final allMeasurements = cm.getAllMeasurements();
+
+    return CustomCard(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Carcass Measurements',
+                  style: AppTypography.headlineSmall(),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: typeBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: typeColor.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    typeLabel,
+                    style: AppTypography.labelMedium().copyWith(
+                      color: typeColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (allMeasurements.isEmpty)
+              Text(
+                'No measurement data recorded.',
+                style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+              )
+            else
+              ...allMeasurements.asMap().entries.map((entry) {
+                final m = entry.value;
+                final label = _measurementLabel(m['name'] as String);
+                final value = m['value'];
+                final unit = m['unit'] ?? 'kg';
+                final isLast = entry.key == allMeasurements.length - 1;
+                return Column(
+                  children: [
+                    _buildInfoRow(
+                      Icons.scale,
+                      label,
+                      '${value?.toString() ?? '-'} $unit',
+                    ),
+                    if (!isLast) const Divider(height: 24),
+                  ],
+                );
+              }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -246,8 +344,10 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             const Divider(height: 24),
             _buildInfoRow(
               Icons.monitor_weight,
-              'Weight',
-              '${_animal?.liveWeight ?? 0} kg',
+              _animal?.slaughtered == true ? 'Carcass Weight' : 'Live Weight',
+              _animal?.slaughtered == true
+                  ? '${(_animal?.effectiveTransferWeight ?? _animal?.liveWeight ?? 0).toStringAsFixed(2)} kg'
+                  : '${_animal?.liveWeight ?? 0} kg',
             ),
           ],
         ),

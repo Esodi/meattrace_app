@@ -1,4 +1,4 @@
-package com.example.meattrace_app
+package tz.co.shambabora.nyamatamu
 
 import io.flutter.embedding.android.FlutterActivity
 

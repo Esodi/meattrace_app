@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/product.dart';
 import '../../models/processing_unit.dart';
 import '../../services/dio_client.dart';
@@ -497,7 +498,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                                 ),
                               ),
                               Text(
-                                '\$${product.price.toStringAsFixed(2)} per ${product.weightUnit}',
+                                'TZS ${NumberFormat('#,###').format(product.price)} per ${product.weightUnit}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.shopPrimary,
@@ -563,7 +564,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                         const Spacer(),
                         if (selectedWeight > 0)
                           Text(
-                            'Subtotal: \$${(product.price * selectedWeight).toStringAsFixed(2)}',
+                            'Subtotal: TZS ${NumberFormat('#,###').format(product.price * selectedWeight)}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                       ],
@@ -629,10 +630,10 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
             child: ListTile(
               title: Text(entry.key.name),
               subtitle: Text(
-                '${entry.value.toStringAsFixed(1)} ${entry.key.weightUnit} × \$${entry.key.price.toStringAsFixed(2)}',
+                '${entry.value.toStringAsFixed(1)} ${entry.key.weightUnit} × TZS ${NumberFormat('#,###').format(entry.key.price)}',
               ),
               trailing: Text(
-                '\$${(entry.key.price * entry.value).toStringAsFixed(2)}',
+                'TZS ${NumberFormat('#,###').format(entry.key.price * entry.value)}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -674,7 +675,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               Text(
-                '\$${totalAmount.toStringAsFixed(2)}',
+                'TZS ${NumberFormat('#,###').format(totalAmount)}',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/product.dart';
@@ -484,7 +485,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                       style: AppTypography.bodySmall().copyWith(color: AppColors.textSecondary),
                     ),
                     Text(
-                      'Price: \$${product.price.toStringAsFixed(2)} per ${product.weightUnit} • Available: ${availableWeight.toStringAsFixed(1)} ${product.weightUnit}',
+                      'Price: TZS ${NumberFormat('#,###').format(product.price)} per ${product.weightUnit} • Available: ${availableWeight.toStringAsFixed(1)} ${product.weightUnit}',
                       style: AppTypography.bodySmall().copyWith(color: AppTheme.primaryGreen),
                     ),
                   ],
@@ -836,7 +837,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '\$${(product.price * transferQty).toStringAsFixed(2)}',
+                      'TZS ${NumberFormat('#,###').format(product.price * transferQty)}',
                       style: AppTypography.bodyMedium().copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryGreen,
@@ -868,7 +869,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                 ),
               ),
               Text(
-                '\$${_calculateTotalValue().toStringAsFixed(2)}',
+                'TZS ${NumberFormat('#,###').format(_calculateTotalValue())}',
                 style: AppTypography.headlineSmall().copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.primaryGreen,

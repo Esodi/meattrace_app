@@ -140,7 +140,10 @@ class _ProcessorQRCodesScreenState extends State<ProcessorQRCodesScreen> {
   }
 
   Widget _buildQRCodeCard(Product product) {
-    final qrData = '${Constants.baseUrl}/product-info/view/${product.id}/';
+    // Points to the public web traceability page — scanned by consumers in any
+    // QR reader app, renders a human-readable report (not a raw API response).
+    final qrData =
+        '${Constants.webBaseUrl}/trace/${Uri.encodeComponent(product.batchNumber)}/';
     debugPrint('🔗 Generated QR Data: $qrData');
 
     return Card(

@@ -285,7 +285,7 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
           _buildInfoRow(
             Icons.attach_money,
             'Price',
-            '\$${product.price.toStringAsFixed(2)}',
+            'TZS ${NumberFormat('#,###').format(product.price)}',
           ),
           _buildInfoRow(Icons.factory, 'Manufacturer', product.manufacturer),
           if (product.processingUnitName != null)

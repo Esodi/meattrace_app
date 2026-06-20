@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
+import '../main.dart' show appNavigatorKey;
 import '../models/notification.dart';
 import '../providers/notification_provider.dart';
 import '../services/dio_client.dart';
@@ -21,41 +23,43 @@ class PushNotificationService {
   NotificationProvider? _notificationProvider;
   bool _isInitialized = false;
 
-  /// Initialize Firebase and local notifications
+  /// Initialize Firebase and local notifications.
+  /// Fails silently if Firebase is not configured (no google-services.json).
+  /// The app continues to work; push notifications are simply unavailable.
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
-      // Initialize Firebase
       await Firebase.initializeApp();
+    } catch (e) {
+      debugPrint(
+        '[PushNotificationService] Firebase unavailable — push notifications '
+        'disabled. Add google-services.json to enable. Error: $e',
+      );
+      return; // Graceful degradation — do not rethrow
+    }
 
-      // Request permission for iOS
+    try {
       await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
 
-      // Initialize local notifications
       await _initializeLocalNotifications();
-
-      // Configure message handlers
       await _configureMessageHandlers();
 
-      // Get FCM token
       final token = await _firebaseMessaging.getToken();
       if (token != null) {
         await _sendTokenToServer(token);
       }
 
-      // Listen for token updates
       _firebaseMessaging.onTokenRefresh.listen(_sendTokenToServer);
 
       _isInitialized = true;
-      debugPrint('PushNotificationService initialized successfully');
+      debugPrint('[PushNotificationService] initialized successfully');
     } catch (e) {
-      debugPrint('Failed to initialize PushNotificationService: $e');
-      rethrow;
+      debugPrint('[PushNotificationService] setup error (non-fatal): $e');
     }
   }
 
@@ -131,11 +135,9 @@ class PushNotificationService {
 
   /// Handle notification tap action
   void _handleNotificationAction(RemoteMessage message) {
-    // Navigate based on notification data
     final actionUrl = message.data['action_url'];
     if (actionUrl != null) {
-      // TODO: Navigate to the action URL
-      debugPrint('Navigate to: $actionUrl');
+      _navigateTo(actionUrl as String);
     }
   }
 
@@ -147,12 +149,23 @@ class PushNotificationService {
         final data = jsonDecode(payload) as Map<String, dynamic>;
         final actionUrl = data['action_url'];
         if (actionUrl != null) {
-          // TODO: Navigate to the action URL
-          debugPrint('Navigate to: $actionUrl');
+          _navigateTo(actionUrl as String);
         }
       } catch (e) {
         debugPrint('Failed to parse notification payload: $e');
       }
+    }
+  }
+
+  /// Navigate to a route using the global navigator key.
+  /// [route] must be an absolute app path (e.g. "/abbatoir-home").
+  void _navigateTo(String route) {
+    final context = appNavigatorKey.currentContext;
+    if (context != null) {
+      GoRouter.of(context).go(route);
+      debugPrint('[PushNotificationService] Navigated to $route');
+    } else {
+      debugPrint('[PushNotificationService] Cannot navigate — no context for $route');
     }
   }
 

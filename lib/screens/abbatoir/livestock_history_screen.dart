@@ -452,7 +452,9 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            '${animal.liveWeight ?? 0} kg',
+                            animal.slaughtered
+                                ? '${(animal.effectiveTransferWeight ?? animal.liveWeight ?? 0).toStringAsFixed(2)} kg'
+                                : '${animal.liveWeight ?? 0} kg',
                             style: AppTypography.bodyMedium(
                               color: AppColors.textSecondary,
                             ),

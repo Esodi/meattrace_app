@@ -79,6 +79,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   final BluetoothScaleService _scaleService = BluetoothScaleService();
   StreamSubscription? _weightSubscription;
   bool _isScaleConnected = false;
+  bool _isReadingWeight = false;
 
   @override
   void initState() {
@@ -1582,12 +1583,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       weight: currentWeight,
       isConnected: _isScaleConnected,
       onTap: () async {
+        // Prevent concurrent reads from rapid double-taps on any weight field.
+        if (_isReadingWeight) return;
+
         // Read weight and update controller
         if (!_scaleService.isConnected) {
           await _connectScale();
           return;
         }
 
+        setState(() => _isReadingWeight = true);
         debugPrint('👆 [SlaughterScreen] Reading weight for $label...');
 
         if (context.mounted) {
@@ -1603,22 +1608,23 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
         bool gotWeight = false;
 
-        try {
-          await _scaleService.readWeight();
-        } catch (e) {
-          debugPrint('⚠️ [SlaughterScreen] Manual read failed: $e');
-        }
+        // Reset stability state so consecutive taps start fresh.
+        _scaleService.resetStability();
 
+        // Subscribe BEFORE triggering the read so we don't miss the event on
+        // a broadcast stream — readWeight() can emit synchronously for scales
+        // that support the READ property, and events fired before listen() are
+        // silently dropped on a broadcast stream.
         StreamSubscription? singleRead;
         singleRead = _scaleService.weightStream.listen((weight) {
           if (!gotWeight) {
             gotWeight = true;
-            setState(() {
-              controller.text = weight.toStringAsFixed(2);
-            });
-            // Note: onUnitChanged is for unit selection, not weight value change.
-            // We don't have a callback for weight value change here, but controller is updated.
-
+            if (mounted) {
+              setState(() {
+                controller.text = weight.toStringAsFixed(2);
+                _isReadingWeight = false;
+              });
+            }
             singleRead?.cancel();
 
             if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -1634,9 +1640,16 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           }
         });
 
+        try {
+          await _scaleService.readWeight();
+        } catch (e) {
+          debugPrint('⚠️ [SlaughterScreen] Manual read failed: $e');
+        }
+
         Future.delayed(const Duration(seconds: 10), () {
           if (!gotWeight) {
             singleRead?.cancel();
+            if (mounted) setState(() => _isReadingWeight = false);
             if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(

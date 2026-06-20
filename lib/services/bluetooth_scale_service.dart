@@ -96,6 +96,13 @@ class BluetoothScaleService {
     _connectionSubscription = null;
   }
 
+  /// Reset stability debounce so the next reading is treated as the first sample.
+  /// Call this before starting a new weight capture session.
+  void resetStability() {
+    _lastParsedWeight = null;
+    _lastWeightTime = null;
+  }
+
   /// Manually trigger a weight read (for scales that support READ operation)
   Future<void> readWeight() async {
     if (_weightCharacteristic == null) {
@@ -236,6 +243,10 @@ class BluetoothScaleService {
     }
   }
 
+  // Last stable weight value for debounce check
+  double? _lastParsedWeight;
+  DateTime? _lastWeightTime;
+
   /// Parse raw bytes into weight value
   /// This logic depends heavily on the specific scale's protocol
   void _parseWeightData(List<int> data) {
@@ -247,52 +258,82 @@ class BluetoothScaleService {
     debugPrint('📊 [ScaleService] Parsing weight data: $data');
 
     try {
-      // Strategy 1: ASCII text parsing (for scales like SZL that send "ST,GS,+00001.0kg")
-      try {
-        String dataStr = String.fromCharCodes(data);
-        debugPrint('📝 [ScaleService] Data as string: "$dataStr"');
+      double? weight;
 
-        // Try to extract number from string (handles formats like "+00001.0kg", "1.23 kg", etc.)
-        RegExp numRegex = RegExp(r'([+-]?\d+\.?\d*)');
+      // Strategy 1: ASCII text parsing — ONLY when all bytes are printable ASCII.
+      // Guards against binary GATT data being misread as digit characters, which
+      // produced spurious values like 257.30 from byte sequences that contained
+      // ASCII digit codes by coincidence.
+      bool isPrintableAscii = data.every(
+        (b) => (b >= 0x20 && b <= 0x7E) || b == 0x0D || b == 0x0A,
+      );
+      if (isPrintableAscii) {
+        String dataStr = String.fromCharCodes(data);
+        debugPrint('📝 [ScaleService] Data as ASCII string: "$dataStr"');
+
+        // Require at least one digit; decimal point required to avoid matching
+        // raw integer byte values that sneak through (e.g. protocol headers).
+        RegExp numRegex = RegExp(r'([+-]?\d+\.\d+)');
         Match? match = numRegex.firstMatch(dataStr);
         if (match != null) {
-          double weight = double.parse(match.group(1)!);
-          debugPrint('✅ [ScaleService] Parsed weight (ASCII): $weight kg');
-          _weightController.add(weight);
-          return;
+          weight = double.tryParse(match.group(1)!);
+          if (weight != null) {
+            debugPrint('✅ [ScaleService] Parsed weight (ASCII): $weight kg');
+          }
         }
-      } catch (e) {
-        debugPrint('⚠️ [ScaleService] ASCII parsing failed: $e');
       }
 
-      // Strategy 2: Standard GATT Weight Measurement (binary)
-      if (data.length >= 3) {
+      // Strategy 2: Standard GATT Weight Measurement (binary, 0x181D / 0x2A9D)
+      if (weight == null && data.length >= 3) {
         int flags = data[0];
         bool isImperial = (flags & 0x01) != 0;
-
-        // Simple little-endian parsing
-        int rawWeight = data[1] + (data[2] << 8);
-        double weight = rawWeight / 100.0;
-
-        if (isImperial) {
-          weight = weight * 0.453592; // Convert lbs to kg
-        }
-
+        int rawWeight = data[1] + (data[2] << 8); // little-endian
+        double gattWeight = rawWeight / 100.0;
+        if (isImperial) gattWeight *= 0.453592; // lbs → kg
+        weight = gattWeight;
         debugPrint('✅ [ScaleService] Parsed weight (GATT binary): $weight kg');
-        _weightController.add(weight);
-        return;
       }
 
-      // Strategy 3: Raw interpretation (last resort)
-      if (data.length >= 2) {
+      // Strategy 3: Raw 2-byte little-endian (last resort)
+      if (weight == null && data.length >= 2) {
         int rawValue = data[0] + (data[1] << 8);
-        double weight = rawValue / 10.0; // Assume 1 decimal place
+        weight = rawValue / 10.0;
         debugPrint('⚠️ [ScaleService] Parsed weight (raw guess): $weight kg');
-        _weightController.add(weight);
+      }
+
+      if (weight == null) {
+        debugPrint('❌ [ScaleService] Could not parse weight data');
         return;
       }
 
-      debugPrint('❌ [ScaleService] Could not parse weight data');
+      // Sanity check: reject physically impossible values
+      if (weight <= 0 || weight > 2000) {
+        debugPrint(
+          '⚠️ [ScaleService] Weight $weight kg out of valid range — discarded',
+        );
+        return;
+      }
+
+      // Stability debounce: only emit if the reading is consistent with the
+      // previous one (within 0.5 kg) received within the last 2 seconds, or
+      // if more than 2 seconds have passed since the last reading (new weight).
+      final now = DateTime.now();
+      final isStable = _lastParsedWeight != null &&
+          _lastWeightTime != null &&
+          now.difference(_lastWeightTime!).inMilliseconds < 2000 &&
+          (weight - _lastParsedWeight!).abs() <= 0.5;
+
+      _lastParsedWeight = weight;
+      _lastWeightTime = now;
+
+      if (isStable) {
+        debugPrint('📤 [ScaleService] Stable weight confirmed: $weight kg');
+        _weightController.add(weight);
+      } else {
+        debugPrint(
+          '⏳ [ScaleService] First reading $weight kg — waiting for stable confirmation',
+        );
+      }
     } catch (e) {
       debugPrint('❌ [ScaleService] Error parsing weight data: $e');
     }

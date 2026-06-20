@@ -109,6 +109,10 @@ import 'screens/common/settings_screen.dart';
 
 import 'utils/initialization_helper.dart';
 
+/// Global navigator key — used by push notification service to navigate
+/// without a BuildContext (e.g. from a notification tap).
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   runZonedGuarded(
     () async {
@@ -186,6 +190,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _initRouter() {
     _router = GoRouter(
+      navigatorKey: appNavigatorKey,
       initialLocation: '/',
       refreshListenable: _authProvider,
       redirect: (context, state) {
@@ -610,6 +615,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _router.dispose();
     _authProvider.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Silently validate the token and refresh the user profile whenever
+      // the app returns to the foreground after being backgrounded.
+      _authProvider.refreshProfileSilently();
+    }
   }
 
   @override
