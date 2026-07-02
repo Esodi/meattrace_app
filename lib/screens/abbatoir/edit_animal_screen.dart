@@ -129,10 +129,12 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       _selectedHealthStatus = animal.healthStatus ?? 'healthy';
       _notesController.text = animal.notes ?? '';
 
-      // Calculate birth date from age
-      if (animal.age > 0) {
+      // Use the stored birth date; only derive it from age for legacy animals
+      if (animal.birthDate != null) {
+        _selectedDate = animal.birthDate!;
+      } else if (animal.age > 0) {
         final ageInDays = (animal.age * 30.44).round();
-        _selectedDate = DateTime.now().subtract(Duration(days: ageInDays));
+        _selectedDate = animal.createdAt.subtract(Duration(days: ageInDays));
       }
     });
   }
@@ -429,6 +431,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         abbatoir: _animal!.abbatoir,
         species: _selectedSpecies!,
         age: finalAge,
+        birthDate: _selectedDate,
         liveWeight: _weightValue,
         createdAt: _animal!.createdAt,
         slaughtered: _animal!.slaughtered,

@@ -205,6 +205,10 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildBasicInfoSection(),
+        if (_animal?.weightHistory.isNotEmpty == true) ...[
+          const SizedBox(height: 16),
+          _buildWeightHistorySection(),
+        ],
         const SizedBox(height: 16),
         _buildOriginSection(),
         const SizedBox(height: 16),
@@ -339,7 +343,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
             _buildInfoRow(
               Icons.calendar_today,
               'Age',
-              '${_animal?.age.toStringAsFixed(1) ?? 0} months',
+              _animal?.ageDisplay ?? 'N/A',
             ),
             const Divider(height: 24),
             _buildInfoRow(
@@ -349,6 +353,46 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
                   ? '${(_animal?.effectiveTransferWeight ?? _animal?.liveWeight ?? 0).toStringAsFixed(2)} kg'
                   : '${_animal?.liveWeight ?? 0} kg',
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeightHistorySection() {
+    final history = _animal?.weightHistory ?? [];
+    return CustomCard(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Weight History', style: AppTypography.headlineSmall()),
+            const SizedBox(height: 16),
+            ...history.asMap().entries.map((entry) {
+              final record = entry.value;
+              final previous = entry.key + 1 < history.length
+                  ? history[entry.key + 1]
+                  : null;
+              final change = previous != null
+                  ? record.weight - previous.weight
+                  : null;
+              final changeLabel = change == null
+                  ? ''
+                  : ' (${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)} kg)';
+              return Column(
+                children: [
+                  _buildInfoRow(
+                    Icons.monitor_weight,
+                    DateFormat('dd MMM yyyy, HH:mm').format(record.recordedAt),
+                    '${record.weight.toStringAsFixed(1)} kg$changeLabel',
+                  ),
+                  if (entry.key < history.length - 1)
+                    const Divider(height: 24),
+                ],
+              );
+            }),
           ],
         ),
       ),

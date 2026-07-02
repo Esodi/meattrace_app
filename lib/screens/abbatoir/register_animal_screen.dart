@@ -382,6 +382,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
         abbatoir: 0, // Will be set by backend from auth user
         species: _selectedSpecies!,
         age: finalAge,
+        birthDate: _selectedDate,
         liveWeight: _weightValue,
         createdAt: DateTime.now(),
         slaughtered: false,

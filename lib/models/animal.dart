@@ -420,12 +420,37 @@ extension AnimalLifecycleStatusExtension on AnimalLifecycleStatus {
   }
 }
 
+class AnimalWeightRecord {
+  final double weight;
+  final DateTime recordedAt;
+  final String? note;
+
+  AnimalWeightRecord({
+    required this.weight,
+    required this.recordedAt,
+    this.note,
+  });
+
+  factory AnimalWeightRecord.fromMap(Map<String, dynamic> json) {
+    return AnimalWeightRecord(
+      weight: json['weight'] is num
+          ? (json['weight'] as num).toDouble()
+          : double.tryParse(json['weight'].toString()) ?? 0.0,
+      recordedAt: json['recorded_at'] != null
+          ? DateTime.parse(json['recorded_at'])
+          : DateTime.now(),
+      note: json['note'],
+    );
+  }
+}
+
 class Animal {
   final int? id;
   final int abbatoir;
   final String? abbatoirUsername; // Abbatoir's username for display
   final String species;
   final double age;
+  final DateTime? birthDate;
   final double? liveWeight;
   final double? remainingWeight;
   final DateTime createdAt;
@@ -481,12 +506,16 @@ class Animal {
   final double? slaughterWeight;
   final double? totalWasteWeight;
 
+  // Weight history (read-only from backend, newest first)
+  final List<AnimalWeightRecord> weightHistory;
+
   Animal({
     this.id,
     required this.abbatoir,
     this.abbatoirUsername,
     required this.species,
     required this.age,
+    this.birthDate,
     required this.liveWeight,
     this.remainingWeight,
     required this.createdAt,
@@ -526,6 +555,7 @@ class Animal {
     this.originType = 'BORN_HERE',
     this.slaughterWeight,
     this.totalWasteWeight,
+    this.weightHistory = const [],
   });
 
   factory Animal.fromMap(Map<String, dynamic> json) {
@@ -559,6 +589,22 @@ class Animal {
         } else {}
       }
 
+      // Safely parse weight_history
+      List<AnimalWeightRecord> weightHistory = [];
+      if (json['weight_history'] is List) {
+        for (var record in json['weight_history'] as List) {
+          if (record is Map) {
+            try {
+              weightHistory.add(
+                AnimalWeightRecord.fromMap(record as Map<String, dynamic>),
+              );
+            } catch (_) {
+              continue;
+            }
+          }
+        }
+      }
+
       // Parse lifecycle status
       AnimalLifecycleStatus? lifecycleStatus;
       if (json['lifecycle_status'] != null) {
@@ -579,6 +625,9 @@ class Animal {
             : (json['age'] != null
                   ? double.parse(json['age'].toString())
                   : 0.0),
+        birthDate: json['birth_date'] != null
+            ? DateTime.tryParse(json['birth_date'].toString())
+            : null,
         liveWeight: json['live_weight'] != null
             ? (json['live_weight'] is num
                   ? (json['live_weight'] as num).toDouble()
@@ -658,6 +707,7 @@ class Animal {
                   ? (json['total_waste_weight'] as num).toDouble()
                   : double.tryParse(json['total_waste_weight'].toString()))
             : null,
+        weightHistory: weightHistory,
       );
     } catch (e) {
       rethrow;
@@ -671,6 +721,7 @@ class Animal {
       'abbatoir_username': abbatoirUsername,
       'species': species,
       'age': age,
+      'birth_date': birthDate?.toIso8601String().split('T').first,
       'live_weight': liveWeight,
       'remaining_weight': remainingWeight,
       'created_at': createdAt.toIso8601String(),
@@ -711,6 +762,7 @@ class Animal {
       'animal_id': animalId,
       'species': species.toLowerCase(),
       'age': age,
+      'birth_date': birthDate?.toIso8601String().split('T').first,
       'live_weight': liveWeight,
       'remaining_weight': remainingWeight,
       'animal_name': animalName,
@@ -738,6 +790,34 @@ class Animal {
   bool get isSplitCarcass =>
       carcassMeasurement?.carcassType == CarcassType.split;
   bool get hasSlaughterParts => slaughterParts.isNotEmpty;
+
+  /// Age in months as of now (or as of slaughter for slaughtered animals),
+  /// derived from [birthDate] when available. Falls back to the
+  /// registration-time [age] plus the time elapsed since registration, so the
+  /// displayed age keeps advancing for animals recorded before birthDate
+  /// existed.
+  double get currentAgeMonths {
+    final asOf = (slaughtered && slaughteredAt != null)
+        ? slaughteredAt!
+        : DateTime.now();
+    if (birthDate != null) {
+      final days = asOf.difference(birthDate!).inDays;
+      return days > 0 ? days / 30.44 : 0;
+    }
+    final elapsedDays = asOf.difference(createdAt).inDays;
+    return age + (elapsedDays > 0 ? elapsedDays / 30.44 : 0);
+  }
+
+  /// Human-friendly age, e.g. "2 yrs 3 mo" or "7 months".
+  String get ageDisplay {
+    final totalMonths = currentAgeMonths.round();
+    final years = totalMonths ~/ 12;
+    final months = totalMonths % 12;
+    if (years > 0) {
+      return '$years yr${years > 1 ? 's' : ''} $months mo';
+    }
+    return '$months month${months == 1 ? '' : 's'}';
+  }
 
   // Prefer slaughter weight over initial live weight for transfer flows.
   // Falls back to summing slaughter parts, then live weight as last resort.
@@ -797,6 +877,7 @@ class Animal {
     String? abbatoirUsername,
     String? species,
     double? age,
+    DateTime? birthDate,
     double? liveWeight,
     double? remainingWeight,
     DateTime? createdAt,
@@ -836,6 +917,7 @@ class Animal {
     String? originType,
     double? slaughterWeight,
     double? totalWasteWeight,
+    List<AnimalWeightRecord>? weightHistory,
   }) {
     return Animal(
       id: id ?? this.id,
@@ -843,6 +925,7 @@ class Animal {
       abbatoirUsername: abbatoirUsername ?? this.abbatoirUsername,
       species: species ?? this.species,
       age: age ?? this.age,
+      birthDate: birthDate ?? this.birthDate,
       liveWeight: liveWeight ?? this.liveWeight,
       remainingWeight: remainingWeight ?? this.remainingWeight,
       createdAt: createdAt ?? this.createdAt,

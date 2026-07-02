@@ -556,7 +556,7 @@ class _TransferAnimalsScreenState extends State<TransferAnimalsScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Age: ${animal.age} months • Slaughter weight: ${(animal.effectiveTransferWeight ?? 0).toStringAsFixed(2)} kg',
+                          'Age: ${animal.ageDisplay} • Slaughter weight: ${(animal.effectiveTransferWeight ?? 0).toStringAsFixed(2)} kg',
                           style: AppTypography.bodySmall(
                             color: AppColors.textSecondary,
                           ),

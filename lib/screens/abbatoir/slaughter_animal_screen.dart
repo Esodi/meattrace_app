@@ -1096,7 +1096,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${_selectedAnimal!.breed ?? _selectedAnimal!.species} • ${_selectedAnimal!.liveWeight} kg • ${_selectedAnimal!.age}m',
+                          '${_selectedAnimal!.breed ?? _selectedAnimal!.species} • ${_selectedAnimal!.liveWeight} kg • ${_selectedAnimal!.ageDisplay}',
                           style: AppTypography.bodyMedium(
                             color: AppColors.textSecondary,
                           ),

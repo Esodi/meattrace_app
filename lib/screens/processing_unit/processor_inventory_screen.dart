@@ -336,7 +336,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _buildInfoChip(Icons.calendar_today, '${animal.age} months'),
+                  _buildInfoChip(Icons.calendar_today, animal.ageDisplay),
                   const SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.monitor_weight,

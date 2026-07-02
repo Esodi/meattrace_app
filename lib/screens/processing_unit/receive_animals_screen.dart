@@ -394,7 +394,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                             ),
                             _buildInfoChip(
                               Icons.calendar_today,
-                              '${animal.age} months',
+                              animal.ageDisplay,
                             ),
                           ],
                         ),

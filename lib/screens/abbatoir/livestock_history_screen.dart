@@ -470,7 +470,7 @@ class _LivestockHistoryScreenState extends State<LivestockHistoryScreen>
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            '${animal.age.toStringAsFixed(1)} months',
+                            animal.ageDisplay,
                             style: AppTypography.bodyMedium(
                               color: AppColors.textSecondary,
                             ),

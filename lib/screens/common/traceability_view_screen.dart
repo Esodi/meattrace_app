@@ -149,7 +149,7 @@ class _TraceabilityViewScreenState extends State<TraceabilityViewScreen> {
                       description:
                           'Animal ID: ${_sourceAnimal!.animalId}\n'
                           'Species: ${_sourceAnimal!.species}\n'
-                          'Age: ${_sourceAnimal!.age} months\n'
+                          'Age: ${_sourceAnimal!.ageDisplay}\n'
                           'Weight: ${_sourceAnimal!.liveWeight ?? 0} kg',
                       icon: Icons.agriculture,
                       iconColor: AppColors.abbatoirPrimary,
