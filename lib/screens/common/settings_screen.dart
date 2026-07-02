@@ -167,6 +167,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => _showChangePasswordDialog(),
               ),
+              ListTile(
+                title: const Text('Delete Account'),
+                subtitle: const Text('Submit a request to delete your account and data'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () => launchUrl(
+                  Uri.parse('https://forms.gle/5nn6aoydT95hd9r69'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
             ],
           ),
           const Divider(),
@@ -182,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: const Text('Privacy Policy'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => launchUrl(
-                  Uri.parse('https://shambabora.co.tz/privacy-policy/'),
+                  Uri.parse('https://sites.google.com/view/sbmeattracepro/meattrace'),
                   mode: LaunchMode.externalApplication,
                 ),
               ),

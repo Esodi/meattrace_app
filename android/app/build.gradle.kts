@@ -32,7 +32,7 @@ android {
     defaultConfig {
         applicationId = "tz.co.shambabora.nyamatamu"
         minSdk = flutter.minSdkVersion          // Required by flutter_blue_plus, firebase_messaging, geolocator
-        targetSdk = 34       // Required by Play Store (Android 14)
+        targetSdk = 35       // Required by Play Store (Android 15)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
