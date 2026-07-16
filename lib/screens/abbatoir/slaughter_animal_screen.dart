@@ -303,24 +303,31 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       return false;
     }
 
-    // Check individual weights for negative values
-    final weightControllers = [
+    // Check individual weights: fields sent to the backend must be strictly
+    // positive (the server rejects 0 with a 400 for these), while the
+    // display-only total weight only needs to be non-negative.
+    final requiredPositiveControllers = [
       _headWeightController,
       _feetWeightController,
       _leftCarcassWeightController,
       _rightCarcassWeightController,
-      _totalWeightController,
       _headWeightWholeController,
       _feetWeightWholeController,
       _wholeCarcassWeightController,
     ];
 
-    for (var controller in weightControllers) {
+    for (var controller in requiredPositiveControllers) {
       final weight = double.tryParse(controller.text);
-      if (weight != null && weight < 0) {
-        _showError('Individual weights cannot be negative');
+      if (weight != null && weight <= 0) {
+        _showError('Individual weights must be greater than zero');
         return false;
       }
+    }
+
+    final totalWeightFieldValue = double.tryParse(_totalWeightController.text);
+    if (totalWeightFieldValue != null && totalWeightFieldValue < 0) {
+      _showError('Individual weights cannot be negative');
+      return false;
     }
 
     return true;

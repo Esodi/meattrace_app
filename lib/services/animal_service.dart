@@ -18,6 +18,30 @@ class AnimalService {
 
   AnimalService._internal();
 
+  /// Turns a DRF validation error body (e.g. {"left_carcass_weight": "must be positive."}
+  /// or {"field": ["msg1", "msg2"]}) into a readable message. Falls back to the
+  /// raw exception text when the response body isn't in the expected shape.
+  String _extractErrorMessage(DioException e, String fallbackPrefix) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final messages = <String>[];
+      data.forEach((field, value) {
+        final text = value is List ? value.join(', ') : value.toString();
+        if (field == 'detail' || field == 'non_field_errors') {
+          messages.add(text);
+        } else {
+          messages.add('$field: $text');
+        }
+      });
+      if (messages.isNotEmpty) {
+        return messages.join('\n');
+      }
+    } else if (data is String && data.isNotEmpty) {
+      return data;
+    }
+    return '$fallbackPrefix: ${e.message ?? e.toString()}';
+  }
+
   Future<Map<String, dynamic>> getAnimals({
     String? species,
     bool? slaughtered,
@@ -553,6 +577,11 @@ class AnimalService {
         debugPrint('  - Request data: ${e.requestOptions.data}');
       }
 
+      if (e is DioException) {
+        throw Exception(
+          _extractErrorMessage(e, 'Failed to create carcass measurement'),
+        );
+      }
       throw Exception('Failed to create carcass measurement: $e');
     }
   }
