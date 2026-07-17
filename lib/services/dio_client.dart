@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 import '../utils/constants.dart';
-import 'api_exception.dart';
 
 class DioClient {
   static String get baseUrl => Constants.baseUrl;
@@ -192,7 +191,11 @@ class _ErrorInterceptor extends Interceptor {
       _dioClient._onUnauthorized?.call();
     }
 
-    throw ApiException.fromDioException(err);
+    // Must reject via the handler, not throw: throwing here produces an
+    // unhandled Future rejection that Dio never chains into the original
+    // request's future, so callers hang until an outer timeout fires
+    // instead of seeing the real error immediately.
+    handler.reject(err);
   }
 
   Future<bool> _tryRefreshToken() async {
