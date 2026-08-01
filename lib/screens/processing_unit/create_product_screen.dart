@@ -970,12 +970,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                       }
 
                       bool gotWeight = false;
-                      try {
-                        await _scaleService.readWeight();
-                      } catch (e) {
-                        debugPrint('Error reading scale: $e');
-                      }
 
+                      // Reset stability state so consecutive taps start fresh.
+                      _scaleService.resetStability();
+
+                      // Subscribe BEFORE triggering the read so we don't miss
+                      // the event on a broadcast stream — readWeight() can
+                      // emit synchronously for scales that support the READ
+                      // property, and events fired before listen() are
+                      // silently dropped on a broadcast stream.
                       StreamSubscription? singleRead;
                       singleRead = _scaleService.weightStream.listen((weight) {
                         if (!gotWeight) {
@@ -1015,6 +1018,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           singleRead?.cancel();
                         }
                       });
+
+                      try {
+                        await _scaleService.readWeight();
+                      } catch (e) {
+                        debugPrint('Error reading scale: $e');
+                      }
 
                       // Timeout
                       Future.delayed(const Duration(seconds: 5), () {

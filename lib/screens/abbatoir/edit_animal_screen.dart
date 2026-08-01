@@ -181,13 +181,13 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
 
     bool gotWeight = false;
 
-    try {
-      debugPrint('👆 [EditScreen] Attempting manual read...');
-      await _scaleService.readWeight();
-    } catch (e) {
-      debugPrint('⚠️ [EditScreen] Manual read failed: $e');
-    }
+    // Reset stability state so consecutive taps start fresh.
+    _scaleService.resetStability();
 
+    // Subscribe BEFORE triggering the read so we don't miss the event on
+    // a broadcast stream — readWeight() can emit synchronously for scales
+    // that support the READ property, and events fired before listen() are
+    // silently dropped on a broadcast stream.
     StreamSubscription? singleRead;
     singleRead = _scaleService.weightStream.listen((weight) {
       debugPrint('✅ [EditScreen] Received weight: $weight kg');
@@ -211,6 +211,13 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
         }
       }
     });
+
+    try {
+      debugPrint('👆 [EditScreen] Attempting manual read...');
+      await _scaleService.readWeight();
+    } catch (e) {
+      debugPrint('⚠️ [EditScreen] Manual read failed: $e');
+    }
 
     Future.delayed(const Duration(seconds: 10), () {
       if (!gotWeight) {

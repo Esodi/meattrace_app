@@ -294,20 +294,25 @@ class BluetoothScaleService {
         debugPrint('✅ [ScaleService] Parsed weight (GATT binary): $weight kg');
       }
 
-      // Strategy 3: Raw 2-byte little-endian (last resort)
-      if (weight == null && data.length >= 2) {
-        int rawValue = data[0] + (data[1] << 8);
-        weight = rawValue / 10.0;
-        debugPrint('⚠️ [ScaleService] Parsed weight (raw guess): $weight kg');
-      }
-
+      // NOTE: A previous "Strategy 3" blindly reinterpreted any leftover
+      // 2-byte fragment (e.g. a lone "\r\n" packet terminator split into its
+      // own BLE notification) as a raw little-endian weight. That is how a
+      // constant terminator byte pair [0x0D, 0x0A] was being decoded as
+      // 257.3 kg on every zero-weight reading. There is no way to safely
+      // guess a weight from an unrecognized fragment, so unparsed data is
+      // now discarded instead of fabricating a number.
       if (weight == null) {
-        debugPrint('❌ [ScaleService] Could not parse weight data');
+        debugPrint(
+          '❌ [ScaleService] Could not parse weight data (ignoring fragment): $data',
+        );
         return;
       }
 
-      // Sanity check: reject physically impossible values
-      if (weight <= 0 || weight > 2000) {
+      // Sanity check: reject physically impossible values. Zero is a valid,
+      // meaningful reading (empty/tared platform) and must NOT be discarded
+      // here — only genuinely impossible values (negative, absurdly large)
+      // are rejected.
+      if (weight < 0 || weight > 2000) {
         debugPrint(
           '⚠️ [ScaleService] Weight $weight kg out of valid range — discarded',
         );
