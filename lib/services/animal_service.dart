@@ -6,7 +6,11 @@ import '../utils/constants.dart';
 import 'dio_client.dart';
 
 // Add slaughter parts endpoint constant
-const String slaughterPartsEndpoint = 'slaughter-parts/';
+// NOTE: must start with '/' — Dio joins baseUrl + path via plain string
+// concatenation (see Constants.baseUrl), so a missing leading slash produces
+// a malformed URL (e.g. '/api/v2slaughter-parts/') that nginx routes to the
+// SPA instead of the Django API, returning HTML instead of JSON.
+const String slaughterPartsEndpoint = '/slaughter-parts/';
 
 class AnimalService {
   static final AnimalService _instance = AnimalService._internal();
