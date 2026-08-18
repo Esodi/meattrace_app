@@ -980,6 +980,13 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
             weight: _weightValue > 0 ? _weightValue : null,
             isConnected: _isScaleConnected,
             onTap: _readWeightFromScale,
+            onWeightChanged: (weight) {
+              setState(() {
+                _weightValue = weight ?? 0.0;
+                _weightController.text =
+                    weight != null ? weight.toStringAsFixed(2) : '';
+              });
+            },
             unit: 'kg',
             themeColor: AppColors.abbatoirPrimary, // Abbatoir green theme
           ),

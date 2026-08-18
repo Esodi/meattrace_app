@@ -390,7 +390,7 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
                           children: [
                             _buildInfoChip(
                               Icons.monitor_weight,
-                              '${animal.liveWeight ?? 0} kg',
+                              '${(animal.effectiveTransferWeight ?? animal.liveWeight ?? 0).toStringAsFixed(1)} kg',
                             ),
                             _buildInfoChip(
                               Icons.calendar_today,

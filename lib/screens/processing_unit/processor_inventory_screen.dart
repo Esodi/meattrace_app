@@ -340,7 +340,7 @@ class _ProcessorInventoryScreenState extends State<ProcessorInventoryScreen>
                   const SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.monitor_weight,
-                    '${animal.liveWeight ?? 0} kg',
+                    '${(animal.effectiveTransferWeight ?? animal.liveWeight ?? 0).toStringAsFixed(1)} kg',
                   ),
                   const SizedBox(width: 8),
                   _buildInfoChip(

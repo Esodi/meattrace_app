@@ -42,6 +42,7 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
   // Form state
   String? _selectedSpecies;
   DateTime _selectedDate = DateTime.now();
+  bool _isDateSelected = false;
   double _weightValue = 0;
   String _selectedGender = 'male';
   String _selectedHealthStatus = 'healthy';
@@ -274,9 +275,10 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
       },
     );
 
-    if (picked != null && picked != _selectedDate) {
+    if (picked != null) {
       setState(() {
         _selectedDate = picked;
+        _isDateSelected = true;
       });
     }
   }
@@ -353,6 +355,26 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
     if (_selectedSpecies == null) {
       debugPrint('❌ No species selected');
       _showErrorSnackbar('Please select a species');
+      return;
+    }
+
+    if (!_isDateSelected) {
+      debugPrint('❌ Date of birth/entry not selected');
+      _showErrorSnackbar('Please select the date of birth or entry date');
+      return;
+    }
+
+    if (_abbatoirController.text.trim().isEmpty) {
+      debugPrint('❌ Abattoir/Farm name missing');
+      _showErrorSnackbar('Please enter Abattoir or Farm name');
+      return;
+    }
+
+    if (_weightValue <= 0) {
+      debugPrint('❌ Live weight missing or zero');
+      _showErrorSnackbar(
+        'Please read from Bluetooth scale or enter live weight manually (> 0 kg)',
+      );
       return;
     }
 
@@ -1004,9 +1026,9 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Date of Birth
+          // Date of Birth / Entry Date
           Text(
-            'Date of Birth *',
+            'Date of Birth / Entry Date *',
             style: AppTypography.labelLarge(color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
@@ -1019,23 +1041,32 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.calendar_today,
-                    color: AppColors.textSecondary,
+                    color: _isDateSelected
+                        ? AppColors.abbatoirPrimary
+                        : AppColors.textSecondary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                      style: AppTypography.bodyLarge(),
+                      _isDateSelected
+                          ? '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'
+                          : 'Tap to select Date of Birth / Entry *',
+                      style: AppTypography.bodyLarge(
+                        color: _isDateSelected
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                      ),
                     ),
                   ),
-                  Text(
-                    _getAgeDisplay(),
-                    style: AppTypography.bodySmall(
-                      color: AppColors.textSecondary,
+                  if (_isDateSelected)
+                    Text(
+                      _getAgeDisplay(),
+                      style: AppTypography.bodySmall(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -1045,9 +1076,15 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
           // Abattoir Name
           CustomTextField(
             controller: _abbatoirController,
-            label: 'Abattoir/Abbatoir Name',
-            hint: 'Enter abbatoir or abattoir name',
+            label: 'Abattoir / Farm Name *',
+            hint: 'Enter abattoir or farm name',
             prefixIcon: const Icon(Icons.business),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Abattoir or Farm name is required';
+              }
+              return null;
+            },
           ),
         ],
       ),
@@ -1089,6 +1126,13 @@ class _RegisterAnimalScreenState extends State<RegisterAnimalScreen> {
             weight: _weightValue > 0 ? _weightValue : null,
             isConnected: _isScaleConnected,
             onTap: _readWeightFromScale,
+            onWeightChanged: (weight) {
+              setState(() {
+                _weightValue = weight ?? 0.0;
+                _weightController.text =
+                    weight != null ? weight.toStringAsFixed(2) : '';
+              });
+            },
             unit: 'kg',
             themeColor: AppColors.abbatoirPrimary, // Abbatoir green theme
           ),

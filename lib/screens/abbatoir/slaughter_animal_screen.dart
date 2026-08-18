@@ -1672,6 +1672,11 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
           }
         });
       },
+      onWeightChanged: (weight) {
+        setState(() {
+          controller.text = weight != null ? weight.toStringAsFixed(2) : '';
+        });
+      },
       unit: unit,
       themeColor: AppColors.abbatoirPrimary,
     );

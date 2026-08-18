@@ -191,24 +191,27 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         '🏭 [CREATE_PRODUCT] Total products: ${productProvider.products.length}',
       );
 
+      final procUnitId = authProvider.user?.processingUnitId;
+
       // Filter available whole animals (received and has remaining weight)
       // Note: We don't check if animal was "used" - we only check remaining_weight
       // This allows creating multiple products from the same animal until weight is depleted
       final availableAnimals = animalProvider.animals.where((animal) {
         final isSlaughtered = animal.slaughtered;
         final hasReceivedBy = animal.receivedBy != null;
-        final matchesUser = animal.receivedBy == currentUserId;
+        final belongsToUnit =
+            procUnitId == null || animal.transferredTo == procUnitId || hasReceivedBy;
         final hasRemainingWeight =
             animal.remainingWeight != null && animal.remainingWeight! > 0;
 
         final isAvailable =
-            isSlaughtered && hasReceivedBy && matchesUser && hasRemainingWeight;
+            isSlaughtered && belongsToUnit && hasRemainingWeight;
 
         if (animal.transferredTo != null || animal.receivedBy != null) {
           debugPrint('  🐄 Animal ${animal.animalId}:');
           debugPrint('     - slaughtered: $isSlaughtered');
           debugPrint(
-            '     - received_by: ${animal.receivedBy} (matches user: $matchesUser)',
+            '     - received_by: ${animal.receivedBy}, transferred_to: ${animal.transferredTo}',
           );
           debugPrint('     - remaining_weight: ${animal.remainingWeight}');
           debugPrint('     - AVAILABLE: $isAvailable');
@@ -225,23 +228,24 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       debugPrint('🔍 [CREATE_PRODUCT] Fetching slaughter parts...');
       final allSlaughterParts = await animalProvider.getSlaughterPartsList();
 
-      // Filter slaughter parts for current user and has remaining weight
-      // Note: We don't check usedInProduct - we only check remaining_weight
-      // This allows creating multiple products from the same part until weight is depleted
+      // Filter slaughter parts for processing unit and has remaining weight
+      // Note: Backend get_queryset() scopes parts to the user's processing unit.
+      // We check that it has remaining weight (> 0) and is received/transferred to the unit.
       final availableSlaughterParts = allSlaughterParts.where((part) {
         final isReceived = part.receivedBy != null;
-        final matchesUser = part.receivedBy == currentUserId;
-        final hasRemainingWeight =
-            part.remainingWeight != null && part.remainingWeight! > 0;
+        final belongsToUnit =
+            procUnitId == null || part.transferredTo == procUnitId || isReceived;
+        final remainingWt = part.remainingWeight ?? part.weight;
+        final hasRemainingWeight = remainingWt > 0;
 
-        final isAvailable = isReceived && matchesUser && hasRemainingWeight;
+        final isAvailable = belongsToUnit && hasRemainingWeight;
 
-        if (part.receivedBy != null) {
+        if (part.receivedBy != null || part.transferredTo != null) {
           debugPrint('  🥩 Part ${part.id} (${part.partType.displayName}):');
           debugPrint(
-            '     - received_by: ${part.receivedBy} (matches user: $matchesUser)',
+            '     - received_by: ${part.receivedBy}, transferred_to: ${part.transferredTo}',
           );
-          debugPrint('     - remaining_weight: ${part.remainingWeight}');
+          debugPrint('     - remaining_weight: $remainingWt');
           debugPrint('     - AVAILABLE: $isAvailable');
         }
 
@@ -950,6 +954,26 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     isConnected: _isScaleConnected,
                     unit: unit,
                     themeColor: AppColors.processorPrimary,
+                    onWeightChanged: (weight) {
+                      setState(() {
+                        weightController.text =
+                            weight != null ? weight.toStringAsFixed(2) : '';
+                      });
+                      if (weight != null) {
+                        final weightInKg = _convertToKg(weight, unit);
+                        if (weightInKg > maxAvailableWeight && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Warning: Weight exceeds available amount (${maxAvailableWeight.toStringAsFixed(2)} kg)',
+                              ),
+                              backgroundColor: Colors.orange,
+                              duration: const Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                      }
+                    },
                     onTap: () async {
                       if (!_scaleService.isConnected) {
                         await _connectScale();
