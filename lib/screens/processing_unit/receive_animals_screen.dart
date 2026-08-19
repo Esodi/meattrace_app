@@ -1281,64 +1281,79 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
         context,
         listen: false,
       );
-      await animalProvider.receiveAnimals(
-        animalIds,
-        partReceives: partReceives,
-        animalRejections: animalRejections,
-        partRejections: partRejections,
-      );
+
+      // Only a failure of the actual save should ever be reported as "the
+      // receive failed" — everything after this point (refreshing the list,
+      // closing the review sheet, navigating back) is best-effort cleanup
+      // that must not relabel a successful save as an error if it stumbles.
+      try {
+        await animalProvider.receiveAnimals(
+          animalIds,
+          partReceives: partReceives,
+          animalRejections: animalRejections,
+          partRejections: partRejections,
+        );
+      } catch (e) {
+        debugPrint('❌ [RECEIVE_ANIMALS] receiveAnimals() failed: $e');
+        if (mounted && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error submitting decisions: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
 
       debugPrint('  ✅ API call successful!');
 
-      if (mounted) {
-        // Clear decision state to prevent resubmission
-        setState(() {
-          _animalDecisions.clear();
-          _animalRejectionReasons.clear();
-          _partDecisions.clear();
-          _partRejectionReasons.clear();
-        });
+      try {
+        if (mounted) {
+          // Clear decision state to prevent resubmission
+          setState(() {
+            _animalDecisions.clear();
+            _animalRejectionReasons.clear();
+            _partDecisions.clear();
+            _partRejectionReasons.clear();
+          });
 
-        debugPrint('  🔄 Refreshing animal list...');
-        // Refresh the animal data to reflect the updated received status
-        if (!mounted) return;
-        await _loadPendingAnimals();
+          debugPrint('  🔄 Refreshing animal list...');
+          // Refresh the animal data to reflect the updated received status
+          if (!mounted) return;
+          await _loadPendingAnimals();
 
-        if (!mounted) return;
-        if (context.mounted) Navigator.of(context).pop(); // Close review screen
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Successfully processed ${animalIds.length + partReceives.length} acceptances and ${animalRejections.length + partRejections.length} rejections',
-            ),
-            backgroundColor: AppColors.success,
-          ),
-        );
+          if (!mounted) return;
+          if (context.mounted) Navigator.of(context).pop(); // Close review screen
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Successfully processed ${animalIds.length + partReceives.length} acceptances and ${animalRejections.length + partRejections.length} rejections',
+                ),
+                backgroundColor: AppColors.success,
+              ),
+            );
+          }
+          debugPrint(
+            '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+          );
+          debugPrint('✅ [RECEIVE_ANIMALS] Submit complete!');
+          debugPrint(
+            '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+          );
+          if (context.mounted) context.pop(); // Go back to previous screen
         }
+      } catch (e) {
+        // The receive already succeeded server-side by this point — a
+        // problem here is a UI/refresh glitch, not a failed receive, so it
+        // is logged only and never shown as an error toast.
         debugPrint(
-          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+          '⚠️ [RECEIVE_ANIMALS] Post-success cleanup failed (receive itself already succeeded): $e',
         );
-        debugPrint('✅ [RECEIVE_ANIMALS] Submit complete!');
-        debugPrint(
-          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-        );
-        context.pop(); // Go back to previous screen
-      }
-    } catch (e) {
-      debugPrint('❌ [RECEIVE_ANIMALS] Error submitting decisions: $e');
-      if (mounted) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error submitting decisions: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        }
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 }
