@@ -26,6 +26,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
   int _currentStep = 0;
   final List<Product> _selectedProducts = [];
   final Map<int, double> _productWeights = {};
+  final Map<int, TextEditingController> _weightControllers = {};
   Map<String, dynamic>? _selectedShop;
   bool _isLoading = false;
   bool _isTransferring = false;
@@ -43,7 +44,17 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    for (final controller in _weightControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  TextEditingController _weightControllerFor(int productId, double initialWeight) {
+    return _weightControllers.putIfAbsent(
+      productId,
+      () => TextEditingController(text: initialWeight.toStringAsFixed(1)),
+    );
   }
 
   Future<void> _loadData() async {
@@ -198,6 +209,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
       if (_selectedProducts.contains(product)) {
         _selectedProducts.remove(product);
         _productWeights.remove(product.id);
+        _weightControllers.remove(product.id)?.dispose();
       } else {
         _selectedProducts.add(product);
         _productWeights[product.id!] = product.weight ?? product.quantity;
@@ -219,6 +231,10 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     setState(() {
       _selectedProducts.clear();
       _productWeights.clear();
+      for (final controller in _weightControllers.values) {
+        controller.dispose();
+      }
+      _weightControllers.clear();
     });
   }
 
@@ -521,12 +537,13 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                               setState(() {
                                 final newWeight = (currentWeight - 1).clamp(1.0, availableWeight);
                                 _productWeights[product.id!] = newWeight;
+                                _weightControllers[product.id!]?.text = newWeight.toStringAsFixed(1);
                               });
                             },
                             icon: const Icon(Icons.remove_circle_outline),
                             color: AppTheme.secondaryBurgundy,
                           ),
-                          
+
                           // Weight input
                           Expanded(
                             child: TextField(
@@ -539,11 +556,10 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 suffixText: 'of ${availableWeight.toStringAsFixed(1)} ${product.weightUnit}',
                               ),
-                              controller: TextEditingController(
-                                text: currentWeight.toStringAsFixed(1),
-                              )..selection = TextSelection.fromPosition(
-                                TextPosition(offset: currentWeight.toStringAsFixed(1).length),
-                              ),
+                              // Reuses a controller kept in state so the field isn't
+                              // rebuilt (and the user's in-progress typing wiped out)
+                              // on every keystroke — see _weightControllerFor.
+                              controller: _weightControllerFor(product.id!, currentWeight),
                               onChanged: (value) {
                                 final parsed = double.tryParse(value);
                                 if (parsed != null && parsed > 0 && parsed <= availableWeight) {
@@ -554,13 +570,14 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                               },
                             ),
                           ),
-                          
+
                           // Increase button
                           IconButton(
                             onPressed: () {
                               setState(() {
                                 final newWeight = (currentWeight + 1).clamp(1.0, availableWeight);
                                 _productWeights[product.id!] = newWeight;
+                                _weightControllers[product.id!]?.text = newWeight.toStringAsFixed(1);
                               });
                             },
                             icon: const Icon(Icons.add_circle_outline),
@@ -577,6 +594,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                       onPressed: () {
                     setState(() {
                       _productWeights[product.id!] = availableWeight;
+                      _weightControllers[product.id!]?.text = availableWeight.toStringAsFixed(1);
                     });
                   },
                   icon: const Icon(Icons.all_inclusive, size: 16),

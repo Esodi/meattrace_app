@@ -38,7 +38,7 @@ class SaleService {
       if (productId != null) queryParams['product_id'] = productId;
 
       final response = await _dioClient.dio.get(
-        'sales/',
+        '/sales/',
         queryParameters: queryParams,
       );
 
@@ -60,7 +60,7 @@ class SaleService {
   Future<Sale> getSale(int id) async {
     try {
       final response = await _dioClient.dio.get(
-        'sales/$id/',
+        '/sales/$id/',
       );
       return Sale.fromJson(response.data);
     } on DioException catch (e) {
@@ -78,7 +78,7 @@ class SaleService {
     try {
       final encodedName = Uri.encodeComponent(productName);
       final response = await _dioClient.dio.get(
-        'sales/category-summary/$encodedName/',
+        '/sales/category-summary/$encodedName/',
       );
       return CategorySalesSummary.fromJson(response.data);
     } on DioException catch (e) {
@@ -120,7 +120,7 @@ class SaleService {
       debugPrint('📤 [SaleService] Sending data: $saleData');
 
       final response = await _dioClient.dio.post(
-        'sales/',
+        '/sales/',
         data: saleData,
       );
 
@@ -176,7 +176,7 @@ class SaleService {
   /// Delete a sale
   Future<void> deleteSale(int id) async {
     try {
-      await _dioClient.dio.delete('${Constants.baseUrl}/sales/$id/');
+      await _dioClient.dio.delete('/sales/$id/');
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         throw Exception('Sale not found');

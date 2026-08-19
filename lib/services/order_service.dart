@@ -76,7 +76,7 @@ class OrderService {
 
   Future<Order> getOrder(int orderId) async {
     try {
-      final response = await _dioClient.dio.get('orders/$orderId/');
+      final response = await _dioClient.dio.get('/orders/$orderId/');
       return Order.fromJson(response.data);
     } on DioException catch (e) {
       throw Exception('Failed to get order: ${e.message}');
