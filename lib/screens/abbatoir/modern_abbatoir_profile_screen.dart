@@ -12,8 +12,8 @@ import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/core/custom_button.dart';
 import '../../models/activity.dart';
-import 'package:intl/intl.dart';
 
+import 'package:meattrace_app/utils/app_time.dart';
 class ModernAbbatoirProfileScreen extends StatefulWidget {
   const ModernAbbatoirProfileScreen({super.key});
 
@@ -834,7 +834,7 @@ class _ModernAbbatoirProfileScreenState
   }
 
   String _formatDateTime(DateTime dt) {
-    return DateFormat('MMM d, y • h:mm a').format(dt);
+    return AppDateFormat('MMM d, y • h:mm a').format(dt);
   }
 
   IconData _getActivityIcon(ActivityType type) {

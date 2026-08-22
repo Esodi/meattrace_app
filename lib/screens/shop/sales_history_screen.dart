@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import '../../models/sale.dart';
 import '../../services/sale_service.dart';
 import '../../utils/app_colors.dart';
@@ -34,9 +35,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
   String? _productNameFilter;
 
   // Date formatter
-  final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
-  final DateFormat _timeFormat = DateFormat('HH:mm');
-  final DateFormat _fullDateFormat = DateFormat('dd/MM/yyyy');
+  final AppDateFormat _dateFormat = AppDateFormat('MMM dd, yyyy');
+  final AppDateFormat _timeFormat = AppDateFormat('HH:mm');
+  final AppDateFormat _fullDateFormat = AppDateFormat('dd/MM/yyyy');
 
   @override
   void initState() {

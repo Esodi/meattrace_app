@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/sale_provider.dart';
 import 'invoice_list_screen.dart';
@@ -476,7 +477,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
                       ),
                       title: Text(sale.customerName ?? 'Walk-in Customer'),
                       subtitle: Text(
-                        DateFormat('MMM dd, yyyy HH:mm').format(sale.createdAt),
+                        AppDateFormat('MMM dd, yyyy HH:mm').format(sale.createdAt),
                         style: const TextStyle(fontSize: 12),
                       ),
                       trailing: Text(

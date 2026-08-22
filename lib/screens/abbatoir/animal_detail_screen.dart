@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/user_context_provider.dart';
 import '../../models/animal.dart';
@@ -385,7 +385,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
                 children: [
                   _buildInfoRow(
                     Icons.monitor_weight,
-                    DateFormat('dd MMM yyyy, HH:mm').format(record.recordedAt),
+                    AppDateFormat('dd MMM yyyy, HH:mm').format(record.recordedAt),
                     '${record.weight.toStringAsFixed(1)} kg$changeLabel',
                   ),
                   if (entry.key < history.length - 1)
@@ -849,6 +849,6 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'N/A';
-    return DateFormat('MMM dd, yyyy').format(date);
+    return AppDateFormat('MMM dd, yyyy').format(date);
   }
 }

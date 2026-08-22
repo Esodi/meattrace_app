@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/sync_queue_item.dart';
 import '../../services/database_helper.dart';
 import '../../services/sync_manager.dart';
-import 'package:intl/intl.dart';
 
+import 'package:meattrace_app/utils/app_time.dart';
 class SyncStatusScreen extends StatefulWidget {
   const SyncStatusScreen({super.key});
 
@@ -111,7 +111,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Queued: ${DateFormat('MMM dd, HH:mm').format(item.createdAt)}',
+                  'Queued: ${AppDateFormat('MMM dd, HH:mm').format(item.createdAt)}',
                 ),
                 if (item.retryCount > 0)
                   Text(

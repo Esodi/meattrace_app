@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import '../../models/category_sales_summary.dart';
 import '../../services/sale_service.dart';
 import '../../utils/app_colors.dart';
@@ -29,7 +30,7 @@ class _ProductSalesTrackingScreenState
   String? _error;
 
   final NumberFormat _currencyFormat = NumberFormat('#,###');
-  final DateFormat _dateFormat = DateFormat('MMM dd, yyyy HH:mm');
+  final AppDateFormat _dateFormat = AppDateFormat('MMM dd, yyyy HH:mm');
 
   @override
   void initState() {

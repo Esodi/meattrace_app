@@ -1310,6 +1310,13 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
 
       try {
         if (mounted) {
+          // Capture the router before popping — this screen pops twice
+          // below (closing the review screen, then going back again), so by
+          // the time the SnackBarAction's onPressed fires, `context` would
+          // otherwise be defunct.
+          final router = GoRouter.of(context);
+          final acceptedCount = animalIds.length + partReceives.length;
+
           // Clear decision state to prevent resubmission
           setState(() {
             _animalDecisions.clear();
@@ -1329,9 +1336,18 @@ class _ReceiveAnimalsScreenState extends State<ReceiveAnimalsScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Successfully processed ${animalIds.length + partReceives.length} acceptances and ${animalRejections.length + partRejections.length} rejections',
+                  'Successfully processed $acceptedCount acceptances and ${animalRejections.length + partRejections.length} rejections',
                 ),
                 backgroundColor: AppColors.success,
+                action: acceptedCount > 0
+                    ? SnackBarAction(
+                        label: 'View Inventory',
+                        textColor: Colors.white,
+                        onPressed: () {
+                          router.go('/processor/current-inventory');
+                        },
+                      )
+                    : null,
               ),
             );
           }

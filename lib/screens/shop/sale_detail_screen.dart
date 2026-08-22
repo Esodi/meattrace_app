@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/sale.dart';
@@ -36,8 +37,8 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
   bool _isLoading = true;
   String? _error;
 
-  final DateFormat _dateFormat = DateFormat('EEEE, MMM dd, yyyy');
-  final DateFormat _timeFormat = DateFormat('HH:mm:ss');
+  final AppDateFormat _dateFormat = AppDateFormat('EEEE, MMM dd, yyyy');
+  final AppDateFormat _timeFormat = AppDateFormat('HH:mm:ss');
   final NumberFormat _currencyFormat = NumberFormat('#,###');
 
   @override
