@@ -533,17 +533,6 @@ class _ModernLoginScreenState extends State<ModernLoginScreen>
 
         const SizedBox(height: AppTheme.space8),
 
-        // Subtitle
-        Text(
-          '(Nyama Tamu App)',
-          style: AppTypography.scriptMedium(
-            color: AppColors.textSecondary,
-          ).copyWith(fontStyle: FontStyle.italic),
-          textAlign: TextAlign.center,
-        ),
-
-        const SizedBox(height: AppTheme.space8),
-
         // Tagline
         Text(
           'Abbatoir to Table Traceability',

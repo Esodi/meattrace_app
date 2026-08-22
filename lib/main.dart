@@ -697,7 +697,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             data: effectiveTheme,
             duration: animationDuration,
             child: MaterialApp.router(
-              title: 'Nyama Tamu',
+              title: 'MeatTrace Pro',
               theme: effectiveTheme,
               themeMode: ThemeMode.light,
               routerConfig: _router,

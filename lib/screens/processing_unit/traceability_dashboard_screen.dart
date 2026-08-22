@@ -40,6 +40,16 @@ class _ProcessingTraceabilityScreenState
         search: _searchQuery.isEmpty ? null : _searchQuery,
       );
 
+      // Most recently received/modified entries first.
+      entries.sort((a, b) {
+        final aDate = a.receivedAt;
+        final bDate = b.receivedAt;
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return bDate.compareTo(aDate);
+      });
+
       setState(() {
         _entries = entries;
         _calculateStats();

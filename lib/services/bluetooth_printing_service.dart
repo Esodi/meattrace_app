@@ -198,21 +198,37 @@ class BluetoothPrintingService {
       final bluetoothConnect = await Permission.bluetoothConnect.request();
   debugPrint('🔗 Bluetooth connect permission: ${bluetoothConnect.toString()}');
 
+      // Location is only declared up to API 30 in the manifest (BLUETOOTH_SCAN
+      // is flagged neverForLocation on 31+), so on Android 12+ this permission
+      // doesn't exist to grant and can never be satisfied — it must not block
+      // printing there. Request it best-effort for pre-12 devices only.
       final location = await Permission.location.request();
   debugPrint('📍 Location permission: ${location.toString()}');
-
-      // Check if location services are enabled (required for BLE scanning)
-      final locationEnabled = await Permission.location.serviceStatus.isEnabled;
+      if (location.isGranted) {
+        final locationEnabled = await Permission.location.serviceStatus.isEnabled;
   debugPrint('📍 Location services enabled: $locationEnabled');
+      } else {
+  debugPrint('⚠️ [BluetoothPrintingService] Location permission not granted (expected on Android 12+)');
+      }
 
-      final allGranted = bluetoothScan.isGranted && bluetoothConnect.isGranted && location.isGranted;
-  debugPrint('✅ [BluetoothPrintingService] All permissions granted: $allGranted');
+      final allGranted = bluetoothScan.isGranted && bluetoothConnect.isGranted;
+  debugPrint('✅ [BluetoothPrintingService] Required Bluetooth permissions granted: $allGranted');
 
       return allGranted;
     } catch (e) {
   debugPrint('❌ [BluetoothPrintingService] Error requesting permissions: $e');
       return false;
     }
+  }
+
+  /// True once the user has denied Bluetooth scan/connect with "Don't ask
+  /// again" (Android) or after the one-shot prompt (iOS). In that state,
+  /// `Permission.request()` no longer shows the system dialog — the only way
+  /// forward is the app's own Settings page via [openAppSettings].
+  Future<bool> hasPermanentlyDeniedPermissions() async {
+    final scanStatus = await Permission.bluetoothScan.status;
+    final connectStatus = await Permission.bluetoothConnect.status;
+    return scanStatus.isPermanentlyDenied || connectStatus.isPermanentlyDenied;
   }
 
   Future<void> openLocationSettings() async {
@@ -236,12 +252,21 @@ class BluetoothPrintingService {
     try {
   debugPrint('🔍 [BluetoothPrintingService] Starting BLE printer scan (note: ESC/POS printers typically use Classic Bluetooth, not BLE)...');
 
-      // Check if location services are enabled (required for BLE scanning)
-      final locationEnabled = await Permission.location.serviceStatus.isEnabled;
-      if (!locationEnabled) {
+      // Location services are only required for BLE scanning pre-Android 12
+      // (BLUETOOTH_SCAN carries the neverForLocation flag on 31+, and the
+      // location permission itself is scoped to maxSdkVersion 30 in the
+      // manifest, so it can never be granted on newer devices). Only enforce
+      // this when the location permission was actually granted — meaning
+      // it's relevant on this OS version — otherwise it would block
+      // scanning on every Android 12+ device even with Bluetooth granted.
+      final locationStatus = await Permission.location.status;
+      if (locationStatus.isGranted) {
+        final locationEnabled = await Permission.location.serviceStatus.isEnabled;
+        if (!locationEnabled) {
   debugPrint('⚠️ [BluetoothPrintingService] Location services are disabled. Opening location settings...');
-        await openLocationSettings();
-        throw Exception('Location services are required for Bluetooth scanning. Please enable location services and try again.');
+          await openLocationSettings();
+          throw Exception('Location services are required for Bluetooth scanning. Please enable location services and try again.');
+        }
       }
 
       // Check if Bluetooth is available and enabled

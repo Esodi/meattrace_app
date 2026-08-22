@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../services/bluetooth_scale_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
@@ -37,6 +38,41 @@ class _ScaleConnectionDialogState extends State<ScaleConnectionDialog> {
     });
 
     try {
+      debugPrint('🔍 [ScaleDialog] Requesting Bluetooth permissions...');
+
+      // Android 12+ requires these to be granted at runtime — declaring
+      // them in the manifest alone is not enough. Without this, startScan()
+      // silently returns zero devices (looks like "nothing found").
+      final bluetoothScan = await Permission.bluetoothScan.request();
+      final bluetoothConnect = await Permission.bluetoothConnect.request();
+      final location = await Permission.location.request();
+      debugPrint(
+        '🔐 [ScaleDialog] scan=$bluetoothScan connect=$bluetoothConnect location=$location',
+      );
+
+      if (!bluetoothScan.isGranted || !bluetoothConnect.isGranted) {
+        throw Exception(
+          'Bluetooth permission denied. Enable it in app settings to connect a scale.',
+        );
+      }
+      // Location is only declared up to API 30 in the manifest (BLUETOOTH_SCAN
+      // is flagged neverForLocation on 31+), so on Android 12+ devices this
+      // permission doesn't exist to grant and must not block scanning. It's
+      // still required pre-12, so we request it best-effort and only warn —
+      // if it's actually needed and missing, startScan() itself will fail
+      // with a reportable error via the existing catch block below.
+      if (!location.isGranted) {
+        debugPrint(
+          '⚠️ [ScaleDialog] Location permission not granted (expected on Android 12+)',
+        );
+      } else {
+        final locationEnabled =
+            await Permission.location.serviceStatus.isEnabled;
+        if (!locationEnabled) {
+          debugPrint('⚠️ [ScaleDialog] Location services are turned off');
+        }
+      }
+
       debugPrint('🔍 [ScaleDialog] Checking Bluetooth support...');
 
       // Check if Bluetooth is supported

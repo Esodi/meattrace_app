@@ -56,6 +56,7 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
   final BluetoothScaleService _scaleService = BluetoothScaleService();
   StreamSubscription? _weightSubscription;
   bool _isScaleConnected = false;
+  double? _liveWeight;
 
   // Species options with icons - values must match backend choices
   final List<Map<String, dynamic>> _speciesOptions = [
@@ -73,6 +74,19 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       '🔵 [EditAnimalScreen] initState called for animalId: ${widget.animalId}',
     );
     _loadAnimal();
+    // The scale service is a singleton, so if a scale is already connected
+    // from another screen, pick up its live stream immediately.
+    if (_scaleService.isConnected) {
+      _isScaleConnected = true;
+      _startLiveWeightSubscription();
+    }
+  }
+
+  void _startLiveWeightSubscription() {
+    _weightSubscription?.cancel();
+    _weightSubscription = _scaleService.weightStream.listen((weight) {
+      if (mounted) setState(() => _liveWeight = weight);
+    });
   }
 
   @override
@@ -149,94 +163,18 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
       setState(() {
         _isScaleConnected = true;
       });
+      _startLiveWeightSubscription();
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Scale connected successfully'),
+          content: Text('Scale connected — weight will update live'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
       );
       }
     }
-  }
-
-  void _readWeightFromScale() async {
-    if (!_scaleService.isConnected) {
-      _connectScale();
-      return;
-    }
-
-    debugPrint('👆 [EditScreen] Reading weight from scale...');
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Reading from scale... Please ensure weight is stable.'),
-        duration: Duration(seconds: 10),
-      ),
-    );
-    }
-
-    bool gotWeight = false;
-
-    // Reset stability state so consecutive taps start fresh.
-    _scaleService.resetStability();
-
-    // Subscribe BEFORE triggering the read so we don't miss the event on
-    // a broadcast stream — readWeight() can emit synchronously for scales
-    // that support the READ property, and events fired before listen() are
-    // silently dropped on a broadcast stream.
-    StreamSubscription? singleRead;
-    singleRead = _scaleService.weightStream.listen((weight) {
-      debugPrint('✅ [EditScreen] Received weight: $weight kg');
-      if (!gotWeight) {
-        gotWeight = true;
-        setState(() {
-          _weightValue = weight;
-          _weightController.text = weight.toStringAsFixed(2);
-        });
-        singleRead?.cancel();
-
-        if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Weight: ${weight.toStringAsFixed(2)} kg'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        }
-      }
-    });
-
-    try {
-      debugPrint('👆 [EditScreen] Attempting manual read...');
-      await _scaleService.readWeight();
-    } catch (e) {
-      debugPrint('⚠️ [EditScreen] Manual read failed: $e');
-    }
-
-    Future.delayed(const Duration(seconds: 10), () {
-      if (!gotWeight) {
-        debugPrint('⏱️ [EditScreen] Timeout waiting for weight');
-        singleRead?.cancel();
-        if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No weight received. Ensure weight is on scale and stable.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        }
-      }
-    });
   }
 
   Future<bool> _validateTagIdUniqueness(String tagId) async {
@@ -977,9 +915,10 @@ class _EditAnimalScreenState extends State<EditAnimalScreen> {
           // Bluetooth Weight Display
           BluetoothWeightDisplay(
             label: 'Animal Live Weight',
-            weight: _weightValue > 0 ? _weightValue : null,
+            weight: _liveWeight,
+            recordedWeight: _weightValue > 0 ? _weightValue : null,
             isConnected: _isScaleConnected,
-            onTap: _readWeightFromScale,
+            onTap: _connectScale,
             onWeightChanged: (weight) {
               setState(() {
                 _weightValue = weight ?? 0.0;

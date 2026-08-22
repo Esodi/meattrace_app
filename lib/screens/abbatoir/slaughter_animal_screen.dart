@@ -79,7 +79,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   final BluetoothScaleService _scaleService = BluetoothScaleService();
   StreamSubscription? _weightSubscription;
   bool _isScaleConnected = false;
-  bool _isReadingWeight = false;
+  double? _liveWeight;
 
   @override
   void initState() {
@@ -89,6 +89,19 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       debugPrint('🔵 [SlaughterScreen] Post frame callback - loading animals');
       _loadAvailableAnimals();
+    });
+    // The scale service is a singleton, so if a scale is already connected
+    // from another screen, pick up its live stream immediately.
+    if (_scaleService.isConnected) {
+      _isScaleConnected = true;
+      _startLiveWeightSubscription();
+    }
+  }
+
+  void _startLiveWeightSubscription() {
+    _weightSubscription?.cancel();
+    _weightSubscription = _scaleService.weightStream.listen((weight) {
+      if (mounted) setState(() => _liveWeight = weight);
     });
   }
 
@@ -119,6 +132,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       setState(() {
         _isScaleConnected = true;
       });
+      _startLiveWeightSubscription();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Scale connected successfully'),
@@ -1587,95 +1601,26 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     return BluetoothWeightDisplay(
       label: label + (required ? ' *' : ''),
-      weight: currentWeight,
+      // All weight fields on this screen share the one connected scale, so
+      // they all show the same live reading — weigh the part currently on
+      // the scale, then tap Record on the field for that part.
+      weight: _liveWeight,
+      recordedWeight: currentWeight,
       isConnected: _isScaleConnected,
-      onTap: () async {
-        // Prevent concurrent reads from rapid double-taps on any weight field.
-        if (_isReadingWeight) return;
-
-        // Read weight and update controller
-        if (!_scaleService.isConnected) {
-          await _connectScale();
-          return;
-        }
-
-        setState(() => _isReadingWeight = true);
-        debugPrint('👆 [SlaughterScreen] Reading weight for $label...');
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Reading from scale... Please ensure weight is stable.',
-            ),
-            duration: Duration(seconds: 10),
-          ),
-        );
-        }
-
-        bool gotWeight = false;
-
-        // Reset stability state so consecutive taps start fresh.
-        _scaleService.resetStability();
-
-        // Subscribe BEFORE triggering the read so we don't miss the event on
-        // a broadcast stream — readWeight() can emit synchronously for scales
-        // that support the READ property, and events fired before listen() are
-        // silently dropped on a broadcast stream.
-        StreamSubscription? singleRead;
-        singleRead = _scaleService.weightStream.listen((weight) {
-          if (!gotWeight) {
-            gotWeight = true;
-            if (mounted) {
-              setState(() {
-                controller.text = weight.toStringAsFixed(2);
-                _isReadingWeight = false;
-              });
-            }
-            singleRead?.cancel();
-
-            if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('$label: ${weight.toStringAsFixed(2)} $unit'),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-            }
-          }
-        });
-
-        try {
-          await _scaleService.readWeight();
-        } catch (e) {
-          debugPrint('⚠️ [SlaughterScreen] Manual read failed: $e');
-        }
-
-        Future.delayed(const Duration(seconds: 10), () {
-          if (!gotWeight) {
-            singleRead?.cancel();
-            if (mounted) setState(() => _isReadingWeight = false);
-            if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'No weight received. Ensure weight is on scale and stable.',
-                ),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
-              ),
-            );
-            }
-          }
-        });
-      },
+      onTap: _connectScale,
       onWeightChanged: (weight) {
         setState(() {
           controller.text = weight != null ? weight.toStringAsFixed(2) : '';
         });
+        if (weight != null && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$label: ${weight.toStringAsFixed(2)} $unit'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       },
       unit: unit,
       themeColor: AppColors.abbatoirPrimary,

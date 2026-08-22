@@ -146,6 +146,9 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
         }
 
         if (context.mounted) {
+          // Capture the router before popping - the SnackBarAction below fires
+          // after this screen is popped, so `context` will be defunct by then.
+          final router = GoRouter.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -158,7 +161,7 @@ class _ReceiveProductsScreenState extends State<ReceiveProductsScreen> {
                     label: 'View Inventory',
                     textColor: Colors.white,
                     onPressed: () {
-                      context.go('/shop-inventory');
+                      router.go('/shop-inventory');
                     },
                   )
                 : null,

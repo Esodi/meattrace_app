@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_typography.dart';
 
-/// A beautiful Bluetooth scale and manual weight display widget
-/// Shows weight in a presentable format with large numbers,
-/// Bluetooth scale connection status, and manual weight entry options.
+/// A beautiful Bluetooth scale weight display widget.
+/// While connected, [weight] is the live, continuously-updating reading
+/// straight off the scale — no tap required. The "Record" button captures
+/// whatever that live value is at the moment it's pressed into
+/// [recordedWeight] via [onWeightChanged]. A hidden long-press on the
+/// display still opens a manual-entry override for when a scale genuinely
+/// isn't available.
 class BluetoothWeightDisplay extends StatelessWidget {
   final String label;
   final double? weight;
+  final double? recordedWeight;
   final bool isConnected;
   final VoidCallback onTap;
   final ValueChanged<double?>? onWeightChanged;
@@ -17,6 +22,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
     super.key,
     required this.label,
     this.weight,
+    this.recordedWeight,
     required this.isConnected,
     required this.onTap,
     this.onWeightChanged,
@@ -25,8 +31,9 @@ class BluetoothWeightDisplay extends StatelessWidget {
   });
 
   Future<void> _showManualInputDialog(BuildContext context) async {
+    final initial = recordedWeight ?? weight;
     final controller = TextEditingController(
-      text: weight != null ? weight!.toStringAsFixed(2) : '',
+      text: initial != null ? initial.toStringAsFixed(2) : '',
     );
 
     final result = await showDialog<double?>(
@@ -89,7 +96,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
             ],
           ),
           actions: [
-            if (weight != null)
+            if (recordedWeight != null)
               TextButton.icon(
                 icon: const Icon(Icons.delete_outline, size: 18),
                 label: const Text('Clear'),
@@ -142,6 +149,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
     final mediumColor = Color.lerp(themeColor, Colors.white, 0.75)!;
     final darkColor = Color.lerp(themeColor, Colors.black, 0.1)!;
     final borderColor = Color.lerp(themeColor, Colors.white, 0.5)!;
+    final canRecord = isConnected && weight != null && onWeightChanged != null;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -171,7 +179,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Label, Bluetooth Icon and Manual Option
+          // Label, Bluetooth Icon and connection chip
           Row(
             children: [
               Icon(
@@ -188,7 +196,11 @@ class BluetoothWeightDisplay extends StatelessWidget {
                   ),
                 ),
               ),
-              // Bluetooth Status Chip (Tap to connect / read)
+              if (isConnected) ...[
+                _LiveBadge(color: themeColor),
+                const SizedBox(width: 6),
+              ],
+              // Bluetooth Status Chip (tap to connect when not connected)
               GestureDetector(
                 onTap: onTap,
                 child: Container(
@@ -210,7 +222,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isConnected ? 'Connected' : 'Scale',
+                        isConnected ? 'Connected' : 'Connect Scale',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -221,53 +233,19 @@ class BluetoothWeightDisplay extends StatelessWidget {
                   ),
                 ),
               ),
-              if (onWeightChanged != null) ...[
-                const SizedBox(width: 6),
-                // Manual Entry Chip
-                InkWell(
-                  onTap: () => _showManualInputDialog(context),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: themeColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: themeColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.keyboard_alt_outlined,
-                          color: themeColor,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Manual',
-                          style: TextStyle(
-                            color: themeColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 16),
 
-          // Weight Display - Tap area triggers Bluetooth read by default
+          // Live weight reading. Updates automatically while connected — no
+          // tap needed. Long-press opens a manual-entry override,
+          // intentionally not advertised in the UI: scale reading is the
+          // normal path, this is only a fallback for when a scale isn't
+          // available.
           GestureDetector(
-            onTap: onTap,
+            onLongPress: onWeightChanged != null
+                ? () => _showManualInputDialog(context)
+                : null,
             behavior: HitTestBehavior.opaque,
             child: Center(
               child: weight != null
@@ -305,27 +283,49 @@ class BluetoothWeightDisplay extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          onWeightChanged != null
-                              ? 'Tap scale or enter weight manually'
-                              : 'Tap to read weight from scale',
+                          isConnected
+                              ? 'Waiting for a reading from the scale…'
+                              : 'Connect a scale to read weight',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade600,
                             fontWeight: FontWeight.w500,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
             ),
           ),
+          const SizedBox(height: 16),
 
-          const SizedBox(height: 12),
+          // Record button — captures the live reading above at the moment
+          // it's pressed.
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: canRecord
+                  ? () => onWeightChanged?.call(weight)
+                  : null,
+              icon: const Icon(Icons.fiber_manual_record, size: 18),
+              label: const Text('Record'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeColor,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
 
-          // Status & Manual Input Action Bar
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (weight != null) ...[
+          if (recordedWeight != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -346,7 +346,7 @@ class BluetoothWeightDisplay extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Weight Recorded',
+                        'Recorded: ${recordedWeight!.toStringAsFixed(2)} $unit',
                         style: TextStyle(
                           color: Colors.green.shade700,
                           fontSize: 12,
@@ -356,76 +356,73 @@ class BluetoothWeightDisplay extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onWeightChanged != null) ...[
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () => _showManualInputDialog(context),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: themeColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: themeColor.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.edit_outlined,
-                            color: themeColor,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Edit Manually',
-                            style: TextStyle(
-                              color: themeColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ] else if (onWeightChanged != null) ...[
-                OutlinedButton.icon(
-                  icon: Icon(Icons.edit_note, size: 16, color: themeColor),
-                  label: Text(
-                    'Input Weight Manually',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: themeColor,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: themeColor.withValues(alpha: 0.4)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: () => _showManualInputDialog(context),
-                ),
               ],
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
+/// Small pulsing "LIVE" indicator shown while the scale is connected and
+/// streaming readings, so it's visually obvious the number is live rather
+/// than a static value.
+class _LiveBadge extends StatefulWidget {
+  final Color color;
+  const _LiveBadge({required this.color});
+
+  @override
+  State<_LiveBadge> createState() => _LiveBadgeState();
+}
+
+class _LiveBadgeState extends State<_LiveBadge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: widget.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FadeTransition(
+            opacity: _controller.drive(CurveTween(curve: Curves.easeInOut)),
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: widget.color,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'LIVE',
+            style: TextStyle(
+              color: widget.color,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

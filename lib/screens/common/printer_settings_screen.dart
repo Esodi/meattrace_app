@@ -6,6 +6,7 @@ import 'package:meattrace_app/utils/app_typography.dart';
 import 'package:meattrace_app/utils/app_theme.dart';
 import 'package:meattrace_app/widgets/core/custom_button.dart';
 import 'package:meattrace_app/services/bluetooth_printing_service.dart';
+import 'package:meattrace_app/widgets/printer/bluetooth_permission_dialog.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -75,17 +76,12 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     });
 
     try {
-      // Ensure permissions for BLE scan
-      final granted = await _printingService.requestPermissions();
+      // Ensure permissions for BLE scan, re-prompting (or guiding to
+      // Settings) rather than just erroring out if they weren't granted yet.
+      if (!mounted) return;
+      final granted = await ensureBluetoothPermissions(context);
       if (!granted) {
-        if (mounted) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bluetooth permissions are required to scan for printers')),
-          );
-          }
-        }
-        setState(() => _isScanning = false);
+        if (mounted) setState(() => _isScanning = false);
         return;
       }
 

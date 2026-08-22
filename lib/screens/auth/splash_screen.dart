@@ -214,20 +214,6 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: AppTheme.space8),
 
-                    // Subtitle
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Text(
-                        '(Nyama Tamu App)',
-                        style: AppTypography.scriptMedium(
-                          color: AppColors.textSecondary,
-                        ).copyWith(fontStyle: FontStyle.italic),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-
-                    const SizedBox(height: AppTheme.space8),
-
                     // Tagline
                     FadeTransition(
                       opacity: _fadeAnimation,

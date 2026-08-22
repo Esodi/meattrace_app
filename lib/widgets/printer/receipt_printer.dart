@@ -7,6 +7,7 @@ import '../../services/bluetooth_printing_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/constants.dart';
 import '../../widgets/core/custom_button.dart';
+import 'bluetooth_permission_dialog.dart';
 import 'package:intl/intl.dart';
 
 class ReceiptPrinter {
@@ -340,21 +341,13 @@ class ReceiptPrinter {
 
   /// Show printer selection dialog with scanning
   static Future<bool?> _showPrinterSelectionDialog(BuildContext context) async {
-    // Request permissions first
-    final hasPermissions = await _printingService.requestPermissions();
+    // Request permissions first, re-prompting (or guiding to Settings) rather
+    // than just erroring out if they weren't granted yet.
+    final hasPermissions = await ensureBluetoothPermissions(context);
     if (!hasPermissions) {
-      if (context.mounted) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bluetooth permissions are required to print'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      }
       return false;
     }
+    if (!context.mounted) return false;
 
     // Show scanning dialog on root navigator
     return showDialog<bool>(

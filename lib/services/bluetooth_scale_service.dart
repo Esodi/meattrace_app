@@ -17,6 +17,7 @@ class BluetoothScaleService {
   BluetoothDevice? _connectedDevice;
   BluetoothCharacteristic? _weightCharacteristic;
   StreamSubscription? _connectionSubscription;
+  Timer? _pollTimer;
 
   // Stream controller for weight readings
   final _weightController = StreamController<double>.broadcast();
@@ -74,6 +75,20 @@ class BluetoothScaleService {
 
       // Discover services
       await _discoverServices(device);
+
+      // Start live polling immediately so the UI can show a continuously
+      // updating reading without the user tapping anything. This is a no-op
+      // for scales that already push notifications on their own (readWeight
+      // just re-confirms notifications are enabled) and is the only way to
+      // get repeated readings out of scales that only support an explicit
+      // READ (no auto-push).
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(const Duration(milliseconds: 800), (_) {
+        // readWeight() rethrows on failure (e.g. a transient BLE hiccup);
+        // this is a best-effort background poll, so swallow it rather than
+        // producing an unhandled-exception log every 800ms.
+        readWeight().catchError((_) {});
+      });
     } catch (e) {
       debugPrint('Error connecting to scale: $e');
       _cleanupConnection();
@@ -94,14 +109,14 @@ class BluetoothScaleService {
     _weightCharacteristic = null;
     _connectionSubscription?.cancel();
     _connectionSubscription = null;
+    _pollTimer?.cancel();
+    _pollTimer = null;
   }
 
-  /// Reset stability debounce so the next reading is treated as the first sample.
-  /// Call this before starting a new weight capture session.
-  void resetStability() {
-    _lastParsedWeight = null;
-    _lastWeightTime = null;
-  }
+  /// No-op retained for API compatibility with existing call sites — weight
+  /// readings are no longer debounced against a previous sample (see
+  /// _parseWeightData), so there is no stability state left to reset.
+  void resetStability() {}
 
   /// Manually trigger a weight read (for scales that support READ operation)
   Future<void> readWeight() async {
@@ -243,10 +258,6 @@ class BluetoothScaleService {
     }
   }
 
-  // Last stable weight value for debounce check
-  double? _lastParsedWeight;
-  DateTime? _lastWeightTime;
-
   /// Parse raw bytes into weight value
   /// This logic depends heavily on the specific scale's protocol
   void _parseWeightData(List<int> data) {
@@ -319,26 +330,18 @@ class BluetoothScaleService {
         return;
       }
 
-      // Stability debounce: only emit if the reading is consistent with the
-      // previous one (within 0.5 kg) received within the last 2 seconds, or
-      // if more than 2 seconds have passed since the last reading (new weight).
-      final now = DateTime.now();
-      final isStable = _lastParsedWeight != null &&
-          _lastWeightTime != null &&
-          now.difference(_lastWeightTime!).inMilliseconds < 2000 &&
-          (weight - _lastParsedWeight!).abs() <= 0.5;
-
-      _lastParsedWeight = weight;
-      _lastWeightTime = now;
-
-      if (isStable) {
-        debugPrint('📤 [ScaleService] Stable weight confirmed: $weight kg');
-        _weightController.add(weight);
-      } else {
-        debugPrint(
-          '⏳ [ScaleService] First reading $weight kg — waiting for stable confirmation',
-        );
-      }
+      // Previously this required a second matching sample within 2 seconds
+      // before emitting ("stability debounce"), meant to guard against a
+      // fragment-reinterpretation bug that has since been removed (see note
+      // above). Many scales only send a single value per manual read/poll,
+      // or only notify when the weight changes — for those, a second
+      // corroborating sample never arrives, so the debounce silently
+      // discarded every reading and the UI timed out waiting forever, even
+      // with a genuinely stable weight on the platform. The range check
+      // above already rejects impossible values, so emit as soon as a
+      // reading parses successfully.
+      debugPrint('📤 [ScaleService] Weight: $weight kg');
+      _weightController.add(weight);
     } catch (e) {
       debugPrint('❌ [ScaleService] Error parsing weight data: $e');
     }

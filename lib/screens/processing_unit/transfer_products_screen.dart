@@ -27,6 +27,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
   final List<Product> _selectedProducts = [];
   final Map<int, double> _productWeights = {};
   final Map<int, TextEditingController> _weightControllers = {};
+  final Map<int, FocusNode> _weightFocusNodes = {};
   Map<String, dynamic>? _selectedShop;
   bool _isLoading = false;
   bool _isTransferring = false;
@@ -47,6 +48,9 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
     for (final controller in _weightControllers.values) {
       controller.dispose();
     }
+    for (final node in _weightFocusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -55,6 +59,28 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
       productId,
       () => TextEditingController(text: initialWeight.toStringAsFixed(1)),
     );
+  }
+
+  // Selects the pre-filled text when the field gains focus so typing replaces
+  // the suggested weight instead of inserting into it (e.g. typing "3" into
+  // "10.0" would otherwise produce "310.0", which silently fails validation
+  // and makes the field look stuck on the full weight).
+  FocusNode _weightFocusNodeFor(int productId) {
+    return _weightFocusNodes.putIfAbsent(productId, () {
+      final node = FocusNode();
+      node.addListener(() {
+        if (node.hasFocus) {
+          final controller = _weightControllers[productId];
+          if (controller != null) {
+            controller.selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: controller.text.length,
+            );
+          }
+        }
+      });
+      return node;
+    });
   }
 
   Future<void> _loadData() async {
@@ -210,6 +236,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
         _selectedProducts.remove(product);
         _productWeights.remove(product.id);
         _weightControllers.remove(product.id)?.dispose();
+        _weightFocusNodes.remove(product.id)?.dispose();
       } else {
         _selectedProducts.add(product);
         _productWeights[product.id!] = product.weight ?? product.quantity;
@@ -235,6 +262,10 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
         controller.dispose();
       }
       _weightControllers.clear();
+      for (final node in _weightFocusNodes.values) {
+        node.dispose();
+      }
+      _weightFocusNodes.clear();
     });
   }
 
@@ -560,6 +591,7 @@ class _TransferProductsScreenState extends State<TransferProductsScreen> {
                               // rebuilt (and the user's in-progress typing wiped out)
                               // on every keystroke — see _weightControllerFor.
                               controller: _weightControllerFor(product.id!, currentWeight),
+                              focusNode: _weightFocusNodeFor(product.id!),
                               onChanged: (value) {
                                 final parsed = double.tryParse(value);
                                 if (parsed != null && parsed > 0 && parsed <= availableWeight) {

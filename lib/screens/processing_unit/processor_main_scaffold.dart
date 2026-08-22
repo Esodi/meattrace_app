@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_typography.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/notification/notification_badge.dart';
 
-class ProcessorMainScaffold extends StatelessWidget {
+class ProcessorMainScaffold extends StatefulWidget {
   final Widget child;
 
   const ProcessorMainScaffold({super.key, required this.child});
+
+  @override
+  State<ProcessorMainScaffold> createState() => _ProcessorMainScaffoldState();
+}
+
+class _ProcessorMainScaffoldState extends State<ProcessorMainScaffold> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<NotificationProvider>().initialize();
+    });
+  }
 
   int _getSelectedIndex(BuildContext context) {
     // We use the full path to avoid partial matches
@@ -20,7 +36,9 @@ class ProcessorMainScaffold extends StatelessWidget {
         location.startsWith('/products/')) {
       return 1;
     }
-    if (location == '/processor/settings') return 2;
+    if (location == '/processor/traceability') return 2;
+    if (location == '/processor/notifications') return 3;
+    if (location == '/processor/settings') return 4;
 
     return 0;
   }
@@ -34,6 +52,12 @@ class ProcessorMainScaffold extends StatelessWidget {
         context.go('/processor/products');
         break;
       case 2:
+        context.go('/processor/traceability');
+        break;
+      case 3:
+        context.go('/processor/notifications');
+        break;
+      case 4:
         context.go('/processor/settings');
         break;
     }
@@ -50,7 +74,7 @@ class ProcessorMainScaffold extends StatelessWidget {
         padding: const EdgeInsets.only(
           bottom: 90,
         ), // Buffer for floating nav bar
-        child: child,
+        child: widget.child,
       ),
       // We use a Stack-like approach or ensure the bottomNavigationBar is definitely visible
       bottomNavigationBar: Container(
@@ -90,6 +114,23 @@ class ProcessorMainScaffold extends StatelessWidget {
                 _buildNavItem(
                   context,
                   2,
+                  Icons.timeline_rounded,
+                  'Trace',
+                  selectedIndex,
+                ),
+                _buildNavItem(
+                  context,
+                  3,
+                  Icons.notifications_rounded,
+                  'Alerts',
+                  selectedIndex,
+                  badgeCount: context
+                      .watch<NotificationProvider>()
+                      .unreadCount,
+                ),
+                _buildNavItem(
+                  context,
+                  4,
                   Icons.settings_rounded,
                   'Settings',
                   selectedIndex,
@@ -264,42 +305,58 @@ class ProcessorMainScaffold extends StatelessWidget {
     int index,
     IconData icon,
     String label,
-    int selectedIndex,
-  ) {
+    int selectedIndex, {
+    int badgeCount = 0,
+  }) {
     final isSelected = selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onItemTapped(index, context),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
+    final iconWidget = Icon(
+      icon,
+      color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5),
+      size: 24,
+    );
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onItemTapped(index, context),
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
               color: isSelected
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.5),
-              size: 24,
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
             ),
-            if (isSelected) ...[
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: AppTypography.labelMedium().copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                badgeCount > 0
+                    ? NotificationBadge(
+                        count: badgeCount,
+                        size: 16,
+                        child: iconWidget,
+                      )
+                    : iconWidget,
+                if (isSelected) ...[
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        style: AppTypography.labelMedium().copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

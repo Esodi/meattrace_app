@@ -16,6 +16,7 @@ import 'package:meattrace_app/models/external_vendor.dart';
 import 'package:meattrace_app/providers/external_vendor_provider.dart';
 import 'package:meattrace_app/screens/common/external_vendors_screen.dart';
 import 'package:meattrace_app/services/bluetooth_printing_service.dart';
+import 'package:meattrace_app/widgets/printer/bluetooth_permission_dialog.dart';
 import 'package:meattrace_app/utils/constants.dart';
 import 'package:meattrace_app/utils/app_colors.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -71,6 +72,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final BluetoothScaleService _scaleService = BluetoothScaleService();
   StreamSubscription? _weightSubscription;
   bool _isScaleConnected = false;
+  double? _liveWeight;
 
   @override
   void initState() {
@@ -78,6 +80,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
     // Initialize pipeline stages
     _initializePipeline();
+
+    // The scale service is a singleton, so if a scale is already connected
+    // from another screen, pick up its live stream immediately.
+    if (_scaleService.isConnected) {
+      _isScaleConnected = true;
+      _startLiveWeightSubscription();
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<ExternalVendorProvider>().fetchVendors();
@@ -425,6 +434,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     super.dispose();
   }
 
+  void _startLiveWeightSubscription() {
+    _weightSubscription?.cancel();
+    _weightSubscription = _scaleService.weightStream.listen((weight) {
+      if (mounted) setState(() => _liveWeight = weight);
+    });
+  }
+
   Future<void> _connectScale() async {
     if (_scaleService.isConnected) {
       ScaffoldMessenger.of(
@@ -442,11 +458,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       setState(() {
         _isScaleConnected = true;
       });
-
-      _weightSubscription?.cancel();
-      _weightSubscription = _scaleService.weightStream.listen((weight) {
-        debugPrint('Scale weight: $weight');
-      });
+      _startLiveWeightSubscription();
     }
   }
 
@@ -948,20 +960,26 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   ),
                   const SizedBox(height: 8),
                   // Bluetooth Weight Display
+                  // All product weight fields on this screen share the one
+                  // connected scale, so they all show the same live reading —
+                  // weigh the batch currently on the scale, then tap Record
+                  // on the category card for that batch.
                   BluetoothWeightDisplay(
                     label: 'Product Weight',
-                    weight: double.tryParse(weightController.text),
+                    weight: _liveWeight,
+                    recordedWeight: double.tryParse(weightController.text),
                     isConnected: _isScaleConnected,
                     unit: unit,
                     themeColor: AppColors.processorPrimary,
+                    onTap: _connectScale,
                     onWeightChanged: (weight) {
                       setState(() {
                         weightController.text =
                             weight != null ? weight.toStringAsFixed(2) : '';
                       });
-                      if (weight != null) {
+                      if (weight != null && context.mounted) {
                         final weightInKg = _convertToKg(weight, unit);
-                        if (weightInKg > maxAvailableWeight && context.mounted) {
+                        if (weightInKg > maxAvailableWeight) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -971,90 +989,18 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                               duration: const Duration(seconds: 4),
                             ),
                           );
-                        }
-                      }
-                    },
-                    onTap: () async {
-                      if (!_scaleService.isConnected) {
-                        await _connectScale();
-                        return;
-                      }
-
-                      setState(() {
-                        weightController.clear();
-                      });
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Reading from scale...'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                      }
-
-                      bool gotWeight = false;
-
-                      // Reset stability state so consecutive taps start fresh.
-                      _scaleService.resetStability();
-
-                      // Subscribe BEFORE triggering the read so we don't miss
-                      // the event on a broadcast stream — readWeight() can
-                      // emit synchronously for scales that support the READ
-                      // property, and events fired before listen() are
-                      // silently dropped on a broadcast stream.
-                      StreamSubscription? singleRead;
-                      singleRead = _scaleService.weightStream.listen((weight) {
-                        if (!gotWeight) {
-                          gotWeight = true;
-                          setState(() {
-                            weightController.text = weight.toStringAsFixed(2);
-                          });
-
-                          // Validate against max weight
-                          final weightInKg = _convertToKg(weight, unit);
-                          if (weightInKg > maxAvailableWeight) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Warning: Weight exceeds available amount (${maxAvailableWeight.toStringAsFixed(2)} kg)',
-                                ),
-                                backgroundColor: Colors.orange,
-                                duration: const Duration(seconds: 4),
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Weight recorded: ${weight.toStringAsFixed(2)} $unit',
                               ),
-                            );
-                            }
-                          } else {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Weight recorded: ${weight.toStringAsFixed(2)} $unit',
-                                ),
-                                backgroundColor: Colors.green,
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                            }
-                          }
-
-                          singleRead?.cancel();
+                              backgroundColor: Colors.green,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
                         }
-                      });
-
-                      try {
-                        await _scaleService.readWeight();
-                      } catch (e) {
-                        debugPrint('Error reading scale: $e');
                       }
-
-                      // Timeout
-                      Future.delayed(const Duration(seconds: 5), () {
-                        if (!gotWeight) {
-                          singleRead?.cancel();
-                        }
-                      });
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1522,19 +1468,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     try {
       final printingService = BluetoothPrintingService();
 
-      // Request permissions
+      // Request permissions, re-prompting (or guiding to Settings) rather
+      // than just erroring out if they weren't granted yet.
       debugPrint('🔐 [CreateProductScreen] Requesting Bluetooth permissions...');
-      final hasPermissions = await printingService.requestPermissions();
+      if (!mounted) return;
+      final hasPermissions = await ensureBluetoothPermissions(context);
       if (!hasPermissions) {
-        if (!mounted) return;
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bluetooth permissions are required for printing'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-        }
         return;
       }
       debugPrint('✅ [CreateProductScreen] Permissions granted');
