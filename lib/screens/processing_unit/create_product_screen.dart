@@ -509,15 +509,26 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       partsByAnimal.putIfAbsent(part.animalId, () => []).add(part);
     }
 
-    final tiles = <Widget>[
-      for (final animal in _availableAnimals) _buildWholeAnimalTile(animal),
-      for (final entry in partsByAnimal.entries)
-        _buildAnimalPartsGroupTile(
-          _lookupAnimal(entry.key),
-          entry.key,
-          entry.value,
+    // Sort by most recent activity (received, or last part received) so a
+    // just-received or just-modified animal surfaces at the top instead of
+    // being buried among older ones.
+    final entries = <(DateTime sortTime, Widget tile)>[
+      for (final animal in _availableAnimals)
+        (animal.receivedAt ?? animal.createdAt, _buildWholeAnimalTile(animal)),
+      for (final group in partsByAnimal.entries)
+        (
+          group.value
+              .map((p) => p.receivedAt ?? p.createdAt)
+              .reduce((a, b) => a.isAfter(b) ? a : b),
+          _buildAnimalPartsGroupTile(
+            _lookupAnimal(group.key),
+            group.key,
+            group.value,
+          ),
         ),
-    ];
+    ]..sort((a, b) => b.$1.compareTo(a.$1));
+
+    final tiles = [for (final entry in entries) entry.$2];
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
