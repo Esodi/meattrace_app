@@ -10,6 +10,7 @@ import '../../widgets/core/custom_button.dart';
 import 'bluetooth_permission_dialog.dart';
 import 'package:intl/intl.dart';
 
+import 'package:meattrace_app/utils/app_time.dart';
 class ReceiptPrinter {
   static final BluetoothPrintingService _printingService =
       BluetoothPrintingService();
@@ -132,11 +133,9 @@ class ReceiptPrinter {
     bytes += generator.feed(1);
 
     // Sale info
-    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-    // Convert UTC time to local time for display
-    final localTime = sale.createdAt.toLocal();
+    final dateFormat = AppDateFormat('dd/MM/yyyy HH:mm');
     bytes += generator.text(
-      'Date: ${dateFormat.format(localTime)}',
+      'Date: ${dateFormat.format(sale.createdAt)}',
       styles: PosStyles(align: PosAlign.left),
     );
 

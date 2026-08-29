@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import '../../models/sale.dart';
 import '../../services/dio_client.dart';
 import '../../utils/app_colors.dart';
@@ -304,7 +304,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                         ),
                         const SizedBox(height: AppTheme.space4),
                         Text(
-                          DateFormat(
+                          AppDateFormat(
                             'MMM dd, yyyy HH:mm',
                           ).format(sale.createdAt),
                           style: AppTypography.bodySmall().copyWith(

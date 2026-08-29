@@ -81,6 +81,13 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
   bool _isScaleConnected = false;
   double? _liveWeight;
 
+  // Which single part (head / feet / whole carcass / left / right) is
+  // currently selected to be weighed. Only that part's scale reading is
+  // shown at a time — showing every part's field at once with the same
+  // shared live reading made it unclear which weight was about to be
+  // recorded for which part.
+  String? _selectedPartKey;
+
   @override
   void initState() {
     super.initState();
@@ -263,33 +270,110 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     }
   }
 
-  double _calculateTotalWeight() {
+  /// All parts relevant to the currently selected carcass type, in the
+  /// order they should be weighed. This is the single source of truth for
+  /// both the part selector UI and the total-weight calculation below — a
+  /// previous version of _calculateTotalWeight() only counted
+  /// whole_carcass_weight for 'whole' carcasses, silently ignoring the
+  /// head/feet weights this same screen collects, so a live-weight fraud
+  /// check on that total never saw padding hidden in those two fields.
+  List<_PartSpec> get _currentParts {
     if (_carcassType == 'whole') {
-      // For whole carcass, use the whole carcass weight field
-      final weight = double.tryParse(_wholeCarcassWeightController.text) ?? 0.0;
-      return _convertToKg(weight, _wholeCarcassUnit);
+      return [
+        _PartSpec(
+          key: 'head',
+          label: 'Head',
+          controller: _headWeightWholeController,
+          unit: _headWholeUnit,
+          onUnitChanged: (v) => setState(() => _headWholeUnit = v),
+        ),
+        _PartSpec(
+          key: 'feet',
+          label: 'Feet',
+          controller: _feetWeightWholeController,
+          unit: _feetWholeUnit,
+          onUnitChanged: (v) => setState(() => _feetWholeUnit = v),
+        ),
+        _PartSpec(
+          key: 'whole_carcass',
+          label: 'Whole Carcass',
+          controller: _wholeCarcassWeightController,
+          unit: _wholeCarcassUnit,
+          onUnitChanged: (v) => setState(() => _wholeCarcassUnit = v),
+          required: true,
+        ),
+      ];
     }
 
-    // Split carcass - sum all parts (convert to kg first)
-    double total = 0.0;
-    total += _convertToKg(
-      double.tryParse(_headWeightController.text) ?? 0.0,
-      _headUnit,
-    );
-    total += _convertToKg(
-      double.tryParse(_feetWeightController.text) ?? 0.0,
-      _feetUnit,
-    );
-    total += _convertToKg(
-      double.tryParse(_leftCarcassWeightController.text) ?? 0.0,
-      _leftCarcassUnit,
-    );
-    total += _convertToKg(
-      double.tryParse(_rightCarcassWeightController.text) ?? 0.0,
-      _rightCarcassUnit,
-    );
+    return [
+      _PartSpec(
+        key: 'head',
+        label: 'Head',
+        controller: _headWeightController,
+        unit: _headUnit,
+        onUnitChanged: (v) => setState(() => _headUnit = v),
+        required: true,
+      ),
+      _PartSpec(
+        key: 'feet',
+        label: 'Feet',
+        controller: _feetWeightController,
+        unit: _feetUnit,
+        onUnitChanged: (v) => setState(() => _feetUnit = v),
+        required: true,
+      ),
+      _PartSpec(
+        key: 'left_carcass',
+        label: 'Left Carcass',
+        controller: _leftCarcassWeightController,
+        unit: _leftCarcassUnit,
+        onUnitChanged: (v) => setState(() => _leftCarcassUnit = v),
+        required: true,
+      ),
+      _PartSpec(
+        key: 'right_carcass',
+        label: 'Right Carcass',
+        controller: _rightCarcassWeightController,
+        unit: _rightCarcassUnit,
+        onUnitChanged: (v) => setState(() => _rightCarcassUnit = v),
+        required: true,
+      ),
+    ];
+  }
 
+  double _calculateTotalWeight() {
+    double total = 0.0;
+    for (final part in _currentParts) {
+      total += _convertToKg(
+        double.tryParse(part.controller.text) ?? 0.0,
+        part.unit,
+      );
+    }
     return total;
+  }
+
+  /// Live weight minus everything recorded so far for the active carcass
+  /// type. Negative once recorded parts add up to more than the animal
+  /// ever weighed alive — a strong signal of a data-entry mistake or fraud.
+  double _remainingWeightKg() {
+    final liveWeight = _selectedAnimal?.liveWeight ?? 0.0;
+    return liveWeight - _calculateTotalWeight();
+  }
+
+  /// Moves the part selector to the next not-yet-recorded part after one is
+  /// just recorded, so the user is guided straight through the checklist
+  /// instead of having to manually pick the next part every time.
+  void _advanceToNextUnrecordedPart(String justRecordedKey) {
+    final parts = _currentParts;
+    final currentIndex = parts.indexWhere((p) => p.key == justRecordedKey);
+    if (currentIndex == -1) return;
+    for (int i = 1; i <= parts.length; i++) {
+      final next = parts[(currentIndex + i) % parts.length];
+      if (next.controller.text.isEmpty) {
+        setState(() => _selectedPartKey = next.key);
+        return;
+      }
+    }
   }
 
   bool _validateWeights() {
@@ -696,7 +780,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             ),
             _buildSuccessItem(
               'Parts Recorded',
-              _carcassType == 'split' ? '4' : '1',
+              '${_currentParts.where((p) => p.controller.text.isNotEmpty).length}',
             ),
             _buildSuccessItem(
               'Type',
@@ -768,7 +852,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
             ),
             _buildSuccessItem(
               'Parts Recorded',
-              _carcassType == 'split' ? '4' : '1',
+              '${_currentParts.where((p) => p.controller.text.isNotEmpty).length}',
             ),
             _buildSuccessItem(
               'Type',
@@ -1333,54 +1417,11 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
             const SizedBox(height: 24),
 
-            if (_carcassType == 'whole')
-              _buildWholeCarcassMeasurements()
-            else
-              _buildSplitCarcassMeasurements(),
+            _buildPartSelectorAndRecorder(),
 
             const SizedBox(height: 24),
 
-            // Total weight display
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.abbatoirPrimary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.abbatoirPrimary.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Total Carcass Weight',
-                    style: AppTypography.titleMedium().copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '${_calculateTotalWeight().toStringAsFixed(1)} kg',
-                    style: AppTypography.displaySmall(
-                      color: AppColors.abbatoirPrimary,
-                    ).copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Live Weight: ${_selectedAnimal!.liveWeight} kg',
-                    style: AppTypography.bodySmall(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    'Yield: ${_calculateYieldPercentage().toStringAsFixed(1)}%',
-                    style: AppTypography.bodySmall(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildRunningWeightSummary(),
 
             const SizedBox(height: 24),
 
@@ -1407,7 +1448,13 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     );
   }
 
-  Widget _buildWholeCarcassMeasurements() {
+  /// Shows a checklist of the parts to weigh for the current carcass type,
+  /// and — for whichever one is selected — a single scale reading clearly
+  /// labelled with what it will record. Previously every part's field was
+  /// shown at once, all sharing the one live reading from the connected
+  /// scale, so it was unclear which figure was about to be recorded for
+  /// which part.
+  Widget _buildPartSelectorAndRecorder() {
     if (_selectedAnimal == null) {
       return Center(
         child: Text(
@@ -1417,170 +1464,172 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
       );
     }
 
+    final parts = _currentParts;
+    if (_selectedPartKey == null || !parts.any((p) => p.key == _selectedPartKey)) {
+      _selectedPartKey = parts.first.key;
+    }
+    final active = parts.firstWhere((p) => p.key == _selectedPartKey);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Detailed Carcass Measurements',
+          'Select Part to Weigh',
           style: AppTypography.titleMedium().copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 4),
+        Text(
+          'Place one part on the scale at a time, select it below, then tap Record.',
+          style: AppTypography.bodySmall(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 12),
 
-        // HEAD weight field
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: parts.map((part) {
+            final recordedWeight = double.tryParse(part.controller.text);
+            final isSelected = part.key == active.key;
+            return ChoiceChip(
+              selected: isSelected,
+              onSelected: (_) => setState(() => _selectedPartKey = part.key),
+              selectedColor: AppColors.abbatoirPrimary,
+              backgroundColor: recordedWeight != null
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : null,
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (recordedWeight != null)
+                    Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: isSelected ? Colors.white : AppColors.success,
+                    )
+                  else if (part.required)
+                    Icon(
+                      Icons.radio_button_unchecked,
+                      size: 16,
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                  const SizedBox(width: 6),
+                  Text(
+                    recordedWeight != null
+                        ? '${part.label} • ${recordedWeight.toStringAsFixed(1)} ${part.unit}'
+                        : part.label + (part.required ? ' *' : ' (optional)'),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : null,
+                      fontWeight: isSelected ? FontWeight.w600 : null,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 20),
+
+        Text(
+          'Recording: ${active.label}',
+          style: AppTypography.titleMedium().copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.abbatoirPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+
         _buildMeasurementField(
-          'Head Weight',
-          _headWeightWholeController,
-          _headWholeUnit,
-          (value) {
-            setState(() => _headWholeUnit = value);
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // FEET weight field
-        _buildMeasurementField(
-          'Feet Weight',
-          _feetWeightWholeController,
-          _feetWholeUnit,
-          (value) {
-            setState(() => _feetWholeUnit = value);
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // WHOLE CARCASS weight field
-        _buildMeasurementField(
-          'Whole Carcass Weight',
-          _wholeCarcassWeightController,
-          _wholeCarcassUnit,
-          (value) {
-            setState(() => _wholeCarcassUnit = value);
-          },
-          required: true,
-        ),
-
-        const SizedBox(height: 16),
-
-        // Reference info
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.backgroundLight,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Live Weight (Reference)',
-                style: AppTypography.bodyMedium().copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${_selectedAnimal!.liveWeight} kg',
-                style: AppTypography.titleLarge(color: AppColors.abbatoirPrimary),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Dressing Percentage',
-                style: AppTypography.bodyMedium().copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${_calculateYieldPercentage().toStringAsFixed(1)}% (Calculated)',
-                style: AppTypography.bodyMedium(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.info.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.info_outline, color: AppColors.info, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Whole carcass recording provides detailed part tracking while maintaining faster processing.',
-                  style: AppTypography.bodySmall(color: AppColors.info),
-                ),
-              ),
-            ],
-          ),
+          active.label,
+          active.controller,
+          active.unit,
+          active.onUnitChanged,
+          required: active.required,
+          onRecorded: () => _advanceToNextUnrecordedPart(active.key),
         ),
       ],
     );
   }
 
-  Widget _buildSplitCarcassMeasurements() {
+  /// Live weight vs. everything recorded so far, updating as each part is
+  /// recorded — so a part weighed too heavy is obvious immediately, not
+  /// just at the final confirmation.
+  Widget _buildRunningWeightSummary() {
+    if (_selectedAnimal == null) return const SizedBox.shrink();
+
+    final liveWeight = _selectedAnimal!.liveWeight ?? 0.0;
+    final recorded = _calculateTotalWeight();
+    final remaining = _remainingWeightKg();
+    final isOver = remaining < 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isOver
+            ? AppColors.error.withValues(alpha: 0.08)
+            : AppColors.abbatoirPrimary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isOver
+              ? AppColors.error
+              : AppColors.abbatoirPrimary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _weightStat('Live Weight', '${liveWeight.toStringAsFixed(1)} kg'),
+              ),
+              Expanded(
+                child: _weightStat('Recorded', '${recorded.toStringAsFixed(1)} kg'),
+              ),
+              Expanded(
+                child: _weightStat(
+                  isOver ? 'Over by' : 'Remaining',
+                  '${remaining.abs().toStringAsFixed(1)} kg',
+                  color: isOver ? AppColors.error : AppColors.success,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Yield: ${_calculateYieldPercentage().toStringAsFixed(1)}%',
+            style: AppTypography.bodySmall(color: AppColors.textSecondary),
+          ),
+          if (isOver) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Recorded parts add up to more than this animal\'s live weight — '
+              'double-check each measurement before confirming.',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodySmall(color: AppColors.error),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _weightStat(String label, String value, {Color? color}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Split Carcass Measurements',
+          value,
           style: AppTypography.titleMedium().copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.bold,
+            color: color ?? AppColors.abbatoirPrimary,
           ),
         ),
-        const SizedBox(height: 16),
-
-        _buildMeasurementField(
-          'Head Weight',
-          _headWeightController,
-          _headUnit,
-          (value) {
-            setState(() => _headUnit = value);
-          },
-          required: true,
-        ),
-        const SizedBox(height: 16),
-
-        _buildMeasurementField(
-          'Feet Weight',
-          _feetWeightController,
-          _feetUnit,
-          (value) {
-            setState(() => _feetUnit = value);
-          },
-          required: true,
-        ),
-        const SizedBox(height: 16),
-
-        _buildMeasurementField(
-          'Left Carcass Weight',
-          _leftCarcassWeightController,
-          _leftCarcassUnit,
-          (value) {
-            setState(() => _leftCarcassUnit = value);
-          },
-          required: true,
-        ),
-        const SizedBox(height: 16),
-
-        _buildMeasurementField(
-          'Right Carcass Weight',
-          _rightCarcassWeightController,
-          _rightCarcassUnit,
-          (value) {
-            setState(() => _rightCarcassUnit = value);
-          },
-          required: true,
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: AppTypography.bodySmall(color: AppColors.textSecondary),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -1592,6 +1641,7 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
     String unit,
     Function(String) onUnitChanged, {
     bool required = false,
+    VoidCallback? onRecorded,
   }) {
     // Parse current weight from controller
     double? currentWeight;
@@ -1601,9 +1651,9 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
 
     return BluetoothWeightDisplay(
       label: label + (required ? ' *' : ''),
-      // All weight fields on this screen share the one connected scale, so
-      // they all show the same live reading — weigh the part currently on
-      // the scale, then tap Record on the field for that part.
+      // Only the currently-selected part's field is shown at a time (see
+      // _buildPartSelectorAndRecorder), so this live reading is
+      // unambiguous: it's always for the part named in the label above it.
       weight: _liveWeight,
       recordedWeight: currentWeight,
       isConnected: _isScaleConnected,
@@ -1620,10 +1670,33 @@ class _SlaughterAnimalScreenState extends State<SlaughterAnimalScreen> {
               duration: const Duration(seconds: 2),
             ),
           );
+          onRecorded?.call();
         }
       },
       unit: unit,
       themeColor: AppColors.abbatoirPrimary,
     );
   }
+}
+
+/// One weighable carcass part (head, feet, whole carcass, left/right
+/// carcass, …) and the controller/unit state that back its measurement
+/// field. Built fresh on each build from whichever set of TextEditingControllers
+/// matches the currently selected carcass type — see [_SlaughterAnimalScreenState._currentParts].
+class _PartSpec {
+  final String key;
+  final String label;
+  final TextEditingController controller;
+  final String unit;
+  final ValueChanged<String> onUnitChanged;
+  final bool required;
+
+  const _PartSpec({
+    required this.key,
+    required this.label,
+    required this.controller,
+    required this.unit,
+    required this.onUnitChanged,
+    this.required = false,
+  });
 }

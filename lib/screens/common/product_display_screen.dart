@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import '../../providers/scan_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/product.dart';
@@ -538,11 +539,11 @@ class _ProductDisplayScreenState extends State<ProductDisplayScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy').format(date);
+    return AppDateFormat('MMM dd, yyyy').format(date);
   }
 
   String _formatDateTime(DateTime date) {
-    return DateFormat('MMM dd, yyyy HH:mm').format(date);
+    return AppDateFormat('MMM dd, yyyy HH:mm').format(date);
   }
 }
 

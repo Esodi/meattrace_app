@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/invoice.dart';
@@ -305,7 +306,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    DateFormat('MMM dd, yyyy').format(invoice.issueDate),
+                    AppDateFormat('MMM dd, yyyy').format(invoice.issueDate),
                     style: AppTypography.bodySmall().copyWith(
                       color: AppColors.textTertiary,
                     ),

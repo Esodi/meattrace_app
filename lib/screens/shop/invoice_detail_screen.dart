@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -148,13 +149,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             ],
             _buildInfoRow(
               'Issue Date',
-              DateFormat('MMM dd, yyyy').format(invoice.issueDate),
+              AppDateFormat('MMM dd, yyyy').format(invoice.issueDate),
             ),
             if (invoice.dueDate != null) ...[
               const SizedBox(height: 8),
               _buildInfoRow(
                 'Due Date',
-                DateFormat('MMM dd, yyyy').format(invoice.dueDate!),
+                AppDateFormat('MMM dd, yyyy').format(invoice.dueDate!),
               ),
             ],
             if (invoice.paymentTerms != null) ...[
@@ -269,7 +270,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 leading: const Icon(Icons.payment),
                 title: Text(currencyFormatter.format(payment.amount)),
                 subtitle: Text(
-                  '${payment.paymentMethod.toUpperCase()} • ${DateFormat('MMM dd, yyyy').format(payment.paymentDate)}',
+                  '${payment.paymentMethod.toUpperCase()} • ${AppDateFormat('MMM dd, yyyy').format(payment.paymentDate)}',
                 ),
                 trailing: payment.recordedByName != null
                     ? Text(

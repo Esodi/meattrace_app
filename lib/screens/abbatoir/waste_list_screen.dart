@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import '../../providers/waste_provider.dart';
 import '../../models/waste.dart';
 import '../../utils/app_colors.dart';
@@ -238,7 +238,7 @@ class _WasteListScreenState extends State<WasteListScreen> {
   }
 
   Widget _buildWasteCard(Waste waste, ThemeData theme) {
-    final dateFormat = DateFormat('MMM d, yyyy HH:mm');
+    final dateFormat = AppDateFormat('MMM d, yyyy HH:mm');
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.space8),
       elevation: 0,

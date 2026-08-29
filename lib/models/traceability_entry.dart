@@ -1,5 +1,5 @@
-import 'package:intl/intl.dart';
 
+import 'package:meattrace_app/utils/app_time.dart';
 class TraceabilityEntry {
   final String type; // 'animal' or 'slaughter_part'
   final int id;
@@ -52,7 +52,7 @@ class TraceabilityEntry {
 
   String get formattedReceivedDate {
     if (receivedAt == null) return 'Unknown Date';
-    return DateFormat('MMM dd, yyyy HH:mm').format(receivedAt!);
+    return AppDateFormat('MMM dd, yyyy HH:mm').format(receivedAt!);
   }
 }
 
@@ -102,6 +102,6 @@ class UtilizationHistory {
 
   String get formattedDate {
     if (createdAt == null) return 'N/A';
-    return DateFormat('MMM dd, yyyy').format(createdAt!);
+    return AppDateFormat('MMM dd, yyyy').format(createdAt!);
   }
 }

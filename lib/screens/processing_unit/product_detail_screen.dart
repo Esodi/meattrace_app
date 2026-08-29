@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:meattrace_app/utils/app_time.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/product_provider.dart';
 import '../../models/product.dart';
@@ -738,6 +739,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'N/A';
-    return DateFormat('MMM dd, yyyy').format(date);
+    return AppDateFormat('MMM dd, yyyy').format(date);
   }
 }
