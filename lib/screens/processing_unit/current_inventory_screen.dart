@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meattrace_app/providers/animal_provider.dart';
 // import 'package:meattrace_app/providers/product_provider.dart'; // Removed
-import 'package:meattrace_app/providers/auth_provider.dart';
 import 'package:meattrace_app/models/animal.dart';
 // import 'package:meattrace_app/models/product.dart'; // Removed
 import 'package:meattrace_app/utils/app_colors.dart';
@@ -55,9 +54,6 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
         listen: false,
       );
       // ProductProvider not needed anymore
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      final processingUnitId = authProvider.user?.processingUnitId;
 
       // Load animals only - products not needed for this screen anymore
       await animalProvider.fetchAnimals();
@@ -70,24 +66,26 @@ class _CurrentInventoryScreenState extends State<CurrentInventoryScreen>
         debugPrint('Error loading slaughter parts: $e');
       }
 
-      // Filter received animals that are not fully processed
-      // Received animals have receivedBy set and have remaining_weight > 0
+      // Filter received animals that are not fully processed.
+      // "Received" itself (receivedBy != null) stays mandatory - this tab is
+      // specifically for already-received raw materials. The unit-match is
+      // dropped rather than compared against processingUnitId
+      // (UserProfile.processing_unit, a single FK): the backend's
+      // AnimalViewSet/SlaughterPartViewSet already scope `animals`/
+      // `slaughterParts` to every processing unit this user actually
+      // belongs to via ProcessingUnitUser (a user can belong to more than
+      // one), so a stale or single-unit processingUnitId can't be trusted to
+      // decide what to show - it can only wrongly hide items received into a
+      // second unit. (These two sources are known to drift - see the
+      // sync_processing_unit_memberships management command.)
       _receivedAnimals = animalProvider.animals
-          .where(
-            (a) =>
-                a.receivedBy != null &&
-                a.transferredTo == processingUnitId &&
-                (a.remainingWeight ?? 0) > 0,
-          )
+          .where((a) => a.receivedBy != null && (a.remainingWeight ?? 0) > 0)
           .toList();
 
       // Filter received parts that are not fully processed
       _receivedParts = slaughterParts
           .where(
-            (p) =>
-                p.receivedBy != null &&
-                p.transferredTo == processingUnitId &&
-                (p.remainingWeight ?? p.weight) > 0,
+            (p) => p.receivedBy != null && (p.remainingWeight ?? p.weight) > 0,
           )
           .toList();
 

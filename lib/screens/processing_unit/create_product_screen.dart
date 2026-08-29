@@ -302,87 +302,89 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   void _showAnimalSelectionDialog() async {
-    final result = await showDialog<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Select Animal or Part'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 500,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.9,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
             child: Column(
               children: [
-                // Toggle between animals and parts
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'animal',
-                      label: Text('Whole Animals'),
-                      icon: Icon(Icons.pets),
-                    ),
-                    ButtonSegment(
-                      value: 'part',
-                      label: Text('Slaughter Parts'),
-                      icon: Icon(Icons.clear_all),
-                    ),
-                  ],
-                  selected: {_selectionMode},
-                  onSelectionChanged: (Set<String> newSelection) {
-                    setDialogState(() {
-                      _selectionMode = newSelection.first;
-                    });
-                    setState(() {
-                      _selectionMode = newSelection.first;
-                    });
-                  },
+                const SizedBox(height: 10),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                // List of items
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Select Animal or Part',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
                 Expanded(
                   child: _isLoadingAnimals
                       ? const Center(child: CircularProgressIndicator())
                       : _animalsError != null
                       ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.error,
-                                color: Colors.red,
-                                size: 48,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Error loading: $_animalsError',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.red),
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (context.mounted) Navigator.of(context).pop();
-                                  _loadAvailableAnimals();
-                                },
-                                child: const Text('Retry'),
-                              ),
-                            ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error,
+                                  color: Colors.red,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Error loading: $_animalsError',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(sheetContext).pop();
+                                    _loadAvailableAnimals();
+                                  },
+                                  child: const Text('Retry'),
+                                ),
+                              ],
+                            ),
                           ),
                         )
-                      : _selectionMode == 'animal'
-                      ? _buildAnimalsList()
-                      : _buildSlaughterPartsList(),
+                      : _buildCombinedSourceList(),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
 
     if (result != null) {
@@ -399,6 +401,25 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         _resetProductEntryFields();
       });
     }
+  }
+
+  /// Looks up an animal by its database id from the already-fetched full
+  /// animal list, so a slaughter part (which only carries the numeric FK)
+  /// can still be shown with the same "species - name/ID" label used for
+  /// whole animals and the traceability dashboard.
+  Animal? _lookupAnimal(int id) {
+    final animals = context.read<AnimalProvider>().animals;
+    for (final animal in animals) {
+      if (animal.id == id) return animal;
+    }
+    return null;
+  }
+
+  String _animalDisplayLabel(Animal? animal, int fallbackId) {
+    if (animal == null) return 'Animal #$fallbackId';
+    return animal.animalName != null
+        ? '${animal.species} - ${animal.animalName}'
+        : '${animal.species} - ${animal.animalId}';
   }
 
   /// Clear weight/quantity/price entries so a new source doesn't inherit the
@@ -462,83 +483,149 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
-  Widget _buildAnimalsList() {
-    if (_availableAnimals.isEmpty) {
+  /// Combined, grouped source list for the selection sheet: whole animals
+  /// (still directly available) are shown as single tiles; animals that have
+  /// been broken into slaughter parts are shown as one expandable group per
+  /// animal (rather than as a separate "Slaughter Parts" tab), since a part
+  /// on its own doesn't carry the animal's identity — see
+  /// _animalDisplayLabel, which resolves it the same way the whole-animal
+  /// tiles and the traceability dashboard do.
+  Widget _buildCombinedSourceList() {
+    if (_availableAnimals.isEmpty && _availableSlaughterParts.isEmpty) {
       return const Center(
-        child: Text(
-          'No whole animals available.\n\nAnimals must be:\n• Slaughtered\n• Received at your processing unit\n• Not yet used for product creation\n• Have remaining weight available',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey),
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No animals or slaughter parts available.\n\nItems must be:\n• Slaughtered\n• Received at your processing unit\n• Have remaining weight available',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      itemCount: _availableAnimals.length,
-      itemBuilder: (context, index) {
-        final animal = _availableAnimals[index];
-        final isSelected = _selectedAnimal?.id == animal.id;
-        final remainingWeight =
-            animal.remainingWeight ?? animal.effectiveTransferWeight ?? 0.0;
+    final Map<int, List<SlaughterPart>> partsByAnimal = {};
+    for (final part in _availableSlaughterParts) {
+      partsByAnimal.putIfAbsent(part.animalId, () => []).add(part);
+    }
 
-        return ListTile(
-          leading: const Icon(Icons.pets),
-          title: Text(
-            animal.animalName != null
-                ? '${animal.species} - ${animal.animalName}'
-                : '${animal.species} - ${animal.animalId}',
-          ),
-          subtitle: Text(
-            'ID: ${animal.animalId} • Abbatoir: ${animal.abbatoirName}\nRemaining: ${remainingWeight.toStringAsFixed(2)} kg',
-          ),
-          trailing: isSelected
-              ? const Icon(Icons.check, color: Colors.green)
-              : null,
-          onTap: () {
-            if (context.mounted) {
-              Navigator.of(context).pop({'type': 'animal', 'data': animal});
-            }
-          },
-        );
-      },
+    final tiles = <Widget>[
+      for (final animal in _availableAnimals) _buildWholeAnimalTile(animal),
+      for (final entry in partsByAnimal.entries)
+        _buildAnimalPartsGroupTile(
+          _lookupAnimal(entry.key),
+          entry.key,
+          entry.value,
+        ),
+    ];
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: tiles.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) => tiles[index],
     );
   }
 
-  Widget _buildSlaughterPartsList() {
-    if (_availableSlaughterParts.isEmpty) {
-      return const Center(
-        child: Text(
-          'No slaughter parts available.\n\nParts must be:\n• From a slaughtered animal\n• Received at your processing unit\n• Not yet used for product creation\n• Have remaining weight available',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey),
+  Widget _buildWholeAnimalTile(Animal animal) {
+    final isSelected = _selectedAnimal?.id == animal.id;
+    final remainingWeight =
+        animal.remainingWeight ?? animal.effectiveTransferWeight ?? 0.0;
+
+    return Card(
+      elevation: 0,
+      color: isSelected
+          ? AppColors.processorPrimary.withValues(alpha: 0.08)
+          : Colors.grey[50],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? AppColors.processorPrimary : Colors.grey.shade200,
         ),
-      );
-    }
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.pets),
+        title: Text(
+          _animalDisplayLabel(animal, animal.id ?? 0),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          'ID: ${animal.animalId} • Abbatoir: ${animal.abbatoirName}\nRemaining: ${remainingWeight.toStringAsFixed(2)} kg',
+        ),
+        isThreeLine: true,
+        trailing: isSelected
+            ? const Icon(Icons.check_circle, color: Colors.green)
+            : const Icon(Icons.chevron_right),
+        onTap: () {
+          if (context.mounted) {
+            Navigator.of(context).pop({'type': 'animal', 'data': animal});
+          }
+        },
+      ),
+    );
+  }
 
-    return ListView.builder(
-      itemCount: _availableSlaughterParts.length,
-      itemBuilder: (context, index) {
-        final part = _availableSlaughterParts[index];
-        final isSelected = _selectedPart?.id == part.id;
-        final remainingWeight = part.remainingWeight ?? part.weight;
+  Widget _buildAnimalPartsGroupTile(
+    Animal? parentAnimal,
+    int animalId,
+    List<SlaughterPart> parts,
+  ) {
+    final label = _animalDisplayLabel(parentAnimal, animalId);
+    final totalRemaining = parts.fold<double>(
+      0.0,
+      (sum, p) => sum + (p.remainingWeight ?? p.weight),
+    );
+    final isAnySelected = parts.any((p) => _selectedPart?.id == p.id);
 
-        return ListTile(
-          leading: const Icon(Icons.clear_all),
-          title: Text(part.partType.displayName),
+    return Card(
+      elevation: 0,
+      color: isAnySelected
+          ? AppColors.processorPrimary.withValues(alpha: 0.08)
+          : Colors.grey[50],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isAnySelected
+              ? AppColors.processorPrimary
+              : Colors.grey.shade200,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: const Icon(Icons.pets),
+          title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(
-            'Total: ${part.weight} ${part.weightUnit} • Remaining: ${remainingWeight.toStringAsFixed(2)} ${part.weightUnit}\nOrigin Animal: ${part.animalId}',
-            style: const TextStyle(fontSize: 13),
+            '${parts.length} part${parts.length > 1 ? 's' : ''} available • '
+            'Total remaining: ${totalRemaining.toStringAsFixed(2)} kg',
           ),
-          trailing: isSelected
-              ? const Icon(Icons.check, color: Colors.green)
-              : null,
-          onTap: () {
-            if (context.mounted) {
-              Navigator.of(context).pop({'type': 'part', 'data': part});
-            }
-          },
-        );
-      },
+          trailing: isAnySelected
+              ? const Icon(Icons.check_circle, color: Colors.green)
+              : const Icon(Icons.expand_more),
+          children: parts.map((part) {
+            final remainingWeight = part.remainingWeight ?? part.weight;
+            final isSelected = _selectedPart?.id == part.id;
+
+            return ListTile(
+              contentPadding: const EdgeInsets.only(left: 32, right: 16),
+              leading: const Icon(Icons.clear_all, size: 20),
+              title: Text(part.partType.displayName),
+              subtitle: Text(
+                'Remaining: ${remainingWeight.toStringAsFixed(2)} ${part.weightUnit} of ${part.weight} ${part.weightUnit}',
+              ),
+              trailing: isSelected
+                  ? const Icon(Icons.check_circle, color: Colors.green)
+                  : null,
+              onTap: () {
+                if (context.mounted) {
+                  Navigator.of(context).pop({'type': 'part', 'data': part});
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
@@ -603,8 +690,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
           : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}';
     } else if (_selectedPart != null) {
+      final originLabel = _animalDisplayLabel(
+        _lookupAnimal(_selectedPart!.animalId),
+        _selectedPart!.animalId,
+      );
       selectionText =
-          '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - Origin Animal: ${_selectedPart!.animalId}';
+          '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - $originLabel';
     } else {
       selectionText = 'Select an animal or slaughter part...';
     }
@@ -732,35 +823,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 : null,
           ),
         ] else
-          Semantics(
-            label: 'Select a slaughtered animal or part for the product',
-            child: ElevatedButton(
-              onPressed: _showAnimalSelectionDialog,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                alignment: Alignment.centerLeft,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      selectionText,
-                      style: TextStyle(
-                        color:
-                            (_selectedAnimal != null || _selectedPart != null)
-                            ? Colors.black
-                            : Colors.grey,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.arrow_drop_down),
-                ],
-              ),
-            ),
-          ),
+          _buildSourcePickerCard(selectionText),
         if (_animalsError != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -770,6 +833,84 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  /// A prominent, tappable "picker card" for opening the source-selection
+  /// sheet — replaces a plain button so the most important choice on this
+  /// screen (what the products are made from) is hard to miss, and clearly
+  /// reflects whether a source has been picked yet.
+  Widget _buildSourcePickerCard(String selectionText) {
+    final hasSelection = _selectedAnimal != null || _selectedPart != null;
+
+    return Semantics(
+      label: 'Select a slaughtered animal or part for the product',
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: _showAnimalSelectionDialog,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: hasSelection
+                ? AppColors.processorPrimary.withValues(alpha: 0.06)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: hasSelection
+                  ? AppColors.processorPrimary
+                  : Colors.grey.shade300,
+              width: hasSelection ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.processorPrimary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  hasSelection ? Icons.check_circle : Icons.pets,
+                  color: AppColors.processorPrimary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasSelection ? 'SOURCE SELECTED' : 'TAP TO SELECT A SOURCE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                        color: hasSelection
+                            ? AppColors.processorPrimary
+                            : Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      selectionText,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: hasSelection ? Colors.black87 : Colors.grey[500],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey[400]),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
