@@ -108,6 +108,12 @@ class SlaughterPart {
   final int? id;
   final String? partId;
   final int animalId;
+  // The parent animal's human-readable identifier/species/name, carried
+  // directly on the part so a UI showing a part (e.g. a source picker) can
+  // label its origin without a separate animal lookup.
+  final String? animalCode;
+  final String? species;
+  final String? animalName;
   final SlaughterPartType partType;
   final double weight;
   final double? remainingWeight;
@@ -138,6 +144,9 @@ class SlaughterPart {
     this.id,
     this.partId,
     required this.animalId,
+    this.animalCode,
+    this.species,
+    this.animalName,
     required this.partType,
     required this.weight,
     this.remainingWeight,
@@ -162,6 +171,9 @@ class SlaughterPart {
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
       partId: json['part_id'],
       animalId: int.parse(json['animal'].toString()),
+      animalCode: json['animal_id'],
+      species: json['species'],
+      animalName: json['animal_name'],
       partType: SlaughterPartTypeExtension.fromString(json['part_type']),
       weight: json['weight'] is num
           ? (json['weight'] as num).toDouble()
@@ -205,6 +217,9 @@ class SlaughterPart {
       'id': id,
       'part_id': partId,
       'animal': animalId,
+      'animal_id': animalCode,
+      'species': species,
+      'animal_name': animalName,
       'part_type': partType.value,
       'weight': weight,
       'remaining_weight': remainingWeight,

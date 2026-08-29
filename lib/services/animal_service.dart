@@ -49,6 +49,7 @@ class AnimalService {
   Future<Map<String, dynamic>> getAnimals({
     String? species,
     bool? slaughtered,
+    bool? hasRemainingWeight,
     String? search,
     String? ordering,
     int? page,
@@ -60,6 +61,9 @@ class AnimalService {
       // Only add slaughtered param if it's explicitly set (not null)
       if (slaughtered != null) {
         queryParams['slaughtered'] = slaughtered.toString();
+      }
+      if (hasRemainingWeight != null) {
+        queryParams['has_remaining_weight'] = hasRemainingWeight.toString();
       }
       if (search != null) queryParams['search'] = search;
       if (ordering != null) queryParams['ordering'] = ordering;
@@ -635,6 +639,7 @@ class AnimalService {
   Future<Map<String, dynamic>> getSlaughterParts({
     int? animalId,
     SlaughterPartType? partType,
+    bool? hasRemainingWeight,
     String? search,
     String? ordering,
     int? page,
@@ -644,6 +649,9 @@ class AnimalService {
       final queryParams = <String, dynamic>{};
       if (animalId != null) queryParams['animal'] = animalId;
       if (partType != null) queryParams['part_type'] = partType.value;
+      if (hasRemainingWeight != null) {
+        queryParams['has_remaining_weight'] = hasRemainingWeight.toString();
+      }
       if (search != null) queryParams['search'] = search;
       if (ordering != null) queryParams['ordering'] = ordering;
       if (page != null) queryParams['page'] = page;

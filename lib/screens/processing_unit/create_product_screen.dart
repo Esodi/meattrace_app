@@ -5,11 +5,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meattrace_app/providers/product_provider.dart';
 import 'package:meattrace_app/providers/product_category_provider.dart';
-import 'package:meattrace_app/providers/animal_provider.dart';
 import 'package:meattrace_app/providers/auth_provider.dart';
 import 'package:meattrace_app/models/product.dart';
 import 'package:meattrace_app/models/animal.dart';
 import 'package:meattrace_app/models/product_category.dart';
+import 'package:meattrace_app/services/animal_service.dart';
 import 'package:meattrace_app/widgets/core/custom_app_bar.dart';
 import 'package:meattrace_app/widgets/core/enhanced_back_button.dart';
 import 'package:meattrace_app/models/external_vendor.dart';
@@ -53,10 +53,17 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   late List<PipelineStage> _pipelineStages;
 
   // Animal selection state
+  static const int _sourcePageSize = 20;
+  final AnimalService _animalService = AnimalService();
   List<Animal> _availableAnimals = [];
   List<SlaughterPart> _availableSlaughterParts = [];
   bool _isLoadingAnimals = false;
   String? _animalsError;
+  int _animalsPage = 1;
+  bool _hasMoreAnimals = true;
+  int _partsPage = 1;
+  bool _hasMoreParts = true;
+  bool _isLoadingMoreSources = false;
 
   // Selection mode: 'animal', 'part', or 'external'
   String _selectionMode = 'animal';
@@ -154,13 +161,55 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     final authProvider = context.read<AuthProvider>();
     final procUnitId = authProvider.user?.processingUnitId;
     await Future.wait([
-      context.read<AnimalProvider>().fetchAnimals(),
       context.read<ProductCategoryProvider>().fetchCategories(),
       context.read<ProductProvider>().fetchProducts(
         processingUnitId: procUnitId,
       ),
     ]);
     await _loadAvailableAnimals();
+  }
+
+  /// Whole animals still need this client-side check: 'has_remaining_weight'
+  /// and 'slaughtered' are pushed server-side (see the fetch call), but
+  /// which processing unit an item "belongs to" isn't - the backend already
+  /// scopes the queryset to every unit the user is a member of, and
+  /// hasReceivedBy is kept as a permissive fallback for parts received by a
+  /// teammate at the same unit.
+  bool _animalBelongsToUnit(Animal animal, int? procUnitId) =>
+      procUnitId == null ||
+      animal.transferredTo == procUnitId ||
+      animal.receivedBy != null;
+
+  bool _partBelongsToUnit(SlaughterPart part, int? procUnitId) =>
+      procUnitId == null ||
+      part.transferredTo == procUnitId ||
+      part.receivedBy != null;
+
+  /// Fetches one page of animals and applies the eligibility filter,
+  /// updating _hasMoreAnimals from the response's 'next' link.
+  Future<List<Animal>> _fetchAnimalsPage(int page, int? procUnitId) async {
+    final result = await _animalService.getAnimals(
+      slaughtered: true,
+      hasRemainingWeight: true,
+      ordering: '-received_at',
+      page: page,
+      pageSize: _sourcePageSize,
+    );
+    final raw = result['results'] as List<Animal>;
+    _hasMoreAnimals = result['next'] != null;
+    return raw.where((a) => _animalBelongsToUnit(a, procUnitId)).toList();
+  }
+
+  Future<List<SlaughterPart>> _fetchPartsPage(int page, int? procUnitId) async {
+    final result = await _animalService.getSlaughterParts(
+      hasRemainingWeight: true,
+      ordering: '-received_at',
+      page: page,
+      pageSize: _sourcePageSize,
+    );
+    final raw = result['results'] as List<SlaughterPart>;
+    _hasMoreParts = result['next'] != null;
+    return raw.where((p) => _partBelongsToUnit(p, procUnitId)).toList();
   }
 
   Future<void> _loadAvailableAnimals() async {
@@ -172,126 +221,31 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     });
 
     try {
-      debugPrint(
-        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      );
-      debugPrint(
-        '🔍 [CREATE_PRODUCT] Loading available animals and slaughter parts...',
-      );
-      debugPrint(
-        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      );
-
-      final animalProvider = context.read<AnimalProvider>();
-      final productProvider = context.read<ProductProvider>();
       final authProvider = context.read<AuthProvider>();
-
-      final currentUserId = authProvider.user?.id;
-      if (currentUserId == null) {
+      if (authProvider.user?.id == null) {
         throw Exception('User not authenticated');
       }
-
-      debugPrint('👤 [CREATE_PRODUCT] Current user ID: $currentUserId');
-      debugPrint(
-        '📦 [CREATE_PRODUCT] Total animals in provider: ${animalProvider.animals.length}',
-      );
-
-      debugPrint(
-        '🏭 [CREATE_PRODUCT] Total products: ${productProvider.products.length}',
-      );
-
       final procUnitId = authProvider.user?.processingUnitId;
 
-      // Filter available whole animals (received and has remaining weight)
-      // Note: We don't check if animal was "used" - we only check remaining_weight
-      // This allows creating multiple products from the same animal until weight is depleted
-      final availableAnimals = animalProvider.animals.where((animal) {
-        final isSlaughtered = animal.slaughtered;
-        final hasReceivedBy = animal.receivedBy != null;
-        final belongsToUnit =
-            procUnitId == null || animal.transferredTo == procUnitId || hasReceivedBy;
-        final hasRemainingWeight =
-            animal.remainingWeight != null && animal.remainingWeight! > 0;
+      _animalsPage = 1;
+      _partsPage = 1;
+      _hasMoreAnimals = true;
+      _hasMoreParts = true;
 
-        final isAvailable =
-            isSlaughtered && belongsToUnit && hasRemainingWeight;
-
-        if (animal.transferredTo != null || animal.receivedBy != null) {
-          debugPrint('  🐄 Animal ${animal.animalId}:');
-          debugPrint('     - slaughtered: $isSlaughtered');
-          debugPrint(
-            '     - received_by: ${animal.receivedBy}, transferred_to: ${animal.transferredTo}',
-          );
-          debugPrint('     - remaining_weight: ${animal.remainingWeight}');
-          debugPrint('     - AVAILABLE: $isAvailable');
-        }
-
-        return isAvailable;
-      }).toList();
-
-      debugPrint(
-        '✨ [CREATE_PRODUCT] Found ${availableAnimals.length} available whole animals',
-      );
-
-      // Load slaughter parts
-      debugPrint('🔍 [CREATE_PRODUCT] Fetching slaughter parts...');
-      final allSlaughterParts = await animalProvider.getSlaughterPartsList();
-
-      // Filter slaughter parts for processing unit and has remaining weight
-      // Note: Backend get_queryset() scopes parts to the user's processing unit.
-      // We check that it has remaining weight (> 0) and is received/transferred to the unit.
-      final availableSlaughterParts = allSlaughterParts.where((part) {
-        final isReceived = part.receivedBy != null;
-        final belongsToUnit =
-            procUnitId == null || part.transferredTo == procUnitId || isReceived;
-        final remainingWt = part.remainingWeight ?? part.weight;
-        final hasRemainingWeight = remainingWt > 0;
-
-        final isAvailable = belongsToUnit && hasRemainingWeight;
-
-        if (part.receivedBy != null || part.transferredTo != null) {
-          debugPrint('  🥩 Part ${part.id} (${part.partType.displayName}):');
-          debugPrint(
-            '     - received_by: ${part.receivedBy}, transferred_to: ${part.transferredTo}',
-          );
-          debugPrint('     - remaining_weight: $remainingWt');
-          debugPrint('     - AVAILABLE: $isAvailable');
-        }
-
-        return isAvailable;
-      }).toList();
-
-      debugPrint(
-        '🥩 [CREATE_PRODUCT] Found ${availableSlaughterParts.length} available slaughter parts',
-      );
-      for (var part in availableSlaughterParts) {
-        debugPrint(
-          '   ✅ Part ID ${part.id}: ${part.partType.displayName} from Animal ${part.animalId}',
-        );
-      }
-
-      if (availableAnimals.isEmpty && availableSlaughterParts.isEmpty) {
-        debugPrint('⚠️  [CREATE_PRODUCT] NO ANIMALS OR PARTS AVAILABLE!');
-        debugPrint('   Possible reasons:');
-        debugPrint(
-          '   1. No animals/parts have been RECEIVED yet (only transferred)',
-        );
-        debugPrint(
-          '   2. All received animals/parts have remaining_weight = 0 (fully used)',
-        );
-        debugPrint('   3. Animals/parts received by different user');
-      }
+      final results = await Future.wait([
+        _fetchAnimalsPage(_animalsPage, procUnitId),
+        _fetchPartsPage(_partsPage, procUnitId),
+      ]);
 
       if (mounted) {
         setState(() {
-          _availableAnimals = availableAnimals;
-          _availableSlaughterParts = availableSlaughterParts;
+          _availableAnimals = results[0] as List<Animal>;
+          _availableSlaughterParts = results[1] as List<SlaughterPart>;
           _isLoadingAnimals = false;
         });
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint('❌ [CREATE_PRODUCT] Error loading animals/parts: $e');
-      debugPrint('Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _animalsError = e.toString();
@@ -301,91 +255,144 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
+  /// Fetches the next page of whichever source(s) still have more, appends
+  /// to the existing lists in place, and rebuilds the (already-open) source
+  /// sheet via [setSheetState] - the sheet is a separate overlay route, so
+  /// the outer screen's setState alone wouldn't reach it.
+  Future<void> _loadMoreSources(void Function(void Function()) setSheetState) async {
+    if (_isLoadingMoreSources || (!_hasMoreAnimals && !_hasMoreParts)) return;
+
+    setSheetState(() => _isLoadingMoreSources = true);
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final procUnitId = authProvider.user?.processingUnitId;
+
+      if (_hasMoreAnimals) {
+        final page = await _fetchAnimalsPage(_animalsPage + 1, procUnitId);
+        _animalsPage++;
+        _availableAnimals.addAll(page);
+      }
+      if (_hasMoreParts) {
+        final page = await _fetchPartsPage(_partsPage + 1, procUnitId);
+        _partsPage++;
+        _availableSlaughterParts.addAll(page);
+      }
+    } catch (e) {
+      debugPrint('❌ [CREATE_PRODUCT] Error loading more animals/parts: $e');
+    } finally {
+      if (mounted) {
+        setSheetState(() => _isLoadingMoreSources = false);
+      }
+    }
+  }
+
   void _showAnimalSelectionDialog() async {
+    final scrollController = ScrollController();
+    // StatefulBuilder's builder re-runs on every setSheetState call, so the
+    // listener is attached once here (outside that closure) rather than
+    // inside it, which would otherwise pile up a new listener per rebuild.
+    var listenerAttached = false;
+
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return FractionallySizedBox(
-          heightFactor: 0.9,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            if (!listenerAttached) {
+              listenerAttached = true;
+              scrollController.addListener(() {
+                if (!scrollController.hasClients) return;
+                final nearBottom = scrollController.position.pixels >=
+                    scrollController.position.maxScrollExtent - 300;
+                if (nearBottom) _loadMoreSources(setSheetState);
+              });
+            }
+
+            return FractionallySizedBox(
+              heightFactor: 0.9,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Select Animal or Part',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: _isLoadingAnimals
-                      ? const Center(child: CircularProgressIndicator())
-                      : _animalsError != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.error,
-                                  color: Colors.red,
-                                  size: 48,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Error loading: $_animalsError',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.red),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.of(sheetContext).pop();
-                                    _loadAvailableAnimals();
-                                  },
-                                  child: const Text('Retry'),
-                                ),
-                              ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Select Animal or Part',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        )
-                      : _buildCombinedSourceList(),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: _isLoadingAnimals
+                          ? const Center(child: CircularProgressIndicator())
+                          : _animalsError != null
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.error,
+                                      color: Colors.red,
+                                      size: 48,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Error loading: $_animalsError',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.of(sheetContext).pop();
+                                        _loadAvailableAnimals();
+                                      },
+                                      child: const Text('Retry'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : _buildCombinedSourceList(scrollController),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
+
+    scrollController.dispose();
 
     if (result != null) {
       setState(() {
@@ -403,23 +410,22 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     }
   }
 
-  /// Looks up an animal by its database id from the already-fetched full
-  /// animal list, so a slaughter part (which only carries the numeric FK)
-  /// can still be shown with the same "species - name/ID" label used for
-  /// whole animals and the traceability dashboard.
-  Animal? _lookupAnimal(int id) {
-    final animals = context.read<AnimalProvider>().animals;
-    for (final animal in animals) {
-      if (animal.id == id) return animal;
-    }
-    return null;
-  }
-
   String _animalDisplayLabel(Animal? animal, int fallbackId) {
     if (animal == null) return 'Animal #$fallbackId';
-    return animal.animalName != null
+    return animal.animalName != null && animal.animalName!.isNotEmpty
         ? '${animal.species} - ${animal.animalName}'
         : '${animal.species} - ${animal.animalId}';
+  }
+
+  /// Same "species - name/ID" format as _animalDisplayLabel, but read
+  /// directly off the part's own species/animal_name/animal_id fields
+  /// (carried by the backend alongside the part) rather than requiring a
+  /// separate animal lookup.
+  String _partOriginLabel(SlaughterPart part) {
+    if (part.species == null) return 'Animal #${part.animalId}';
+    return part.animalName != null && part.animalName!.isNotEmpty
+        ? '${part.species} - ${part.animalName}'
+        : '${part.species} - ${part.animalCode ?? part.animalId}';
   }
 
   /// Clear weight/quantity/price entries so a new source doesn't inherit the
@@ -487,10 +493,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   /// (still directly available) are shown as single tiles; animals that have
   /// been broken into slaughter parts are shown as one expandable group per
   /// animal (rather than as a separate "Slaughter Parts" tab), since a part
-  /// on its own doesn't carry the animal's identity — see
-  /// _animalDisplayLabel, which resolves it the same way the whole-animal
-  /// tiles and the traceability dashboard do.
-  Widget _buildCombinedSourceList() {
+  /// on its own doesn't carry the animal's identity — see _partOriginLabel,
+  /// which resolves it the same way the whole-animal tiles and the
+  /// traceability dashboard do. Only ~20 items are fetched at a time
+  /// server-side (see _fetchAnimalsPage/_fetchPartsPage); scrolling near the
+  /// bottom of [controller] triggers loading the next page.
+  Widget _buildCombinedSourceList(ScrollController controller) {
     if (_availableAnimals.isEmpty && _availableSlaughterParts.isEmpty) {
       return const Center(
         child: Padding(
@@ -520,17 +528,28 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           group.value
               .map((p) => p.receivedAt ?? p.createdAt)
               .reduce((a, b) => a.isAfter(b) ? a : b),
-          _buildAnimalPartsGroupTile(
-            _lookupAnimal(group.key),
-            group.key,
-            group.value,
-          ),
+          _buildAnimalPartsGroupTile(group.key, group.value),
         ),
     ]..sort((a, b) => b.$1.compareTo(a.$1));
 
     final tiles = [for (final entry in entries) entry.$2];
+    if (_isLoadingMoreSources) {
+      tiles.add(
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ),
+        ),
+      );
+    }
 
     return ListView.separated(
+      controller: controller,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: tiles.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
@@ -576,12 +595,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     );
   }
 
-  Widget _buildAnimalPartsGroupTile(
-    Animal? parentAnimal,
-    int animalId,
-    List<SlaughterPart> parts,
-  ) {
-    final label = _animalDisplayLabel(parentAnimal, animalId);
+  Widget _buildAnimalPartsGroupTile(int animalId, List<SlaughterPart> parts) {
+    final label = _partOriginLabel(parts.first);
     final totalRemaining = parts.fold<double>(
       0.0,
       (sum, p) => sum + (p.remainingWeight ?? p.weight),
@@ -701,10 +716,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           ? '${_selectedAnimal!.species} - ${_selectedAnimal!.animalName} (${_selectedAnimal!.animalId})'
           : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}';
     } else if (_selectedPart != null) {
-      final originLabel = _animalDisplayLabel(
-        _lookupAnimal(_selectedPart!.animalId),
-        _selectedPart!.animalId,
-      );
+      final originLabel = _partOriginLabel(_selectedPart!);
       selectionText =
           '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - $originLabel';
     } else {
