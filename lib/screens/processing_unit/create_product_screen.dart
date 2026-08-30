@@ -717,8 +717,9 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           : '${_selectedAnimal!.species} - ${_selectedAnimal!.animalId}';
     } else if (_selectedPart != null) {
       final originLabel = _partOriginLabel(_selectedPart!);
+      final remaining = _selectedPart!.remainingWeight ?? _selectedPart!.weight;
       selectionText =
-          '${_selectedPart!.partType.displayName} (${_selectedPart!.weight} ${_selectedPart!.weightUnit}) - $originLabel';
+          '${_selectedPart!.partType.displayName} (${remaining.toStringAsFixed(2)} ${_selectedPart!.weightUnit} remaining) - $originLabel';
     } else {
       selectionText = 'Select an animal or slaughter part...';
     }
