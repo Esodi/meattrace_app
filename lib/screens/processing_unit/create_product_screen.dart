@@ -1474,6 +1474,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           price:
               double.tryParse(_priceControllers[category.id!]?.text ?? '0') ??
               0.0,
+          category: category.id,
           description: _isExternalSource
               ? 'External acquisition from ${_selectedVendor?.name}'
               : (_selectedAnimal != null

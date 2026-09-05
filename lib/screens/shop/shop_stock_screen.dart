@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/external_vendor_provider.dart';
+import '../../providers/product_category_provider.dart';
 import '../../models/product.dart';
 import '../../models/external_vendor.dart';
+import '../../models/product_category.dart';
 import '../../widgets/core/custom_app_bar.dart';
 import '../../widgets/core/enhanced_back_button.dart';
 import '../../utils/app_colors.dart';
@@ -31,6 +33,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
   // Selection state
   String _selectedProductType = 'Beef';
   ExternalVendor? _selectedVendor;
+  ProductCategory? _selectedCategory;
   bool _isProcessing = false;
 
   final List<String> _productOptions = [
@@ -48,6 +51,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ExternalVendorProvider>().fetchVendors();
+      context.read<ProductCategoryProvider>().fetchCategories();
     });
   }
 
@@ -99,6 +103,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
         weight: weight,
         weightUnit: 'kg',
         price: price,
+        category: _selectedCategory?.id,
         description: _notesController.text.trim(),
         manufacturer: currentUser.username,
         timeline: [],
@@ -151,6 +156,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
     _notesController.clear();
     setState(() {
       _selectedVendor = null;
+      _selectedCategory = null;
     });
   }
 
@@ -181,6 +187,8 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
 
                     _buildSectionTitle('Product Details'),
                     _buildProductTypeSelector(),
+                    const SizedBox(height: AppTheme.space16),
+                    _buildCategorySelector(),
                     const SizedBox(height: AppTheme.space16),
                     _buildProductNameField(),
                     const SizedBox(height: AppTheme.space16),
@@ -282,7 +290,7 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
     return DropdownButtonFormField<String>(
       initialValue: _selectedProductType,
       decoration: const InputDecoration(
-        labelText: 'Product Category',
+        labelText: 'Product Type',
         border: OutlineInputBorder(),
         prefixIcon: Icon(Icons.category_outlined),
       ),
@@ -290,6 +298,34 @@ class _ShopStockScreenState extends State<ShopStockScreen> {
           .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
           .toList(),
       onChanged: (val) => setState(() => _selectedProductType = val!),
+    );
+  }
+
+  Widget _buildCategorySelector() {
+    return Consumer<ProductCategoryProvider>(
+      builder: (context, categoryProvider, child) {
+        if (categoryProvider.categories.isEmpty) {
+          return categoryProvider.isLoading
+              ? const LinearProgressIndicator()
+              : const Text(
+                  'No product categories available. Create one before adding opening stock.',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                );
+        }
+        return DropdownButtonFormField<ProductCategory>(
+          initialValue: _selectedCategory,
+          decoration: const InputDecoration(
+            labelText: 'Product Category',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.sell_outlined),
+          ),
+          items: categoryProvider.categories
+              .map((c) => DropdownMenuItem(value: c, child: Text(c.name)))
+              .toList(),
+          onChanged: (v) => setState(() => _selectedCategory = v),
+          validator: (v) => v == null ? 'Please select a category' : null,
+        );
+      },
     );
   }
 

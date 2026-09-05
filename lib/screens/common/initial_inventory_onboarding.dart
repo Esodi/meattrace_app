@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/animal_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/product_category_provider.dart';
 import '../../models/animal.dart';
 import '../../models/product.dart';
+import '../../models/product_category.dart';
 import '../../widgets/core/custom_app_bar.dart';
 import '../../widgets/core/enhanced_back_button.dart';
 
@@ -30,6 +32,7 @@ class _InitialInventoryOnboardingScreenState
   final _batchController = TextEditingController();
   String _weightUnit = 'kg';
   bool _isProcessing = false;
+  ProductCategory? _selectedCategory;
 
   // Type Selector
   String _selectedType = 'animal'; // 'animal' or 'product'
@@ -46,6 +49,7 @@ class _InitialInventoryOnboardingScreenState
         _tabController.animateTo(1);
         setState(() => _selectedType = 'product');
       }
+      context.read<ProductCategoryProvider>().fetchCategories();
     });
 
     _tabController.addListener(() {
@@ -124,6 +128,7 @@ class _InitialInventoryOnboardingScreenState
           weight: double.tryParse(_weightController.text) ?? 1.0,
           weightUnit: _weightUnit,
           price: double.tryParse(_priceController.text) ?? 0.0,
+          category: _selectedCategory?.id,
           description: 'Registered as Opening Stock',
           manufacturer: currentUser.username,
           timeline: [],
@@ -159,6 +164,7 @@ class _InitialInventoryOnboardingScreenState
         _weightController.clear();
         _priceController.clear();
         _batchController.clear();
+        setState(() => _selectedCategory = null);
       }
     } catch (e) {
       if (mounted) {
@@ -273,6 +279,40 @@ class _InitialInventoryOnboardingScreenState
                         ),
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      Consumer<ProductCategoryProvider>(
+                        builder: (context, categoryProvider, child) {
+                          if (categoryProvider.categories.isEmpty) {
+                            return categoryProvider.isLoading
+                                ? const LinearProgressIndicator()
+                                : const Text(
+                                    'No product categories available. Create one before adding opening stock.',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                    ),
+                                  );
+                          }
+                          return DropdownButtonFormField<ProductCategory>(
+                            initialValue: _selectedCategory,
+                            decoration: const InputDecoration(
+                              labelText: 'Product Category',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.category),
+                            ),
+                            items: categoryProvider.categories.map((c) {
+                              return DropdownMenuItem(
+                                value: c,
+                                child: Text(c.name),
+                              );
+                            }).toList(),
+                            onChanged: (v) =>
+                                setState(() => _selectedCategory = v),
+                            validator: (v) =>
+                                v == null ? 'Please select a category' : null,
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
                       Row(
