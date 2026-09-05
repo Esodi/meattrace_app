@@ -180,28 +180,41 @@ class _ModernProcessorHomeScreenState extends State<ModernProcessorHomeScreen>
       final processingUnitId = authProvider.user?.processingUnitId;
 
       if (processingUnitId != null) {
-        // Count whole animals transferred to this processor but not yet received
-        final pendingWholeAnimals = animalProvider.animals.where((animal) {
-          return animal.transferredTo == processingUnitId &&
-              animal.receivedBy == null;
-        }).length;
+        // Count *animals* awaiting a receive decision, not the rows behind
+        // them: a whole-animal transfer cascades to that animal's slaughter
+        // parts (and transferring every part marks the parent animal
+        // transferred), so one carcass with three parts is four rows. Summing
+        // rows made this badge read 4 where ReceiveAnimalsScreen - which
+        // folds parts under their animal - shows a single card. Collect the
+        // animal ids into a set so both land on the same number. Mirrors
+        // production_stats_view's pending calculation, which is what the
+        // badge normally uses; this is the offline/failure fallback.
+        final pendingAnimalIds = <int>{};
 
-        // Count slaughter parts transferred to this processor but not yet received
-        int pendingParts = 0;
+        for (final animal in animalProvider.animals) {
+          if (animal.id != null &&
+              animal.transferredTo == processingUnitId &&
+              animal.receivedBy == null &&
+              animal.rejectionStatus != 'rejected') {
+            pendingAnimalIds.add(animal.id!);
+          }
+        }
+
         try {
           final allParts = await animalProvider.getSlaughterPartsList();
-          pendingParts = allParts.where((part) {
-            return part.transferredTo == processingUnitId &&
-                part.receivedBy == null;
-          }).length;
+          for (final part in allParts) {
+            if (part.transferredTo == processingUnitId &&
+                part.receivedBy == null &&
+                part.rejectionStatus != 'rejected') {
+              pendingAnimalIds.add(part.animalId);
+            }
+          }
         } catch (e) {
           debugPrint('Error loading pending parts: $e');
         }
 
-        final totalPending = pendingWholeAnimals + pendingParts;
-
         if (mounted) {
-          setState(() => _pendingAnimalsCount = totalPending);
+          setState(() => _pendingAnimalsCount = pendingAnimalIds.length);
         }
       }
     } catch (e) {
